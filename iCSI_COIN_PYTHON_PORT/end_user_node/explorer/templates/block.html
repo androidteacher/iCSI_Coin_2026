@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Block {{ block.height }} - iCSI Coin</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background: #f4f6f8;
+            color: #333;
+        }
+
+        .container {
+            max_width: 1000px;
+            margin: 0 auto;
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+
+        h1,
+        h2,
+        h3 {
+            color: #2c3e50;
+        }
+
+        .hash {
+            font-family: monospace;
+            color: #555;
+            word-break: break-all;
+        }
+
+        .data-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 30px;
+        }
+
+        .data-table th,
+        .data-table td {
+            padding: 10px;
+            border-bottom: 1px solid #eee;
+            text-align: left;
+        }
+
+        .data-table th {
+            width: 200px;
+            color: #777;
+            font-weight: 500;
+        }
+
+        .tx-list {
+            margin-top: 20px;
+        }
+
+        .tx-item {
+            background: #f9f9f9;
+            padding: 15px;
+            margin-bottom: 15px;
+            border-radius: 4px;
+            border: 1px solid #eee;
+        }
+
+        .tx-id {
+            font-family: monospace;
+            font-weight: bold;
+            color: #3498db;
+            margin-bottom: 10px;
+            display: block;
+        }
+
+        .io-container {
+            display: flex;
+            gap: 20px;
+        }
+
+        .inputs,
+        .outputs {
+            flex: 1;
+        }
+
+        .io-item {
+            font-size: 0.9em;
+            padding: 4px 0;
+            border-bottom: 1px dashed #eee;
+        }
+
+        .amount {
+            font-weight: bold;
+            color: #27ae60;
+            float: right;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <a href="/">← Back to Dashboard</a>
+
+        <h1>Block #{{ block.height }}</h1>
+        <p class="hash">{{ block_hash }}</p>
+
+        <table class="data-table">
+            <tr>
+                <th>Previous Hash</th>
+                <td class="hash"><a href="/block/{{ prev_hash }}">{{ prev_hash }}</a></td>
+            </tr>
+            <tr>
+                <th>Merkle Root</th>
+                <td class="hash">{{ merkle_root }}</td>
+            </tr>
+            <tr>
+                <th>Timestamp</th>
+                <td>{{ timestamp }}</td>
+            </tr>
+            <tr>
+                <th>Bits / Difficulty</th>
+                <td>{{ bits }}</td>
+            </tr>
+            <tr>
+                <th>Nonce</th>
+                <td>{{ nonce }}</td>
+            </tr>
+            <tr>
+                <th>Transactions</th>
+                <td>{{ tx_count }}</td>
+            </tr>
+        </table>
+
+        <h3>Transactions</h3>
+        <div class="tx-list">
+            {% for tx in transactions %}
+            <div class="tx-item">
+                <a class="tx-id" href="#">{{ tx.txid }}</a>
+                <div class="io-container">
+                    <div class="inputs">
+                        <strong>Inputs</strong>
+                        {% for vin in tx.inputs %}
+                        <div class="io-item">
+                            {% if vin.is_coinbase %}
+                            <em>Coinbase (Reward)</em>
+                            {% else %}
+                            Outpoint: <span class="hash">{{ vin.prev_hash[:16] }}...:{{ vin.prev_index }}</span>
+                            {% endif %}
+                        </div>
+                        {% endfor %}
+                    </div>
+                    <div class="outputs">
+                        <strong>Outputs</strong>
+                        {% for vout in tx.outputs %}
+                        <div class="io-item">
+                            Index {{ loop.index0 }}
+                            <span class="amount">{{ vout.amount }} COINS</span>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+</body>
+
+</html>

@@ -1,0 +1,27 @@
+services:
+  user-node:
+    image: icsi-node:latest
+    build: .
+    network_mode: "host"
+    environment:
+      - STUN_IP=127.0.0.1
+      - STUN_PORT=3478
+      - WEB_PORT=8080
+      - RPC_PORT=9340
+    volumes:
+      - ./wallet_data:/app/wallet_data
+    # Using host mode, ports are bound directly.
+    # 8080 default web port
+    # 9336 P2P port to avoid conflict
+    command: [ "--port", "9336", "--bind", "0.0.0.0", "--web-port", "8080", "--rpcport", "9340" ]
+
+  explorer:
+    image: icsi-node:latest # Reuse the image built by user-node context above
+    network_mode: "host"
+    environment:
+      - PYTHONPATH=/app
+    volumes:
+      - ./wallet_data:/app/data:ro # Read-only access to blockchain data
+    command: [ "python3", "/app/explorer/app.py" ]
+    depends_on:
+      - user-node

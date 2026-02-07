@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>iCSI Coin Explorer</title>
+    <style>
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; margin: 0; padding: 20px; background: #f4f6f8; color: #333; }
+        .container { max_width: 1000px; margin: 0 auto; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        h1 { color: #2c3e50; }
+        table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+        th, td { padding: 12px; text-align: left; border-bottom: 1px solid #eee; }
+        th { background: #f8f9fa; font-weight: 600; color: #555; }
+        tr:hover { background: #f8f9fa; }
+        a { color: #3498db; text-decoration: none; }
+        a:hover { text-decoration: underline; }
+        .hash { font-family: monospace; font-size: 0.9em; }
+        .badge { display: inline-block; padding: 4px 8px; border-radius: 4px; font-size: 0.8em; font-weight: bold; }
+        .badge-success { background: #d4edda; color: #155724; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>iCSI Coin Explorer</h1>
+        <h2>Latest Blocks</h2>
+        <table>
+            <thead>
+                <tr>
+                    <th>Height</th>
+                    <th>Hash</th>
+                    <th>Time</th>
+                    <th>Size (Bytes)</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for block in blocks %}
+                <tr>
+                    <td>{{ block['height'] }}</td>
+                    <td><a href="/block/{{ block['block_hash'] }}" class="hash">{{ block['block_hash'][:16] }}...</a></td>
+                    <td>{{ block['timestamp'] or 'N/A' }}</td> <!-- Need to fetch timestamp from header or store it in index? Index doesn't have it! We need to read block header... or just show height for now? -->
+                    <!-- Wait, Index DB *doesn't* have timestamp. It has file offset. We might be slow if we parse every header for the list. -->
+                    <!-- Let's just show what we have in DB for now and maybe fetch details later. -->
+                     <td>{{ block['length'] }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</body>
+</html>

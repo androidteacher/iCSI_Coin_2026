@@ -1,0 +1,9 @@
+Building iCSICOIN
+
+See doc/readme-qt.rst for instructions on building iCSICOIN-Qt,
+the intended-for-end-users, nice-graphical-interface, reference
+implementation of iCSICOIN.
+
+See doc/build-*.txt for instructions on building icsicoind,
+the intended-for-services, no-graphical-interface, reference
+implementation of iCSICOIN.

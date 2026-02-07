@@ -1,0 +1,30 @@
+version: '3.8'
+
+services:
+  seed-node-1:
+    build: ./seed_nodes
+    network_mode: "host"
+    command: [ "--port", "9333", "--bind", "0.0.0.0", "--rpcport", "9332", "--web-port", "8081" ]
+
+  seed-node-2:
+    build: ./seed_nodes
+    network_mode: "host"
+    command: [ "--port", "9334", "--bind", "0.0.0.0", "--rpcport", "9432", "--addnode", "127.0.0.1:9333" ]
+    depends_on:
+      - seed-node-1
+
+  seed-node-3:
+    build: ./seed_nodes
+    network_mode: "host"
+    command: [ "--port", "9335", "--bind", "0.0.0.0", "--rpcport", "9532", "--addnode", "127.0.0.1:9333" ]
+    depends_on:
+      - seed-node-1
+
+  user-node:
+    build: ./end_user_node
+    network_mode: "host"
+    command: [ "--port", "9336", "--bind", "0.0.0.0", "--rpcport", "9632", "--connect", "127.0.0.1:9333", "--connect", "127.0.0.1:9334", "--connect", "127.0.0.1:9335", "--web-port", "8080" ]
+    depends_on:
+      - seed-node-1
+      - seed-node-2
+      - seed-node-3

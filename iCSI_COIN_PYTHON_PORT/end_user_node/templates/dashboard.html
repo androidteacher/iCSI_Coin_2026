@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>iCSI Coin Node</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&display=swap" rel="stylesheet">
+</head>
+
+<body>
+    <div class="scanlines"></div>
+
+    <div class="main-layout">
+        <!-- LEFT COLUMN: NETWORK UPLINK -->
+        <div class="column left-col">
+            <div class="panel">
+                <div class="panel-header">NETWORK UPLINK</div>
+                <div class="panel-body">
+                    <div class="status-indicator" id="uplinkStatus">OFFLINE</div>
+
+                    <form id="connectionForm">
+                        <div class="input-group">
+                            <label>INITIAL SEED IP</label>
+                            <input type="text" id="seedIp" name="seed_ip" placeholder="192.168.X.X"
+                                value="{{ seed_ip }}">
+                            <div class="help-text">Auto-connects to Ports 9333-9335</div>
+                        </div>
+
+                        <div class="actions">
+                            <button type="button" class="btn primary" onclick="connectToNetwork()">[ INITIALIZE NETWORK
+                                ]</button>
+                        </div>
+
+                        <div class="separator"></div>
+
+                        <div class="input-group">
+                            <label>NAT DIAGNOSTICS</label>
+                            <div class="help-text">STUN: Port 3478 (Enforced)</div>
+                        </div>
+                        <div class="actions">
+                            <button type="button" class="btn secondary" onclick="testNat()">[ TEST NAT DISCOVERY
+                                ]</button>
+                        </div>
+                        <div id="natResult" class="console-output small"></div>
+                    </form>
+                </div>
+            </div>
+
+            <div class="panel">
+                <div class="panel-header">NODE STATUS</div>
+                <div class="panel-body">
+                    <div class="stat-row">
+                        <span>PORT:</span> <span class="val">{{ port }}</span>
+                    </div>
+                    <div class="stat-row">
+                        <span>PEERS:</span> <span class="val" id="peerCount">0</span>
+                    </div>
+                    <div class="stat-row">
+                        <span>BLOCK HEIGHT:</span> <span class="val" id="blockHeight">0</span>
+                    </div>
+                    <div class="actions">
+                        <button type="button" class="btn danger" onclick="resetSystem()">[ SYSTEM RESET ]</button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="panel">
+                <div class="panel-header">NETWORK STATISTICS</div>
+                <div class="panel-body">
+                    <div class="stat-row">
+                        <span>DIFFICULTY:</span> <span class="val" id="netDiff">---</span>
+                    </div>
+                    <div class="stat-row">
+                        <span>REWARD:</span> <span class="val" id="netReward">---</span>
+                    </div>
+                    <div class="stat-row">
+                        <span>NEXT HALVING:</span> <span class="val" id="netHalving">---</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- CENTER COLUMN: WALLET & MINING -->
+        <div class="column center-col">
+            <h1 class="main-title">iCSI COIN NODE</h1>
+
+            <!-- WALLET SECTION -->
+            <div class="panel">
+                <div class="panel-header">MY WALLET</div>
+                <div class="panel-body">
+                    <div class="wallet-select-row">
+                        <select id="walletSelect" onchange="updateWalletDisplay()">
+                            <!-- Populated by JS -->
+                            <option value="">Loading Wallets...</option>
+                        </select>
+                        <button class="btn-icon danger" onclick="purgeWallet()" title="Purge Wallet">[X]</button>
+                    </div>
+
+                    <div class="balance-display">
+                        <span id="currentBalance">0.00</span> <small>COINS</small>
+                    </div>
+                    <div class="address-display" id="currentAddress">---</div>
+
+                    <div class="wallet-actions">
+                        <button class="btn secondary small" onclick="openCreateWalletModal()">CREATE NEW</button>
+                        <button class="btn secondary small" onclick="exportWallets()">EXPORT</button>
+                        <button class="btn secondary small" onclick="openImportWalletModal()">IMPORT</button>
+                    </div>
+
+                    <div class="separator"></div>
+
+                    <div class="send-form">
+                        <div class="input-group">
+                            <label>RECIPIENT ADDRESS</label>
+                            <input type="text" id="sendTo" placeholder="Address...">
+                        </div>
+                        <div class="input-group">
+                            <label>AMOUNT</label>
+                            <input type="number" id="sendAmount" placeholder="0.00">
+                        </div>
+                        <button class="btn primary" onclick="sendCoin()">SEND COINS</button>
+                        <div id="sendResult" class="console-output small"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- MINING SECTION -->
+            <div class="panel">
+                <div class="panel-header">MINING OPERATIONS</div>
+                <div class="panel-body">
+                    <div class="mining-controls">
+                        <div class="input-group">
+                            <label>TARGET WALLET</label>
+                            <select id="miningTargetSelect">
+                                <!-- Same as wallet list -->
+                            </select>
+                        </div>
+                        <div class="actions-row">
+                            <button class="btn success" id="startMineBtn" onclick="startMining()">[ START MINING
+                                ]</button>
+                            <button class="btn danger" id="stopMineBtn" onclick="stopMining()" disabled>[ STOP
+                                ]</button>
+                        </div>
+                    </div>
+
+                    <div class="terminal-window" id="miningTerminal">
+                        <div class="line">Ready to mine...</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- RIGHT COLUMN: TOPOLOGY -->
+        <div class="column right-col">
+            <div class="panel full-height">
+                <div class="panel-header">NETWORK TOPOLOGY</div>
+                <div class="panel-body">
+                    <input type="text" id="peerSearch" placeholder="Search IP/Port..." onkeyup="filterPeers()">
+
+                    <div class="peer-list-container">
+                        <table class="peer-table">
+                            <thead>
+                                <tr>
+                                    <th>IP</th>
+                                    <th>PORT</th>
+                                    <th>STATUS</th>
+                                    <th>ACT</th>
+                                </tr>
+                            </thead>
+                            <tbody id="peerTableBody">
+                                <!-- Populated by JS -->
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <div class="pagination">
+                        <button onclick="prevPage()">
+                            << /button>
+                                <span id="pageInfo">1 / 1</span>
+                                <button onclick="nextPage()">></button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODALS -->
+    <div id="createWalletModal" class="modal">
+        <div class="modal-content">
+            <span class="close" onclick="closeModal('createWalletModal')">&times;</span>
+            <h2>NAME THIS WALLET</h2>
+            <input type="text" id="newWalletName" placeholder="e.g. Savings, Test 1...">
+            <button class="btn primary" onclick="createWallet()">GENERATE KEYS</button>
+        </div>
+    </div>
+
+    <div id="importWalletModal" class="modal">
+        <div class="modal-content">
+            <span class="close" onclick="closeModal('importWalletModal')">&times;</span>
+            <h2>IMPORT WALLET JSON</h2>
+            <textarea id="importData" rows="5" placeholder='[{"private_key": "...", "name": "..."}]'></textarea>
+            <button class="btn primary" onclick="importWallets()">IMPORT</button>
+        </div>
+    </div>
+
+    <div id="logModal" class="modal">
+        <div class="modal-content large">
+            <div class="modal-header">
+                <span id="logModalTitle">PEER LOGS</span>
+                <span class="close" onclick="closeModal('logModal')">&times;</span>
+            </div>
+            <div id="logContent" class="terminal-text"></div>
+        </div>
+    </div>
+
+    <script src="/static/js/main.js"></script>
+</body>
+
+</html>
