@@ -174,7 +174,7 @@ class ChainManager:
                  # Database expects hex string or bytes? schema is TEXT usually or BLOB.
                  # Let's check schema in databases.py (not shown but inferred).
                  # Better to pass hex if schema is TEXT.
-                 self.chain_state.add_utxo(tx_hash, i, vout.amount, vout.script_pubkey.hex())
+                 self.chain_state.add_utxo(tx_hash, i, vout.amount, vout.script_pubkey)
                  
         # Update Best Block in Index
         self.block_index.update_best_block(block.get_hash().hex())

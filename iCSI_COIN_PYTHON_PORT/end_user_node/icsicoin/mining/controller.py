@@ -42,7 +42,7 @@ class MinerController:
         self.mining_thread = threading.Thread(target=self._mine_loop)
         self.mining_thread.daemon = True
         self.mining_thread.start()
-        self._log(f"Mining started. Target: {target_address} (Note: Rewards currently go to Node Default Wallet via RPC)")
+        self._log(f"Mining started. Target: {target_address}")
         return True, "Mining started"
 
     def stop_mining(self):
@@ -91,7 +91,10 @@ class MinerController:
     def _mine_loop(self):
         while not self.stop_event.is_set():
             # 1. Get Work
-            resp = self._rpc_call("getblocktemplate")
+            params = []
+            if self.target_address:
+                params.append({"mining_address": self.target_address})
+            resp = self._rpc_call("getblocktemplate", params)
             if not resp or resp.get('error'):
                 self._log("Waiting for RPC/Work...")
                 time.sleep(2)

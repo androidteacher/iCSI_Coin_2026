@@ -80,12 +80,17 @@ class RPCServer:
             height = (best['height'] + 1) if best else 1
             
             # 2. Coinbase
-            # Pay to our wallet
-            addrs = self.wallet.get_addresses()
-            if not addrs:
-                self.wallet.get_new_address()
+            miner_addr = None
+            if params and isinstance(params[0], dict):
+                 miner_addr = params[0].get("mining_address")
+            
+            if not miner_addr:
+                # Pay to our wallet
                 addrs = self.wallet.get_addresses()
-            miner_addr = addrs[0]
+                if not addrs:
+                    self.wallet.get_new_address()
+                    addrs = self.wallet.get_addresses()
+                miner_addr = addrs[0]
             
             # ScriptPubkey for P2PKH: OP_DUP OP_HASH160 <pubKeyHash> OP_EQUALVERIFY OP_CHECKSIG
             # address is hex of pubKeyHash as per our Wallet impl
