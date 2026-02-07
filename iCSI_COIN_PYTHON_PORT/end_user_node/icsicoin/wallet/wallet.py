@@ -156,7 +156,7 @@ class Wallet:
             
         # 3. Construct Tx
         tx_ins = [TxIn(inp['txid'], inp['vout']) for inp in inputs]
-        tx = Transaction(tx_ins, outputs)
+        tx = Transaction(vin=tx_ins, vout=outputs)
         
         # 4. Sign Inputs
         # This requires SIGHASH_ALL logic which might be in validation.py or need to be implemented here.
@@ -187,7 +187,7 @@ class Wallet:
                      script = b''
                 tmp_tx_ins.append(TxIn(tx_in.prev_hash, tx_in.prev_index, script, tx_in.sequence))
             
-            tmp_tx = Transaction(tmp_tx_ins, tx.vout, tx.locktime)
+            tmp_tx = Transaction(vin=tmp_tx_ins, vout=tx.vout, locktime=tx.locktime)
             msg = tmp_tx.serialize() + struct.pack("<I", 1) # Append SIGHASH_ALL (1)
             sighash = double_sha256(msg)
             
