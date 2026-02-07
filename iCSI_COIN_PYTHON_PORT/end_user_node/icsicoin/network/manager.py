@@ -135,80 +135,15 @@ class NetworkManager:
             await self.server.wait_closed()
         logger.info("Network manager stopped.")
 
-    async def handle_client(self, reader, writer):
-        addr = writer.get_extra_info('peername')
-        logger.info(f"New incoming connection from {addr}")
-        self.peer_stats[addr] = {'connected_at': int(time.time()), 'last_seen': int(time.time())}
-        self.log_peer_event(addr, "IN", "CONNECTION", "Established incoming connection")
-        
-        # Temp var to store the actual listening port if provided
-        remote_listening_port = addr[1]
-
+    async def process_message_loop(self, reader, writer, addr):
+        """Unified message processing loop for both inbound and outbound connections."""
         try:
-            # 1. Expect Version Message
-            # Read Header
-            header_data = await reader.read(24)
-            if len(header_data) < 24:
-                return
-
-            magic, command, length, checksum = Message.parse_header(header_data)
-            if magic != MAGIC_VALUE:
-                 logger.warning(f"Invalid magic from {addr}")
-                 return
-            
-            payload = await reader.read(length)
-            
-            if command == 'version':
-                logger.info(f"Received VERSION from {addr}")
-                
-                # Parse Version Message to get listening port
-                try:
-                    version_msg = VersionMessage.parse(payload)
-                    remote_listening_port = version_msg.addr_from[2]
-                    logger.info(f"Peer {addr[0]} reports listening on port {remote_listening_port}")
-                except Exception as e:
-                    logger.error(f"Failed to parse Version message: {e}")
-                
-                self.log_peer_event(addr, "RECV", "VERSION", f"Handshake initiated (Port {remote_listening_port})")
-                
-                # 2. Send Version
-                my_version = VersionMessage()
-                writer.write(my_version.serialize())
-                await writer.drain()
-                self.log_peer_event(addr, "SENT", "VERSION", "")
-                
-                # 3. Send Verack
-                my_verack = VerackMessage()
-                writer.write(my_verack.serialize())
-                await writer.drain()
-                self.log_peer_event(addr, "SENT", "VERACK", "")
-                
-            # 4. Expect Verack
-            # (Simplification: We expect the next message to be verack, but tcp stream might bundle it)
-            
-            # Register peer using the reported listening port (if valid)
-            # Prevent registering 0 or invalid ports
-            # Register peer using the reported listening port (if valid)
-            if remote_listening_port > 0:
-                self.peers.add((addr[0], remote_listening_port))
-                logger.info(f"Registered peer: {addr[0]}:{remote_listening_port}") 
-            else:
-                 self.peers.add(addr) 
-                 logger.info(f"Registered peer (fallback): {addr}")
-            
-            # Register active connection
-            self.active_connections[addr] = writer
-            if remote_listening_port > 0:
-                 self.active_connections[(addr[0], remote_listening_port)] = writer
-            
             while self.running:
                 # Read Header
-                header_data = await reader.read(24)
-                if not header_data:
-                    break
-                if len(header_data) < 24:
-                    break # Incomplete header
-                    
+                header_data = await reader.readexactly(24)
+                if not header_data: break
+                # logger.debug(f"Raw Header from {addr}: {binascii.hexlify(header_data)}")
+                
                 magic, command, length, checksum = Message.parse_header(header_data)
                 
                 # Read Payload
@@ -243,13 +178,8 @@ class NetworkManager:
                     
                     # Helper to check if IP is advertisable (skip internal docker ranges)
                     def is_advertisable(ip):
-                        if ip.startswith('127.'): 
-                            logger.debug(f"IP {ip} not advertisable (localhost)")
-                            return False
-                        if ip == '0.0.0.0': 
-                            return False
-                        # Log success for clarity
-                        # logger.info(f"IP {ip} is advertisable")
+                        if ip.startswith('127.'): return False
+                        if ip == '0.0.0.0': return False
                         return True
 
                     # Add current connected peers
@@ -289,7 +219,8 @@ class NetworkManager:
                     self.log_peer_event(addr, "RECV", "ADDR", f"Received {len(addresses)} nodes")
                     for a in addresses:
                         p = (a['ip'], a['port'])
-                        if p[0] != '0.0.0.0' and p != (self.bind_address, self.port):
+                        # valid port check
+                        if p[0] != '0.0.0.0' and p != (self.bind_address, self.port) and p[1] > 0:
                             self.known_peers.add(p)
 
                 elif command == 'relay':
@@ -301,13 +232,6 @@ class NetworkManager:
                         
                         if target in self.active_connections:
                             target_writer = self.active_connections[target]
-                            # Send the inner payload (which is likely a SIGNAL message) directly to target
-                            # We wrap it in the same command? Or just forward raw bytes?
-                            # The inner payload is a serialized message. We should write it directly?
-                            # RelayMessage.inner_payload IS the serialized message (header + payload).
-                            # Wait, RelayMessage construct takes inner_payload which is bytes.
-                            # If we look at parse, it extracts bytes.
-                            # So yes, we just write it.
                             target_writer.write(relay_msg.inner_payload)
                             await target_writer.drain()
                             logger.info(f"Relayed message to {target}")
@@ -341,19 +265,12 @@ class NetworkManager:
                                 target_port = signal_msg.source_port
                                 
                                 if target_ip != '0.0.0.0' and target_port > 0:
-                                    # Create Answer Signal
-                                    # We are the source now.
-                                    # We need our public IP. Does aioice give it?
-                                    # We can copy from our candidates or use 0.0.0.0 if we trust the Relay to find us?
-                                    # No, the Relay routing relies on TARGET.
-                                    # So we are sending TO target_ip.
                                     
                                     # Find the Relay connection (the socket 'addr' came from aka Seed)
                                     if addr in self.active_connections:
                                         writer = self.active_connections[addr]
                                         
                                         # Response Signal
-                                        # Source = Us? We can try to guess or leave 0 if Answer doesn't need reply.
                                         resp_signal = SignalMessage(target_ip=target_ip, target_port=target_port, 
                                                                     source_ip=self.bind_address, source_port=self.port,
                                                                     sdp=answer_sdp)
@@ -370,7 +287,6 @@ class NetworkManager:
 
                             if signal_msg.candidate:
                                 logger.info(f"Received ICE Candidate: {signal_msg.candidate}")
-                                # TODO: Add to connection
                         
                         self.log_peer_event(addr, "RECV", "SIGNAL", "Received ICE Signal")
                     except Exception as e:
@@ -565,6 +481,106 @@ class NetworkManager:
                     except Exception as e:
                         logger.error(f"GETBLOCKS error: {e}")
                 
+        except Exception as e:
+            logger.error(f"Error handling client {addr}: {e}")
+            self.log_peer_event(addr, "ERR", "EXCEPTION", str(e))
+        finally:
+            logger.info(f"Closing connection to {addr}")
+            self.log_peer_event(addr, "XXX", "DISCONNECT", "Connection closed")
+            try:
+                writer.close()
+                await writer.wait_closed()
+            except: pass
+            
+            # Try removing both variants based on addr ip/port
+            self.peers.discard(addr)
+            
+            # Also cleanup from active connections if present
+            if addr in self.active_connections:
+                 del self.active_connections[addr]
+            
+            # If we tracked it with a different port (e.g. listening port), we might need to clean that too.
+            # But process_message_loop takes 'addr' as the primary key.
+            # In handle_client, 'addr' is the ephemeral socket address.
+            # In connect_to_peer, 'addr' is the target address (listening port).
+            
+            # If handle_client passed ephemeral addr, we should clean up the mapped listening port too if known.
+            # But handle_client logic did that in its finally block. 
+            # We can leave that specific cleanup to the caller if needed, or try to be smart here.
+            # For now, let's keep it simple: cleanup passed 'addr'.
+            pass
+
+    async def handle_client(self, reader, writer):
+        addr = writer.get_extra_info('peername')
+        logger.info(f"New incoming connection from {addr}")
+        self.peer_stats[addr] = {'connected_at': int(time.time()), 'last_seen': int(time.time())}
+        self.log_peer_event(addr, "IN", "CONNECTION", "Established incoming connection")
+        
+        # Temp var to store the actual listening port if provided
+        remote_listening_port = addr[1]
+
+        try:
+            # 1. Expect Version Message
+            # Read Header
+            header_data = await reader.read(24)
+            if len(header_data) < 24:
+                return
+
+            magic, command, length, checksum = Message.parse_header(header_data)
+            if magic != MAGIC_VALUE:
+                 logger.warning(f"Invalid magic from {addr}")
+                 return
+            
+            payload = await reader.read(length)
+            
+            if command == 'version':
+                logger.info(f"Received VERSION from {addr}")
+                
+                # Parse Version Message to get listening port
+                try:
+                    version_msg = VersionMessage.parse(payload)
+                    remote_listening_port = version_msg.addr_from[2]
+                    logger.info(f"Peer {addr[0]} reports listening on port {remote_listening_port}")
+                except Exception as e:
+                    logger.error(f"Failed to parse Version message: {e}")
+                
+                self.log_peer_event(addr, "RECV", "VERSION", f"Handshake initiated (Port {remote_listening_port})")
+                
+                # 2. Send Version
+                my_version = VersionMessage()
+                writer.write(my_version.serialize())
+                await writer.drain()
+                self.log_peer_event(addr, "SENT", "VERSION", "")
+                
+                # 3. Send Verack
+                my_verack = VerackMessage()
+                writer.write(my_verack.serialize())
+                await writer.drain()
+                self.log_peer_event(addr, "SENT", "VERACK", "")
+                
+            # 4. Expect Verack
+            # (Simplification: We expect the next message to be verack, but tcp stream might bundle it)
+            
+            # Register peer using the reported listening port (if valid)
+            # Prevent registering 0 or invalid ports
+            # Register peer using the reported listening port (if valid)
+            if remote_listening_port > 0:
+                self.peers.add((addr[0], remote_listening_port))
+                logger.info(f"Registered peer: {addr[0]}:{remote_listening_port}") 
+            else:
+                 self.peers.add(addr) 
+                 logger.info(f"Registered peer (fallback): {addr}")
+            
+            # Register active connection
+            self.active_connections[addr] = writer
+            if remote_listening_port > 0:
+                 self.active_connections[(addr[0], remote_listening_port)] = writer
+            
+            # Delegate to unified loop
+            if remote_listening_port > 0:
+                 self.active_connections[(addr[0], remote_listening_port)] = writer
+            
+            await self.process_message_loop(reader, writer, addr)
         except Exception as e:
             logger.error(f"Error handling client {addr}: {e}")
             self.log_peer_event(addr, "ERR", "EXCEPTION", str(e))
@@ -864,70 +880,10 @@ class NetworkManager:
             # Remove from pending once connected
             self.pending_peers.discard(target)
             
-            # Keep connection alive & listen for messages
-            try:
-                while self.running:
-                    header_data = await reader.read(24)
-                    if not header_data: break
-                    
-                    magic, command, length, checksum = Message.parse_header(header_data)
-                    
-                    # Read Payload
-                    if length > 0:
-                         payload = await reader.readexactly(length)
-                    else:
-                         payload = b''
-                    
-                    if addr in self.peer_stats:
-                        self.peer_stats[addr]['last_seen'] = int(time.time())
-                    
-                    # Update stats for target too if differ
-                    if target in self.peer_stats:
-                         self.peer_stats[target]['last_seen'] = int(time.time())
+            # Delegate to unified loop
+            # Here 'target' is (ip, port) of the listener, which is what we want for stats/logs.
+            await self.process_message_loop(reader, writer, target)
 
-                    if command == 'getaddr':
-                        self.log_peer_event(addr, "RECV", "GETADDR", "Peer requested node list")
-                        # Reply with peers
-                        peers_list = []
-                        
-                        def is_advertisable(ip):
-                            if ip.startswith('127.'): return False
-                            # Relaxed check for Docker networking
-                            # if ip.startswith('172.16.') or ip.startswith('172.17.') or ip.startswith('172.18.') or ip.startswith('172.19.') or ip.startswith('172.20.') or ip.startswith('172.21.'): return False 
-                            if ip == '0.0.0.0': return False
-                            return True
-
-                        debug_advertised = []
-                        for p_ip, p_port in self.peers:
-                             if is_advertisable(p_ip):
-                                peers_list.append({'ip': p_ip, 'port': p_port, 'services': 1, 'timestamp': int(time.time())})
-                                debug_advertised.append(f"{p_ip}:{p_port}")
-                        
-                        if peers_list:
-                            writer.write(AddrMessage(peers_list).serialize())
-                            await writer.drain()
-                            self.log_peer_event(addr, "SENT", "ADDR", f"Sent {len(peers_list)} nodes: {debug_advertised}")
-                            
-                    elif command == 'addr':
-                        addresses = AddrMessage.parse(payload)
-                        logger.info(f"Received ADDR from {addr} with {len(addresses)} nodes")
-                        self.log_peer_event(addr, "RECV", "ADDR", f"Received {len(addresses)} nodes")
-                        for a in addresses:
-                            p = (a['ip'], a['port'])
-                            if p != (self.bind_address, self.port):
-                                 self.known_peers.add(p)
-                                 
-                    elif command == 'ping':
-                        # TODO: Pong
-                        pass
-            finally:
-                logger.info(f"Connection to {target} closed/dropped")
-                self.peers.discard(target)
-                if target in self.active_connections:
-                    del self.active_connections[target]
-                writer.close()
-                # await writer.wait_closed() # Warning: this might hang if loop is closing
-                
         except Exception as e:
             logger.warning(f"Failed to connect to {host}:{port}: {e}")
             
@@ -936,7 +892,6 @@ class NetworkManager:
                 logger.info(f"Attempting ICE P2P to {host}:{port} via {len(self.active_connections)} relays")
                 for relay_addr in list(self.active_connections.keys()):
                      # Start ICE task
-                     # We fire and forget for now, checking logs for success
                      asyncio.create_task(self.init_ice_connection(host, port, remote_via_tcp=relay_addr))
 
             self.log_peer_event(target, "ERR", "EXCEPTION", str(e))

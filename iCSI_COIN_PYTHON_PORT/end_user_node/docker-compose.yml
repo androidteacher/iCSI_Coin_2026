@@ -12,8 +12,8 @@ services:
       - ./wallet_data:/app/wallet_data
     # Using host mode, ports are bound directly.
     # 8080 default web port
-    # 9336 P2P port to avoid conflict
-    command: [ "--port", "9336", "--bind", "0.0.0.0", "--web-port", "8080", "--rpcport", "9340" ]
+    # 9341 P2P port to avoid conflict with admin/seeds
+    command: [ "--port", "9341", "--bind", "0.0.0.0", "--web-port", "8080", "--rpcport", "9342", "--addnode", "127.0.0.1:9333" ]
 
   explorer:
     image: icsi-node:latest # Reuse the image built by user-node context above
