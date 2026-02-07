@@ -297,16 +297,22 @@ class WebServer:
             # validation.validate_transaction needs UTXO set?
             # mempool.add_transaction(tx, chain_state)
             if self.network_manager.mempool.add_transaction(tx):
-                # 2. Broadcast INV
-                # network_manager.relay_transaction(tx) -> Helper needed
-                # For now, simple loop:
-                inv_msg = self.network_manager._create_inv_message([tx.get_hash()]) # access private/internal helper or recreate
-                # Actually, inv message creation logic:
-                from icsicoin.network.messages import InvMessage
-                inv = InvMessage()
-                inv.items.append((1, tx.get_hash())) # 1=MSG_TX
+                # Broadcast INV to peers
+                import json as json_mod
+                from icsicoin.network.messages import Message
+                tx_hash_hex = tx.get_hash().hex()
+                inv_msg = {
+                    "type": "inv",
+                    "inventory": [{"type": "tx", "hash": tx_hash_hex}]
+                }
+                json_payload = json_mod.dumps(inv_msg).encode('utf-8')
+                out_m = Message('inv', json_payload)
                 
-                await self.network_manager.broadcast_message(inv)
+                for peer_addr, peer_writer in self.network_manager.active_connections.items():
+                    try:
+                        peer_writer.write(out_m.serialize())
+                        await peer_writer.drain()
+                    except: pass
                 
                 return web.json_response({'status': 'sent', 'txid': tx.get_hash().hex()})
             else:
