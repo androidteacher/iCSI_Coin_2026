@@ -1,220 +1,343 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" class="dark">
 
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>iCSI Coin Node</title>
-    <link rel="stylesheet" href="/static/css/style.css">
-    <!-- Modern Fonts -->
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=Share+Tech+Mono&display=swap"
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&family=Rajdhani:wght@500;600;700&display=swap"
         rel="stylesheet">
+
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        background: '#000000',
+                        surface: '#09090b', // Zinc 950
+                        border: '#27272a',   // Zinc 800
+                        primary: '#ccff00',  // Acid Lime
+                        secondary: '#06b6d4', // Cyan
+                        muted: '#a1a1aa',    // Zinc 400
+                    },
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                        mono: ['JetBrains Mono', 'monospace'],
+                        heading: ['Rajdhani', 'sans-serif'],
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        /* Custom Scrollbar to match Dark Theme */
+        ::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: #27272a;
+            border-radius: 3px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: #3f3f46;
+        }
+
+        /* Hide Number Input Arrows */
+        input[type=number]::-webkit-inner-spin-button,
+        input[type=number]::-webkit-outer-spin-button {
+            -webkit-appearance: none;
+            margin: 0;
+        }
+    </style>
 </head>
 
-<body>
-    <div class="main-layout">
-        <!-- LEFT COLUMN: NETWORK UPLINK -->
-        <div class="column left-col">
-            <div class="panel">
-                <div class="panel-header">Network Uplink</div>
-                <div class="panel-body">
-                    <div class="status-indicator" id="uplinkStatus">OFFLINE</div>
+<body class="bg-background text-white font-sans min-h-screen antialiased selection:bg-primary selection:text-black">
 
-                    <form id="connectionForm">
-                        <div class="input-group">
-                            <label>Initial Seed IP</label>
-                            <input type="text" id="seedIp" name="seed_ip" placeholder="192.168.X.X"
-                                value="{{ seed_ip }}">
-                            <div class="help-text">Auto-connects to Ports 9333-9335</div>
-                        </div>
+    <!-- Main Layout: Grid with Sticky Sidebars -->
+    <div class="max-w-[1400px] mx-auto grid grid-cols-1 xl:grid-cols-[350px_1fr_400px] gap-8 p-6 items-start">
 
-                        <div class="actions">
-                            <button type="button" class="btn primary" onclick="connectToNetwork()">Initialize
-                                Network</button>
-                        </div>
+        <!-- LEFT COLUMN: STATUS & CONTROLS -->
+        <aside class="space-y-6 xl:sticky xl:top-6">
 
-                        <div class="separator"></div>
+            <!-- Network Uplink Panel -->
+            <div class="bg-surface border border-border rounded-xl p-6 shadow-sm">
+                <h2
+                    class="font-heading font-bold text-lg uppercase tracking-wider flex items-center gap-2 mb-6 text-white">
+                    <span class="w-2 h-2 rounded-full bg-primary shadow-[0_0_10px_#ccff00]"></span> Network Uplink
+                </h2>
 
-                        <div class="input-group">
-                            <label>NAT Diagnostics</label>
-                            <div class="help-text">STUN: Port 3478 (Enforced)</div>
-                        </div>
-                        <div class="actions">
-                            <button type="button" class="btn secondary" onclick="testNat()">Test NAT Discovery</button>
-                        </div>
-                        <div id="natResult" class="console-output small"></div>
-                    </form>
+                <div id="uplinkStatus"
+                    class="w-full py-3 rounded-lg text-center font-bold tracking-widest text-sm mb-6 bg-black border border-zinc-900 text-red-500 border-red-900/30">
+                    OFFLINE
+                </div>
+
+                <form id="connectionForm" class="space-y-4">
+                    <div>
+                        <label
+                            class="block font-heading font-bold text-xs uppercase tracking-widest text-muted mb-2">Initial
+                            Seed IP</label>
+                        <input type="text" id="seedIp" placeholder="192.168.X.X" value="{{ seed_ip }}"
+                            class="w-full bg-black border border-border rounded-lg px-4 py-3 text-sm focus:outline-none focus:border-primary transition-colors placeholder-zinc-700 text-white">
+                        <p class="text-[10px] text-zinc-600 mt-2 font-mono">Auto-connects to Ports 9333-9335</p>
+                    </div>
+
+                    <button type="button" onclick="connectToNetwork()"
+                        class="w-full py-2 rounded-full bg-primary text-black font-bold text-xs uppercase tracking-wider shadow-[0_0_20px_rgba(204,255,0,0.15)] hover:bg-[#bbe600] active:scale-[0.98] transition-all">
+                        Initialize Network
+                    </button>
+
+                    <div class="h-px bg-zinc-900 my-6"></div>
+
+                    <div>
+                        <label
+                            class="block font-heading font-bold text-xs uppercase tracking-widest text-muted mb-2">NAT
+                            Diagnostics</label>
+                        <button type="button" onclick="testNat()"
+                            class="w-full py-2 rounded-full border border-border text-muted font-bold text-xs uppercase hover:text-white hover:bg-zinc-900 transition-colors">
+                            Test NAT Discovery
+                        </button>
+                        <div id="natResult" class="mt-2 text-xs font-mono text-zinc-500 break-all"></div>
+                    </div>
+                </form>
+            </div>
+
+            <!-- Node Status Panel -->
+            <div class="bg-surface border border-border rounded-xl p-6 shadow-sm">
+                <h2
+                    class="font-heading font-bold text-lg uppercase tracking-wider flex items-center gap-2 mb-6 text-white">
+                    <span class="w-2 h-2 rounded-full bg-secondary shadow-[0_0_10px_#06b6d4]"></span> Node Status
+                </h2>
+                <div class="space-y-3 font-mono text-sm">
+                    <div class="flex justify-between items-center py-2 border-b border-zinc-900">
+                        <span class="text-zinc-500">Port</span>
+                        <span class="text-white">{{ port }}</span>
+                    </div>
+                    <div class="flex justify-between items-center py-2 border-b border-zinc-900">
+                        <span class="text-zinc-500">Peers</span>
+                        <span id="peerCount" class="text-primary">0</span>
+                    </div>
+                    <div class="flex justify-between items-center py-2">
+                        <span class="text-zinc-500">Block Height</span>
+                        <span id="blockHeight" class="text-secondary font-bold">0</span>
+                    </div>
+                </div>
+                <button onclick="resetSystem()"
+                    class="mt-6 w-full py-2 rounded-full bg-red-500/10 text-red-500 border border-red-500/20 font-bold text-xs uppercase hover:bg-red-500 hover:text-white transition-all">
+                    System Reset
+                </button>
+            </div>
+
+            <!-- Network Stats Panel -->
+            <div class="bg-surface border border-border rounded-xl p-6 shadow-sm">
+                <h2
+                    class="font-heading font-bold text-lg uppercase tracking-wider flex items-center gap-2 mb-6 text-white">
+                    <span class="w-2 h-2 rounded-full bg-purple-500 shadow-[0_0_10px_#a855f7]"></span> Market Data
+                </h2>
+                <div class="space-y-3 font-mono text-sm">
+                    <div class="flex justify-between items-center py-2 border-b border-zinc-900">
+                        <span class="text-zinc-500">Difficulty</span>
+                        <span id="netDiff" class="text-white">---</span>
+                    </div>
+                    <div class="flex justify-between items-center py-2 border-b border-zinc-900">
+                        <span class="text-zinc-500">Reward</span>
+                        <span id="netReward" class="text-primary">---</span>
+                    </div>
+                    <div class="flex justify-between items-center py-2">
+                        <span class="text-zinc-500">Halving In</span>
+                        <span id="netHalving" class="text-white">---</span>
+                    </div>
                 </div>
             </div>
 
-            <div class="panel">
-                <div class="panel-header">Node Status</div>
-                <div class="panel-body">
-                    <div class="stat-row">
-                        <span>Port</span> <span class="val">{{ port }}</span>
-                    </div>
-                    <div class="stat-row">
-                        <span>Peers</span> <span class="val" id="peerCount">0</span>
-                    </div>
-                    <div class="stat-row">
-                        <span>Block Height</span> <span class="val" id="blockHeight">0</span>
-                    </div>
-                    <div class="actions" style="margin-top: 20px;">
-                        <button type="button" class="btn danger" onclick="resetSystem()">System Reset</button>
-                    </div>
-                </div>
-            </div>
+        </aside>
 
-            <div class="panel">
-                <div class="panel-header">Network Statistics</div>
-                <div class="panel-body">
-                    <div class="stat-row">
-                        <span>Difficulty</span> <span class="val" id="netDiff">---</span>
-                    </div>
-                    <div class="stat-row">
-                        <span>Reward</span> <span class="val" id="netReward">---</span>
-                    </div>
-                    <div class="stat-row">
-                        <span>Next Halving</span> <span class="val" id="netHalving">---</span>
-                    </div>
-                </div>
-            </div>
-        </div>
+        <!-- CENTER COLUMN: WALLET & FEED -->
+        <main class="space-y-6">
 
-        <!-- CENTER COLUMN: WALLET & MINING -->
-        <div class="column center-col">
-            <div class="panel">
-                <div class="panel-header">My Wallet</div>
-                <div class="panel-body">
-                    <div class="wallet-select-row">
-                        <select id="walletSelect" onchange="updateWalletDisplay()">
-                            <option value="">Loading Wallets...</option>
+            <!-- Wallet Panel -->
+            <div class="bg-surface border border-border rounded-xl p-6 relative overflow-hidden shadow-lg">
+
+                <div class="flex items-center justify-between mb-6">
+                    <h2 class="font-heading font-bold text-xl uppercase tracking-wider text-white">My Wallet</h2>
+                    <div class="flex gap-2">
+                        <select id="walletSelect" onchange="updateWalletDisplay()"
+                            class="bg-black border border-border text-xs rounded-lg px-3 py-2 focus:outline-none focus:border-secondary transition-colors text-zinc-300">
+                            <option>Loading...</option>
                         </select>
-                        <button class="btn danger btn-icon" onclick="purgeWallet()" title="Purge Wallet">×</button>
+                        <button onclick="purgeWallet()"
+                            class="p-2 rounded-lg text-zinc-500 hover:text-red-500 hover:bg-red-500/10 transition-colors"
+                            title="Purge Wallet">✕</button>
                     </div>
+                </div>
 
-                    <div class="balance-display">
-                        <span id="currentBalance">0.00</span>
-                        <small>ICSI COINS</small>
+                <div class="text-center mb-6 py-6 bg-black rounded-xl border border-border">
+                    <div class="relative inline-block">
+                        <span id="currentBalance"
+                            class="block text-4xl md:text-5xl font-bold font-heading text-primary tracking-tighter drop-shadow-[0_0_15px_rgba(204,255,0,0.3)]">0.00</span>
+                        <span
+                            class="absolute -bottom-4 right-0 text-[10px] font-mono text-zinc-500 tracking-widest">ICSI</span>
                     </div>
-
-                    <div class="address-display" id="currentAddress">---</div>
-
-                    <div class="wallet-actions">
-                        <button class="btn secondary small" onclick="openCreateWalletModal()">Create New</button>
-                        <button class="btn secondary small" onclick="exportWallets()">Export</button>
-                        <button class="btn secondary small" onclick="openImportWalletModal()">Import</button>
+                    <div class="mt-4 flex justify-center">
+                        <div id="currentAddress"
+                            class="font-mono text-[10px] text-zinc-600 bg-zinc-900 px-3 py-1 rounded border border-zinc-800 break-all select-all hover:text-white transition-colors cursor-pointer">
+                            ---</div>
                     </div>
+                </div>
 
-                    <div class="separator"></div>
+                <div class="grid grid-cols-3 gap-3 mb-8">
+                    <button onclick="openCreateWalletModal()"
+                        class="py-2.5 bg-zinc-900 border border-zinc-800 rounded-lg text-xs font-bold uppercase text-muted hover:text-white hover:border-zinc-600 hover:bg-zinc-800 transition-all shadow-sm">Create
+                        New</button>
+                    <button onclick="exportWallets()"
+                        class="py-2.5 bg-zinc-900 border border-zinc-800 rounded-lg text-xs font-bold uppercase text-muted hover:text-white hover:border-zinc-600 hover:bg-zinc-800 transition-all shadow-sm">Export</button>
+                    <button onclick="openImportWalletModal()"
+                        class="py-2.5 bg-zinc-900 border border-zinc-800 rounded-lg text-xs font-bold uppercase text-muted hover:text-white hover:border-zinc-600 hover:bg-zinc-800 transition-all shadow-sm">Import</button>
+                </div>
 
-                    <div class="send-form">
-                        <div class="input-group">
-                            <label>Recipient Address</label>
-                            <input type="text" id="sendTo" placeholder="Paste address...">
+                <div class="bg-black/50 rounded-xl p-6 border border-zinc-900">
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                        <div>
+                            <label
+                                class="block text-xs font-bold uppercase text-zinc-600 mb-2 font-heading tracking-wider">Recipient
+                                Address</label>
+                            <input type="text" id="sendTo" placeholder="Paste address..."
+                                class="w-full bg-black border border-border rounded-lg px-3 py-2 text-sm focus:border-primary focus:outline-none text-white">
                         </div>
-                        <div class="input-group">
-                            <label>Amount</label>
-                            <input type="number" id="sendAmount" placeholder="0.00">
+                        <div>
+                            <label
+                                class="block text-xs font-bold uppercase text-zinc-600 mb-2 font-heading tracking-wider">Amount</label>
+                            <input type="number" id="sendAmount" placeholder="0.00"
+                                class="w-full bg-black border border-border rounded-lg px-3 py-2 text-sm focus:border-primary focus:outline-none text-white">
                         </div>
-                        <button class="btn primary" onclick="sendCoin()">Send Coins</button>
-                        <div id="sendResult" class="console-output small"></div>
                     </div>
+                    <button onclick="sendCoin()"
+                        class="w-full py-3 bg-zinc-800 hover:bg-zinc-700 text-white font-bold uppercase text-xs rounded-lg tracking-wider transition-colors shadow-md">
+                        Send Transaction
+                    </button>
+                    <div id="sendResult" class="mt-3 text-center text-xs font-mono text-zinc-500 min-h-[1rem]"></div>
                 </div>
             </div>
 
-            <!-- MINING SECTION -->
-            <div class="panel">
-                <div class="panel-header">Mining Operations</div>
-                <div class="panel-body">
-                    <div class="mining-controls">
-                        <div class="input-group">
-                            <label>Target Wallet</label>
-                            <select id="miningTargetSelect">
-                                <!-- Same as wallet list -->
-                            </select>
-                        </div>
-                        <div class="actions-row">
-                            <button class="btn success" id="startMineBtn" onclick="startMining()">Start Mining</button>
-                            <button class="btn danger" id="stopMineBtn" onclick="stopMining()" disabled>Stop</button>
-                        </div>
-                    </div>
+            <!-- Mining Panel -->
+            <div class="bg-surface border border-border rounded-xl p-6 shadow-sm">
+                <h2
+                    class="font-heading font-bold text-lg uppercase tracking-wider flex items-center gap-2 mb-6 text-white">
+                    <span class="w-2 h-2 rounded-full bg-purple-500 shadow-[0_0_10px_#a855f7]"></span> Mining Operations
+                </h2>
 
-                    <div class="terminal-window" id="miningTerminal">
-                        <div class="line">Ready to mine...</div>
+                <div class="flex flex-col md:flex-row gap-4 mb-6">
+                    <select id="miningTargetSelect"
+                        class="flex-1 bg-black border border-border rounded-lg px-4 py-3 text-sm focus:outline-none focus:border-purple-500 text-white">
+                        <!-- Options -->
+                    </select>
+                    <div class="flex gap-2">
+                        <button id="startMineBtn" onclick="startMining()"
+                            class="px-6 py-2 bg-emerald-500 hover:bg-emerald-400 text-black font-bold uppercase text-xs rounded-full transition-colors disabled:opacity-50 disabled:cursor-not-allowed shadow-[0_0_15px_rgba(16,185,129,0.3)]">Start</button>
+                        <button id="stopMineBtn" onclick="stopMining()" disabled
+                            class="px-6 py-2 bg-red-500 hover:bg-red-400 text-white font-bold uppercase text-xs rounded-full transition-colors disabled:opacity-50 disabled:cursor-not-allowed shadow-[0_0_15px_rgba(239,68,68,0.3)] ">Stop</button>
                     </div>
                 </div>
-            </div>
-        </div>
 
-        <!-- RIGHT COLUMN: TOPOLOGY -->
-        <div class="column right-col">
-            <div class="panel full-height">
-                <div class="panel-header">Network Topology</div>
-                <div class="panel-body">
-                    <input type="text" id="peerSearch" placeholder="Search IP/Port..." onkeyup="filterPeers()"
-                        style="margin-bottom: 10px;">
-
-                    <div class="peer-list-container">
-                        <table class="peer-table">
-                            <thead>
-                                <tr>
-                                    <th>IP</th>
-                                    <th>Port</th>
-                                    <th>Status</th>
-                                    <th>Act</th>
-                                </tr>
-                            </thead>
-                            <tbody id="peerTableBody">
-                                <!-- Populated by JS -->
-                            </tbody>
-                        </table>
-                    </div>
-
-                    <div class="pagination">
-                        <button onclick="prevPage()">&lt;</button>
-                        <span id="pageInfo">1 / 1</span>
-                        <button onclick="nextPage()">&gt;</button>
-                    </div>
+                <div id="miningTerminal"
+                    class="h-48 bg-black border border-border rounded-lg p-4 font-mono text-xs text-zinc-400 overflow-y-auto">
+                    <div class="mb-1 text-zinc-600">> System Ready...</div>
                 </div>
             </div>
+        </main>
+
+        <!-- RIGHT COLUMN: PEERS & LOGS -->
+        <aside class="space-y-6 xl:sticky xl:top-6">
+            <div class="bg-surface border border-border rounded-xl p-6 h-[calc(100vh-3rem)] flex flex-col shadow-sm">
+                <h2
+                    class="font-heading font-bold text-lg uppercase tracking-wider flex items-center gap-2 mb-6 text-white shrink-0">
+                    <span class="w-2 h-2 rounded-full bg-emerald-500 shadow-[0_0_10px_#10b981]"></span> Network Peers
+                </h2>
+
+                <input type="text" id="peerSearch" placeholder="Filter Peers..." onkeyup="filterPeers()"
+                    class="w-full bg-black border border-border rounded-lg px-4 py-3 text-sm mb-4 focus:border-blue-500 focus:outline-none shrink-0 text-white placeholder-zinc-700">
+
+                <div class="flex-1 overflow-y-auto pr-2 custom-scrollbar">
+                    <table class="w-full text-left border-collapse">
+                        <thead class="sticky top-0 bg-surface z-10 shadow-sm">
+                            <tr>
+                                <th
+                                    class="pb-3 pl-2 text-xs font-bold text-zinc-500 uppercase tracking-wider font-heading">
+                                    IP</th>
+                                <th class="pb-3 text-xs font-bold text-zinc-500 uppercase tracking-wider font-heading">
+                                    Port</th>
+                                <th
+                                    class="pb-3 pr-2 text-xs font-bold text-zinc-500 uppercase tracking-wider text-right font-heading">
+                                    Action</th>
+                            </tr>
+                        </thead>
+                        <tbody id="peerTableBody" class="font-mono text-sm text-zinc-300 divide-y divide-zinc-900">
+                            <!-- JS populated -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </aside>
+
+    </div>
+
+    <!-- MODALS (Tailwind) -->
+    <div id="createWalletModal"
+        class="fixed inset-0 bg-black/80 backdrop-blur-sm hidden items-center justify-center z-50">
+        <div
+            class="bg-surface border border-border rounded-xl p-8 w-[90%] max-w-md shadow-2xl animate-[slideUp_0.3s_ease-out]">
+            <div class="flex justify-between items-center mb-6">
+                <h3 class="font-heading font-bold text-xl uppercase text-white">New Wallet</h3>
+                <button onclick="closeModal('createWalletModal')"
+                    class="text-zinc-500 hover:text-white text-xl">✕</button>
+            </div>
+            <input type="text" id="newWalletName" placeholder="Wallet Name"
+                class="w-full bg-black border border-border rounded-lg px-4 py-3 mb-6 focus:border-primary focus:outline-none text-white">
+            <button onclick="createWallet()"
+                class="w-full py-3 bg-primary text-black font-bold uppercase text-sm rounded-full hover:bg-[#bbe600] transition-colors shadow-[0_0_20px_rgba(204,255,0,0.2)]">Generate
+                Keys</button>
         </div>
     </div>
 
-    <!-- MODALS -->
-    <div id="createWalletModal" class="modal">
-        <div class="modal-content">
-            <div class="modal-header">
-                Name This Wallet
-                <span class="close" onclick="closeModal('createWalletModal')">&times;</span>
+    <div id="importWalletModal"
+        class="fixed inset-0 bg-black/80 backdrop-blur-sm hidden items-center justify-center z-50">
+        <div
+            class="bg-surface border border-border rounded-xl p-8 w-[90%] max-w-md shadow-2xl animate-[slideUp_0.3s_ease-out]">
+            <div class="flex justify-between items-center mb-6">
+                <h3 class="font-heading font-bold text-xl uppercase text-white">Import Wallet</h3>
+                <button onclick="closeModal('importWalletModal')"
+                    class="text-zinc-500 hover:text-white text-xl">✕</button>
             </div>
-            <div class="modal-body">
-                <input type="text" id="newWalletName" placeholder="e.g. Savings, Test 1...">
-                <button class="btn primary" onclick="createWallet()" style="margin-top: 15px;">Generate Keys</button>
-            </div>
+            <textarea id="importData" rows="5"
+                class="w-full bg-black border border-border rounded-lg px-4 py-3 mb-6 font-mono text-xs focus:border-primary focus:outline-none text-white"
+                placeholder='JSON Data...'></textarea>
+            <button onclick="importWallets()"
+                class="w-full py-3 bg-primary text-black font-bold uppercase text-sm rounded-full hover:bg-[#bbe600] transition-colors shadow-[0_0_20px_rgba(204,255,0,0.2)]">Import</button>
         </div>
     </div>
 
-    <div id="importWalletModal" class="modal">
-        <div class="modal-content">
-            <div class="modal-header">
-                Import Wallet JSON
-                <span class="close" onclick="closeModal('importWalletModal')">&times;</span>
+    <div id="logModal" class="fixed inset-0 bg-black/80 backdrop-blur-sm hidden items-center justify-center z-50">
+        <div
+            class="bg-surface border border-border rounded-xl p-0 w-[90%] max-w-4xl h-[80vh] flex flex-col shadow-2xl overflow-hidden animate-[slideUp_0.3s_ease-out]">
+            <div class="flex justify-between items-center p-6 border-b border-border bg-black">
+                <h3 id="logModalTitle" class="font-heading font-bold text-xl uppercase text-primary">Peer Logs</h3>
+                <button onclick="closeModal('logModal')" class="text-zinc-500 hover:text-white text-xl">✕</button>
             </div>
-            <div class="modal-body">
-                <textarea id="importData" rows="5" placeholder='[{"private_key": "...", "name": "..."}]'></textarea>
-                <button class="btn primary" onclick="importWallets()" style="margin-top: 15px;">Import</button>
+            <div id="logContent"
+                class="flex-1 overflow-y-auto p-6 font-mono text-xs text-zinc-400 whitespace-pre-wrap bg-[#050505]">
             </div>
-        </div>
-    </div>
-
-    <div id="logModal" class="modal">
-        <div class="modal-content large">
-            <div class="modal-header">
-                Peer Logs
-                <span class="close" onclick="closeModal('logModal')">&times;</span>
-            </div>
-            <div id="logContent" class="terminal-text"></div>
         </div>
     </div>
 

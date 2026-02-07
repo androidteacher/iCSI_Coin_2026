@@ -73,13 +73,15 @@ async function connectToNetwork() {
         const data = await res.json();
         if (res.ok) {
             btn.innerText = `INITIATED (${data.connected_count})`;
-            document.getElementById('uplinkStatus').innerText = "ONLINE";
-            document.getElementById('uplinkStatus').className = "status-indicator online";
+            const statusEl = document.getElementById('uplinkStatus');
+            statusEl.innerText = "ONLINE";
+            statusEl.className = "w-full py-3 rounded-lg text-center font-bold tracking-widest text-sm mb-6 bg-emerald-950/30 border border-emerald-900 text-emerald-500";
         }
     } catch (e) {
         alert("Connection Failed");
         btn.innerText = "[ INITIALIZE NETWORK ]";
     }
+
 }
 
 async function testNat() {
@@ -96,10 +98,10 @@ async function testNat() {
 
         if (data.success) {
             resDiv.innerText = "SUCCESS: " + data.message;
-            resDiv.style.color = "var(--term-green)";
+            resDiv.className = "mt-2 text-xs font-mono text-emerald-400 break-all";
         } else {
             resDiv.innerText = "FAILED: " + (data.message || "Timeout");
-            resDiv.style.color = "var(--alert-red)";
+            resDiv.className = "mt-2 text-xs font-mono text-red-500 break-all";
         }
     } catch (e) {
         resDiv.innerText = "Error: " + e;
@@ -123,17 +125,19 @@ async function updatePeers() {
         const filter = document.getElementById('peerSearch').value.toLowerCase();
 
         data.peers.forEach(p => {
+            if (!p.status.toUpperCase().includes('ACTIVE')) return; // Show ACTIVE and ACTIVE (ICE)
+
             const key = `${p.ip}:${p.port}`;
             if (filter && !key.toLowerCase().includes(filter)) return;
 
             const tr = document.createElement('tr');
+            tr.className = "hover:bg-zinc-900/50 transition-colors";
             tr.innerHTML = `
-                <td>${p.ip}</td>
-                <td>${p.port}</td>
-                <td style="color: ${p.status.includes('FAIL') ? 'var(--alert-red)' : 'var(--term-green)'}">${p.status}</td>
-                <td>
-                    <button class="log-btn" onclick="showLogs('${p.ip}', ${p.port})">LOG</button>
-                    ${p.can_delete ? `<button class="delete-btn" onclick="deletePeer('${p.ip}', ${p.port})">X</button>` : ''}
+                <td class="py-3 pl-2 text-zinc-300 font-mono">${p.ip}</td>
+                <td class="py-3 text-zinc-500 font-mono">${p.port}</td>
+                <td class="py-3 pr-2 text-right">
+                    <button class="px-3 py-1 bg-zinc-800 hover:bg-zinc-700 text-primary text-[10px] font-bold uppercase rounded-md transition-colors" onclick="showLogs('${p.ip}', ${p.port})">LOG</button>
+                    ${p.can_delete ? `<button class="ml-2 text-red-500 hover:text-red-400 font-bold" onclick="deletePeer('${p.ip}', ${p.port})">×</button>` : ''}
                 </td>
             `;
             tbody.appendChild(tr);
@@ -259,11 +263,11 @@ async function sendCoin() {
 
         if (res.ok) {
             resDiv.innerText = `SENT! TxID: ${data.txid.substring(0, 16)}...`;
-            resDiv.style.color = "var(--term-green)";
+            resDiv.className = "mt-3 text-center text-xs font-mono text-emerald-400";
             loadWallets(); // Refresh balance
         } else {
             resDiv.innerText = "FAILED: " + data.error;
-            resDiv.style.color = "var(--alert-red)";
+            resDiv.className = "mt-3 text-center text-xs font-mono text-red-500";
         }
     } catch (e) { resDiv.innerText = "Error: " + e; }
 }
@@ -320,7 +324,7 @@ async function updateMiner() {
     // We only append new logs or replace?
     // Let's replace content with last 10 logs for simplicity, or append diff.
     // Simpler: Just render last 20 logs joined
-    terminal.innerHTML = data.logs.join('<div class="line"></div>');
+    terminal.innerHTML = data.logs.join('<div class="mb-1 border-l-2 border-zinc-700 pl-2"></div>');
     terminal.scrollTop = terminal.scrollHeight;
 }
 
