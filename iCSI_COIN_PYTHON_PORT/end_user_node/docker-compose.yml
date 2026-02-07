@@ -13,6 +13,11 @@ services:
     # Using host mode, ports are bound directly.
     # 8080 default web port
     # 9341 P2P port to avoid conflict with admin/seeds
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
     command: [ "--port", "9341", "--bind", "0.0.0.0", "--web-port", "8080", "--rpcport", "9342", "--addnode", "127.0.0.1:9333", "--datadir", "/app/wallet_data" ]
 
   explorer:
@@ -23,6 +28,11 @@ services:
       - PYTHONPATH=/app
     volumes:
       - ./wallet_data:/app/data:ro # Read-only access to blockchain data
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
     command: [ "python3", "/app/explorer/app.py" ]
     depends_on:
       - user-node

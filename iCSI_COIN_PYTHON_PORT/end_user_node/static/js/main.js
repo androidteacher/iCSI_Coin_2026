@@ -40,6 +40,9 @@ function startPolling() {
 
     updateStats();
     statsInterval = setInterval(updateStats, 5000);
+
+    loadWallets(); // Initial load
+    walletInterval = setInterval(loadWallets, 5000); // Poll every 5s
 }
 
 /* --- NETWORK --- */
@@ -96,10 +99,10 @@ async function testNat() {
 
         if (data.success) {
             resDiv.innerText = "SUCCESS: " + data.message;
-            resDiv.className = "mt-2 text-xs font-mono text-emerald-400 break-all";
+            resDiv.className = "mt-2 text-xs font-mono text-cyan-400 break-all";
         } else {
             resDiv.innerText = "FAILED: " + (data.message || "Timeout");
-            resDiv.className = "mt-2 text-xs font-mono text-red-500 break-all";
+            resDiv.className = "mt-2 text-xs font-mono text-pink-500 break-all";
         }
     } catch (e) {
         resDiv.innerText = "Error: " + e;
@@ -128,10 +131,10 @@ async function updatePeers() {
 
         if (activePeers.length > 0) {
             statusEl.innerText = "ONLINE";
-            statusEl.className = "w-full py-3 rounded-lg text-center font-bold tracking-widest text-sm mb-6 bg-emerald-950/30 border border-emerald-900 text-emerald-500 shadow-[0_0_15px_rgba(16,185,129,0.2)]";
+            statusEl.className = "w-full py-3 rounded-lg text-center font-bold tracking-widest text-sm mb-6 bg-cyan-950/30 border border-cyan-900 text-cyan-500 shadow-[0_0_15px_rgba(6,182,212,0.2)]";
         } else {
             statusEl.innerText = "OFFLINE";
-            statusEl.className = "w-full py-3 rounded-lg text-center font-bold tracking-widest text-sm mb-6 bg-black border border-zinc-900 text-red-500 border-red-900/30";
+            statusEl.className = "w-full py-3 rounded-lg text-center font-bold tracking-widest text-sm mb-6 bg-black border border-zinc-900 text-pink-500 border-pink-900/30";
         }
 
         data.peers.forEach(p => {
@@ -148,7 +151,7 @@ async function updatePeers() {
                 <td class="py-3 text-zinc-500 font-mono">${p.port}</td>
                 <td class="py-3 pr-2 text-right">
                     <button class="px-3 py-1 bg-zinc-800 hover:bg-zinc-700 text-primary text-[10px] font-bold uppercase rounded-md transition-colors" onclick="showLogs('${p.ip}', ${p.port})">LOG</button>
-                    ${p.can_delete ? `<button class="ml-2 text-red-500 hover:text-red-400 font-bold" onclick="deletePeer('${p.ip}', ${p.port})">×</button>` : ''}
+                    ${p.can_delete ? `<button class="ml-2 text-pink-500 hover:text-pink-400 font-bold" onclick="deletePeer('${p.ip}', ${p.port})">×</button>` : ''}
                 </td>
             `;
             tbody.appendChild(tr);
@@ -181,28 +184,48 @@ async function loadWallets() {
         const select = document.getElementById('walletSelect');
         const targetSelect = document.getElementById('miningTargetSelect');
 
-        // Save current selection
-        const currentVal = select.value;
+        // Smart Update: Check if we need to full rebuild
+        const currentOptions = Array.from(select.options);
+        const needsRebuild = currentOptions.length !== data.wallets.length ||
+            !data.wallets.every((w, i) => currentOptions[i] && currentOptions[i].value === w.address);
 
-        select.innerHTML = '';
-        targetSelect.innerHTML = '';
+        if (needsRebuild) {
+            // Save current selection
+            const currentVal = select.value;
+            select.innerHTML = '';
+            targetSelect.innerHTML = '';
 
-        data.wallets.forEach(w => {
-            const opt = document.createElement('option');
-            opt.value = w.address;
-            opt.innerText = `[${w.balance.toFixed(2)}] ${w.name}`;
-            opt.dataset.balance = w.balance;
-            opt.dataset.name = w.name;
-            select.appendChild(opt);
+            data.wallets.forEach(w => {
+                const opt = document.createElement('option');
+                opt.value = w.address;
+                opt.innerText = `[${w.balance.toFixed(2)}] ${w.name}`;
+                opt.dataset.balance = w.balance;
+                opt.dataset.name = w.name;
+                select.appendChild(opt);
 
-            const targetOpt = opt.cloneNode(true);
-            targetSelect.appendChild(targetOpt);
-        });
+                const targetOpt = opt.cloneNode(true);
+                targetSelect.appendChild(targetOpt);
+            });
 
-        if (currentVal && Array.from(select.options).some(o => o.value === currentVal)) {
-            select.value = currentVal;
-        } else if (data.wallets.length > 0) {
-            select.value = data.wallets[0].address;
+            if (currentVal && Array.from(select.options).some(o => o.value === currentVal)) {
+                select.value = currentVal;
+            } else if (data.wallets.length > 0) {
+                select.value = data.wallets[0].address;
+            }
+        } else {
+            // Just update balances in place
+            data.wallets.forEach((w, i) => {
+                const opt = select.options[i];
+                if (opt) {
+                    opt.innerText = `[${w.balance.toFixed(2)}] ${w.name}`;
+                    opt.dataset.balance = w.balance;
+
+                    // Update target select too
+                    if (targetSelect.options[i]) {
+                        targetSelect.options[i].innerText = `[${w.balance.toFixed(2)}] ${w.name}`;
+                    }
+                }
+            });
         }
 
         updateWalletDisplay();
@@ -274,11 +297,11 @@ async function sendCoin() {
 
         if (res.ok) {
             resDiv.innerText = `SENT! TxID: ${data.txid.substring(0, 16)}...`;
-            resDiv.className = "mt-3 text-center text-xs font-mono text-emerald-400";
+            resDiv.className = "mt-3 text-center text-xs font-mono text-cyan-400";
             loadWallets(); // Refresh balance
         } else {
             resDiv.innerText = "FAILED: " + data.error;
-            resDiv.className = "mt-3 text-center text-xs font-mono text-red-500";
+            resDiv.className = "mt-3 text-center text-xs font-mono text-pink-500";
         }
     } catch (e) { resDiv.innerText = "Error: " + e; }
 }
@@ -306,6 +329,21 @@ async function importWallets() {
         loadWallets();
         alert("Wallets Imported");
     } catch (e) { alert("Invalid JSON"); }
+}
+
+function handleImportFile(input) {
+    const file = input.files[0];
+    if (!file) return;
+
+    const nameEl = document.getElementById('importFileName');
+    nameEl.innerText = file.name;
+    nameEl.classList.remove('hidden');
+
+    const reader = new FileReader();
+    reader.onload = (e) => {
+        document.getElementById('importData').value = e.target.result;
+    };
+    reader.readAsText(file);
 }
 
 /* --- MINING --- */
@@ -348,8 +386,3 @@ function closeModal(id) { document.getElementById(id).style.display = 'none'; }
 window.onclick = (e) => {
     if (e.target.classList.contains('modal')) e.target.style.display = 'none';
 };
-function resetSystem() {
-    if (confirm("Reset all logs and peers?")) {
-        fetch(API.reset, { method: 'POST' }).then(updatePeers);
-    }
-}
