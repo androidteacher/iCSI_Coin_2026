@@ -65,7 +65,7 @@ async function connectToNetwork() {
     const ip = document.getElementById('seedIp').value;
     if (!ip) return alert("Enter Seed IP");
 
-    const btn = document.querySelector('#connectionForm .btn.primary');
+    const btn = document.getElementById('connectBtn');
     btn.innerText = "CONNECTING...";
 
     try {
