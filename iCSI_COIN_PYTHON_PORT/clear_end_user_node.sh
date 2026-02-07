@@ -32,8 +32,16 @@ set -e
 
 # Auto-detect project root (directory this script lives in)
 PROJECT_ROOT="$(cd "$(dirname "$0")" && pwd)"
-COMPOSE_FILE="$PROJECT_ROOT/end_user_node/docker-compose.yml"
 DATA_DIR="$PROJECT_ROOT/end_user_node/wallet_data"
+
+# Use remote compose if it exists, otherwise fall back to default
+if [ -f "$PROJECT_ROOT/end_user_node/docker-compose-remote.yml" ]; then
+    COMPOSE_FILE="$PROJECT_ROOT/end_user_node/docker-compose-remote.yml"
+    echo "  Using: docker-compose-remote.yml (remote deployment)"
+else
+    COMPOSE_FILE="$PROJECT_ROOT/end_user_node/docker-compose.yml"
+    echo "  Using: docker-compose.yml (local/seed host)"
+fi
 
 echo ""
 echo "================================================================"

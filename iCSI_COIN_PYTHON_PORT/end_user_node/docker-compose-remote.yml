@@ -1,0 +1,44 @@
+## Remote Deployment Compose
+## ─────────────────────────────────────────────────────────────────────────
+## USE THIS ON REMOTE MACHINES that connect to the seed cluster via the UI.
+##
+## Differences from the local docker-compose.yml:
+##   • No --addnode flag (connection is manual via "Initialize Network")
+##   • STUN_IP left blank (set dynamically when user enters seed IP)
+## ─────────────────────────────────────────────────────────────────────────
+
+services:
+  user-node:
+    image: icsi-node:latest
+    build: .
+    network_mode: "host"
+    environment:
+      - STUN_IP=
+      - STUN_PORT=3478
+      - WEB_PORT=8080
+      - RPC_PORT=9340
+    volumes:
+      - ./wallet_data:/app/wallet_data
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+    command: [ "--port", "9341", "--bind", "0.0.0.0", "--web-port", "8080", "--rpcport", "9342", "--datadir", "/app/wallet_data" ]
+
+  explorer:
+    image: icsi-node:latest
+    build: .
+    network_mode: "host"
+    environment:
+      - PYTHONPATH=/app
+    volumes:
+      - ./wallet_data:/app/data:ro
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+    command: [ "python3", "/app/explorer/app.py" ]
+    depends_on:
+      - user-node
