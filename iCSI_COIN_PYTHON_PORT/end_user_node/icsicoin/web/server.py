@@ -54,6 +54,7 @@ class WebServer:
         self.app.router.add_post('/api/wallet/send', self.handle_wallet_send)
         self.app.router.add_get('/api/wallet/export', self.handle_wallet_export)
         self.app.router.add_post('/api/wallet/import', self.handle_wallet_import)
+        self.app.router.add_post('/api/wallet/rename', self.handle_wallet_rename)
         
         # API - Miner
         self.app.router.add_get('/api/miner/status', self.handle_miner_status)
@@ -258,6 +259,20 @@ class WebServer:
         wallet.keys = [k for k in wallet.keys if k['addr'] != addr]
         wallet.save()
         return web.json_response({'status': 'deleted'})
+
+    async def handle_wallet_rename(self, request):
+        data = await request.json()
+        addr = data.get('address')
+        new_name = data.get('name', '').strip()
+        if not addr or not new_name:
+            return web.json_response({'error': 'Address and name required'}, status=400)
+        wallet = self.network_manager.wallet
+        for k in wallet.keys:
+            if k['addr'] == addr:
+                k['name'] = new_name
+                wallet.save()
+                return web.json_response({'status': 'renamed', 'name': new_name})
+        return web.json_response({'error': 'Wallet not found'}, status=404)
 
     async def handle_wallet_send(self, request):
         data = await request.json()

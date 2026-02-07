@@ -12,6 +12,7 @@ const API = {
     walletDelete: '/api/wallet/delete',
     walletSend: '/api/wallet/send',
     walletImport: '/api/wallet/import',
+    walletRename: '/api/wallet/rename',
     minerStatus: '/api/miner/status',
     minerStart: '/api/miner/start',
     minerStop: '/api/miner/stop'
@@ -344,6 +345,57 @@ function handleImportFile(input) {
         document.getElementById('importData').value = e.target.result;
     };
     reader.readAsText(file);
+}
+
+function openManageWallet() {
+    const select = document.getElementById('walletSelect');
+    const opt = select.selectedOptions[0];
+    if (!opt || !opt.value) return alert('Select a wallet first');
+
+    document.getElementById('manageWalletName').innerText = opt.dataset.name || 'Unnamed';
+    document.getElementById('manageWalletBalance').innerText = parseFloat(opt.dataset.balance).toFixed(8) + ' ICSI';
+    document.getElementById('manageWalletAddr').innerText = opt.value;
+
+    // Reset to view mode
+    document.getElementById('manageNameView').classList.remove('hidden');
+    document.getElementById('manageNameEdit').classList.add('hidden');
+
+    document.getElementById('manageWalletModal').style.display = 'block';
+}
+
+function showRenameField() {
+    const currentName = document.getElementById('manageWalletName').innerText;
+    document.getElementById('renameInput').value = currentName;
+    document.getElementById('manageNameView').classList.add('hidden');
+    document.getElementById('manageNameEdit').classList.remove('hidden');
+    document.getElementById('renameInput').focus();
+}
+
+function cancelRename() {
+    document.getElementById('manageNameView').classList.remove('hidden');
+    document.getElementById('manageNameEdit').classList.add('hidden');
+}
+
+async function saveWalletName() {
+    const newName = document.getElementById('renameInput').value.trim();
+    const addr = document.getElementById('manageWalletAddr').innerText;
+    if (!newName) return alert('Enter a name');
+
+    try {
+        const res = await fetch(API.walletRename, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ address: addr, name: newName })
+        });
+        const data = await res.json();
+        if (res.ok) {
+            document.getElementById('manageWalletName').innerText = newName;
+            cancelRename();
+            loadWallets(); // Refresh dropdown
+        } else {
+            alert('Error: ' + (data.error || 'Unknown'));
+        }
+    } catch (e) { alert('Error: ' + e); }
 }
 
 /* --- MINING --- */

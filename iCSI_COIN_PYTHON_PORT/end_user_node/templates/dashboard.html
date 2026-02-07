@@ -173,6 +173,9 @@
                             class="bg-black border border-border text-xs rounded-lg px-3 py-2 focus:outline-none focus:border-secondary transition-colors text-zinc-300">
                             <option>Loading...</option>
                         </select>
+                        <button onclick="openManageWallet()"
+                            class="px-3 py-1.5 rounded-lg bg-zinc-800 border border-zinc-700 text-[10px] font-bold uppercase tracking-wider text-zinc-400 hover:text-primary hover:border-primary/50 transition-colors"
+                            title="Manage Wallet">Manage</button>
                         <button onclick="purgeWallet()"
                             class="p-2 rounded-lg text-zinc-500 hover:text-pink-500 hover:bg-pink-500/10 transition-colors"
                             title="Purge Wallet">✕</button>
@@ -352,6 +355,51 @@
             </div>
             <div id="logContent"
                 class="flex-1 overflow-y-auto p-6 font-mono text-xs text-zinc-400 whitespace-pre-wrap bg-[#050505]">
+            </div>
+        </div>
+    </div>
+
+    <!-- Manage Wallet Modal -->
+    <div id="manageWalletModal"
+        class="fixed inset-0 bg-black/80 backdrop-blur-sm hidden items-center justify-center z-50">
+        <div
+            class="bg-surface border border-border rounded-xl p-8 w-[90%] max-w-md shadow-2xl animate-[slideUp_0.3s_ease-out]">
+            <div class="flex justify-between items-center mb-6">
+                <h3 class="font-heading font-bold text-xl uppercase text-white">Manage Wallet</h3>
+                <button onclick="closeModal('manageWalletModal')"
+                    class="text-zinc-500 hover:text-white text-xl">✕</button>
+            </div>
+
+            <!-- Wallet Info -->
+            <div class="bg-black rounded-xl border border-border p-5 mb-6 space-y-4">
+                <div class="flex justify-between items-center">
+                    <span class="text-[10px] font-bold uppercase tracking-widest text-zinc-600">Name</span>
+                    <div id="manageNameView" class="flex items-center gap-2">
+                        <span id="manageWalletName" class="text-sm font-bold text-white"></span>
+                        <button onclick="showRenameField()"
+                            class="text-[10px] text-primary hover:text-[#9333ea] font-bold uppercase tracking-wider transition-colors">Rename</button>
+                    </div>
+                    <div id="manageNameEdit" class="hidden flex items-center gap-2">
+                        <input type="text" id="renameInput"
+                            class="bg-zinc-900 border border-border rounded-lg px-3 py-1.5 text-sm focus:border-primary focus:outline-none text-white w-40">
+                        <button onclick="saveWalletName()"
+                            class="text-[10px] bg-primary text-black px-3 py-1.5 rounded-lg font-bold uppercase hover:bg-[#9333ea] transition-colors">Save</button>
+                        <button onclick="cancelRename()"
+                            class="text-[10px] text-zinc-500 hover:text-white font-bold uppercase transition-colors">Cancel</button>
+                    </div>
+                </div>
+                <div class="h-px bg-zinc-900"></div>
+                <div class="flex justify-between items-center">
+                    <span class="text-[10px] font-bold uppercase tracking-widest text-zinc-600">Balance</span>
+                    <span id="manageWalletBalance" class="text-sm font-bold text-primary font-mono"></span>
+                </div>
+                <div class="h-px bg-zinc-900"></div>
+                <div>
+                    <span
+                        class="text-[10px] font-bold uppercase tracking-widest text-zinc-600 block mb-1">Address</span>
+                    <span id="manageWalletAddr"
+                        class="font-mono text-[10px] text-zinc-400 break-all select-all cursor-pointer hover:text-white transition-colors"></span>
+                </div>
             </div>
         </div>
     </div>
