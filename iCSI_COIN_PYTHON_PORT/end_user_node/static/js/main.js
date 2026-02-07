@@ -73,9 +73,7 @@ async function connectToNetwork() {
         const data = await res.json();
         if (res.ok) {
             btn.innerText = `INITIATED (${data.connected_count})`;
-            const statusEl = document.getElementById('uplinkStatus');
-            statusEl.innerText = "ONLINE";
-            statusEl.className = "w-full py-3 rounded-lg text-center font-bold tracking-widest text-sm mb-6 bg-emerald-950/30 border border-emerald-900 text-emerald-500";
+            // Status update handled by polling
         }
     } catch (e) {
         alert("Connection Failed");
@@ -124,7 +122,20 @@ async function updatePeers() {
         // Simple search filter
         const filter = document.getElementById('peerSearch').value.toLowerCase();
 
+        // Update Uplink Indicator based on TRUTH
+        const statusEl = document.getElementById('uplinkStatus');
+        const activePeers = data.peers.filter(p => p.status.toUpperCase().includes('ACTIVE'));
+
+        if (activePeers.length > 0) {
+            statusEl.innerText = "ONLINE";
+            statusEl.className = "w-full py-3 rounded-lg text-center font-bold tracking-widest text-sm mb-6 bg-emerald-950/30 border border-emerald-900 text-emerald-500 shadow-[0_0_15px_rgba(16,185,129,0.2)]";
+        } else {
+            statusEl.innerText = "OFFLINE";
+            statusEl.className = "w-full py-3 rounded-lg text-center font-bold tracking-widest text-sm mb-6 bg-black border border-zinc-900 text-red-500 border-red-900/30";
+        }
+
         data.peers.forEach(p => {
+
             if (!p.status.toUpperCase().includes('ACTIVE')) return; // Show ACTIVE and ACTIVE (ICE)
 
             const key = `${p.ip}:${p.port}`;
