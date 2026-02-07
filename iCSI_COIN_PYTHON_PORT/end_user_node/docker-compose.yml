@@ -17,6 +17,7 @@ services:
 
   explorer:
     image: icsi-node:latest # Reuse the image built by user-node context above
+    build: .
     network_mode: "host"
     environment:
       - PYTHONPATH=/app
