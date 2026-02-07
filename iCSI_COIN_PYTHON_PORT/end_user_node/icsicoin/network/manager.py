@@ -326,6 +326,7 @@ class NetworkManager:
                             writer.write(out_msg.serialize())
                             await writer.drain()
                             logger.info(f"Sent GETDATA for {len(to_get)} items to {addr}")
+                            self.log_peer_event(addr, "SENT", "GETDATA", f"Requested {len(to_get)} blocks/txs")
 
                     except Exception as e:
                         logger.error(f"INV error: {e}")
@@ -335,6 +336,7 @@ class NetworkManager:
                         data = json.loads(payload.decode('utf-8'))
                         inventory = data.get('inventory', [])
                         logger.info(f"Received GETDATA from {addr}")
+                        self.log_peer_event(addr, "RECV", "GETDATA", f"Peer requested {len(inventory)} items")
                         
                         for item in inventory:
                             if item['type'] == 'block':
@@ -354,6 +356,7 @@ class NetworkManager:
                                     writer.write(out_msg.serialize())
                                     await writer.drain()
                                     logger.info(f"Sent BLOCK {item['hash']} to {addr}")
+                                    self.log_peer_event(addr, "SENT", "BLOCK", f"Hash {item['hash'][:16]}...")
                     except Exception as e:
                         logger.error(f"GETDATA error: {e}")
 
@@ -368,12 +371,16 @@ class NetworkManager:
                             f = io.BytesIO(block_bytes)
                             block = Block.deserialize(f)
                             
+                            b_hash = block.get_hash().hex()
+                            self.log_peer_event(addr, "RECV", "BLOCK", f"Hash {b_hash[:16]}...")
+
                             # Process via ChainManager
                             if self.chain_manager.process_block(block):
+                                self.log_peer_event(addr, "CONSENSUS", "ACCEPTED", f"Block {b_hash[:16]}... added to chain")
                                 # Relay logic (simple flood)
                                 inv_msg = {
                                     "type": "inv", 
-                                    "inventory": [{"type": "block", "hash": block.get_hash().hex()}]
+                                    "inventory": [{"type": "block", "hash": b_hash}]
                                 }
                                 json_payload = json.dumps(inv_msg).encode('utf-8')
                                 out_m = Message('inv', json_payload)
@@ -387,6 +394,7 @@ class NetworkManager:
                                         except: pass
                                 logger.info("Relayed BLOCK INV to peers")
                             else:
+                                self.log_peer_event(addr, "CONSENSUS", "IGNORED", f"Block {b_hash[:16]}... known or invalid")
                                 pass # Invalid or orphan (already logged by ChainManager)
                                 
                     except Exception as e:
@@ -680,7 +688,18 @@ class NetworkManager:
             except Exception as e:
                 logger.error(f"Refresh error: {e}")
             
-            await asyncio.sleep(30) # Poll every 30 seconds
+            # Prune failed peers > 30s
+            now = time.time()
+            to_remove = []
+            for peer, data in self.failed_peers.items():
+                if now - data['timestamp'] > 30:
+                    to_remove.append(peer)
+            
+            for peer in to_remove:
+                if peer in self.failed_peers:
+                    del self.failed_peers[peer]
+            
+            await asyncio.sleep(5) # Poll faster for UI responsiveness
 
     async def announce_self(self):
         """Broadcasts our own external IP to all connected peers"""

@@ -8,7 +8,7 @@ services:
     volumes:
       - ./end_user_node:/app
     # Seed 1: P2P 9333, RPC 9337 (No Web UI)
-    command: [ "--port", "9333", "--bind", "0.0.0.0", "--rpcport", "9337", "--debug" ]
+    command: [ "--port", "9333", "--bind", "0.0.0.0", "--rpcport", "9337", "--debug", "--datadir", "/app/data_seed1" ]
     deploy:
       restart_policy:
         condition: on-failure
@@ -20,7 +20,7 @@ services:
     volumes:
       - ./end_user_node:/app
     # Seed 2: P2P 9334, RPC 9338 (No Web UI)
-    command: [ "--port", "9334", "--bind", "0.0.0.0", "--addnode", "127.0.0.1:9333", "--rpcport", "9338" ]
+    command: [ "--port", "9334", "--bind", "0.0.0.0", "--addnode", "127.0.0.1:9333", "--rpcport", "9338", "--datadir", "/app/data_seed2" ]
     depends_on:
       - seed-node-1
     deploy:
@@ -34,7 +34,7 @@ services:
     volumes:
       - ./end_user_node:/app
     # Seed 3: P2P 9335, RPC 9339 (No Web UI)
-    command: [ "--port", "9335", "--bind", "0.0.0.0", "--addnode", "127.0.0.1:9333", "--rpcport", "9339" ]
+    command: [ "--port", "9335", "--bind", "0.0.0.0", "--addnode", "127.0.0.1:9333", "--rpcport", "9339", "--datadir", "/app/data_seed3" ]
     depends_on:
       - seed-node-1
     deploy:
@@ -51,7 +51,7 @@ services:
     # Connects to Seed 1, 2, 3
     # Note: --web-port arg might need verification in server.py, usually env var or arg.
     # Checking icsi_coin_server.py: it has --web-port
-    command: [ "--port", "9336", "--bind", "0.0.0.0", "--rpcport", "9340", "--web-port", "5000", "--addnode", "127.0.0.1:9333", "--addnode", "127.0.0.1:9334", "--addnode", "127.0.0.1:9335" ]
+    command: [ "--port", "9336", "--bind", "0.0.0.0", "--rpcport", "9340", "--web-port", "5000", "--addnode", "127.0.0.1:9333", "--addnode", "127.0.0.1:9334", "--addnode", "127.0.0.1:9335", "--datadir", "/app/data_admin" ]
     depends_on:
       - seed-node-1
       - seed-node-2
