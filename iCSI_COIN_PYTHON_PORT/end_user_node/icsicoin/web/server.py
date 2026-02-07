@@ -12,10 +12,11 @@ import jinja2
 logger = logging.getLogger("WebServer")
 
 class WebServer:
-    def __init__(self, port, network_manager):
+    def __init__(self, port, network_manager, rpc_port=9332):
         self.port = port
         self.network_manager = network_manager
         self.app = web.Application()
+        self.rpc_port = rpc_port
         
         # Setup Jinja2
         template_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), 'templates')
@@ -24,13 +25,10 @@ class WebServer:
             autoescape=jinja2.select_autoescape(['html', 'xml'])
         )
         
-        # Miner Controller (Connects to Local RPC 127.0.0.1:9332 typically)
-        # We need to grab RPC credentials. They were passed to RPCServer but not stored in NetworkManager nicely.
-        # But we can assume defaults or env vars for now as per `process_args` in main.
-        # Actually, `server.py` doesn't have access to args.
-        # Let's use flexible defaults matching `miner.py`
+        # Miner Controller (Connects to Local RPC)
+        # We need to grab RPC credentials. 
         self.miner_controller = MinerController(
-            rpc_url=f"http://127.0.0.1:{os.environ.get('RPC_PORT', '9332')}",
+            rpc_url=f"http://127.0.0.1:{self.rpc_port}",
             rpc_user=os.environ.get('RPC_USER', 'user'),
             rpc_password=os.environ.get('RPC_PASSWORD', 'pass')
         )

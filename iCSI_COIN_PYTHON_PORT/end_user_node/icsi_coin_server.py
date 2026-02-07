@@ -69,7 +69,7 @@ async def main():
     web_server = None
     if args.web_port:
         from icsicoin.web.server import WebServer
-        web_server = WebServer(port=args.web_port, network_manager=network_manager)
+        web_server = WebServer(port=args.web_port, network_manager=network_manager, rpc_port=args.rpcport)
         await web_server.start()
     
     # Start the network manager
