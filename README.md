@@ -6,7 +6,7 @@
 </p>
 
 ## Disclaimer
-> **This is an educational environment designed to teach concepts related to blockchain/crypto currency through hands-on experience.**
+> **Although this is a working peer-to-peer blockchain application, it is designed for educational purposes.**
 
 Students will learn to:
 *   Import/Export Public/Private Wallet Addresses.
