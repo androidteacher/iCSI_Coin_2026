@@ -19,6 +19,8 @@ class WebServer:
         self.network_manager = network_manager
         self.app = web.Application()
         self.rpc_port = rpc_port
+        self.user = 'user'
+        self.password = 'pass'
         self.enforce_auth = False # Default: permissive
         
         # Setup Jinja2
@@ -421,6 +423,13 @@ class WebServer:
         url = f"http://127.0.0.1:{self.rpc_port}/api/rpc/config"
         try:
             data = await request.json()
+            
+            # Update miner controller if Present
+            if self.miner_controller:
+                u = data.get('user', self.user)
+                p = data.get('password', self.password)
+                self.miner_controller.set_credentials(u, p)
+
             async with aiohttp.ClientSession() as session:
                 async with session.post(url, json=data) as resp:
                     if resp.status == 200:

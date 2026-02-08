@@ -21,6 +21,10 @@ class MinerController:
         self.logs = [] # Simple in-memory log buffer
         self.hashrate = 0.0
 
+    def set_credentials(self, user, password):
+        self.rpc_auth = (user, password)
+        self._log(f"Miner credentials updated for user: {user}")
+
     def start_mining(self, target_address):
         if self.is_mining:
             return False, "Already mining"
