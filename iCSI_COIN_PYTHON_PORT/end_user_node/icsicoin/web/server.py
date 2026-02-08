@@ -317,30 +317,67 @@ class WebServer:
                 return False
             return True
 
-        # Active
+        # Peers by IP container: {ip: {'port': p, 'status': s, 'can_delete': b, 'timestamp': t, 'priority': int}}
+        # Priority: 
+        # 3: Active Listening Port (9333-9335)
+        # 2: Active Other Port
+        # 1: ICE Active
+        # 0: Failed
+        peers_by_ip = {}
+
+        def add_candidate(ip, port, status, can_delete, priority):
+            # Check visibility first
+            if not is_visible((ip, port)):
+                 return
+
+            if ip not in peers_by_ip:
+                peers_by_ip[ip] = {
+                    'ip': ip, 'port': port, 'status': status, 
+                    'can_delete': can_delete, 
+                    'priority': priority
+                }
+            else:
+                # Existing entry, check priority
+                current = peers_by_ip[ip]
+                # If new priority is higher, replace
+                if priority > current['priority']:
+                     peers_by_ip[ip] = {
+                        'ip': ip, 'port': port, 'status': status, 
+                        'can_delete': can_delete, 
+                        'priority': priority
+                    }
+                # If same priority, maybe prefer standard ports if current isn't?
+                # or just stick with first found.
+                elif priority == current['priority']:
+                     # Tie-breaker: Prefer 9333
+                     if port == 9333 and current['port'] != 9333:
+                          peers_by_ip[ip]['port'] = port
+        
+        # 1. Active Peers
         if self.network_manager and hasattr(self.network_manager, 'peers'):
               for (ip, port) in list(self.network_manager.peers):
-                  if is_visible((ip, port)):
-                      peers_list.append({'ip': ip, 'port': port, 'status': 'ACTIVE', 'can_delete': False})
+                  priority = 2
+                  if port in [9333, 9334, 9335]:
+                      priority = 3
+                  add_candidate(ip, port, 'ACTIVE', False, priority)
         
-        # ICE
+        # 2. ICE Connections
         if hasattr(self.network_manager, 'ice_connections'):
              for (ip, port) in self.network_manager.ice_connections:
                  if (ip, port) not in self.network_manager.peers:
-                     if is_visible((ip, port)):
-                         peers_list.append({'ip': ip, 'port': port, 'status': 'ACTIVE (ICE)', 'can_delete': False})
+                     add_candidate(ip, port, 'ACTIVE (ICE)', False, 1)
 
-        # Failed (Optional: Do we filter failed peers too? User said "nodes with 'no logs' are invisible". 
-        # Usually failed nodes have logs (the error). But if they haven't been active in 60s, hide them?
-        # User said "If a node hasn't seen log activity in 1 minute, drop it".
-        # So yes, apply to all.
+        # 3. Failed Peers
         if hasattr(self.network_manager, 'failed_peers'):
              for (ip, port), data in self.network_manager.failed_peers.items():
-                 # Failed peers might not be in peer_logs if they failed before logging?
-                 # But log_peer_event is called on error.
-                 # Let's check visibility.
-                 if is_visible((ip, port)):
-                     peers_list.append({'ip': ip, 'port': port, 'status': f"FAILED: {data.get('error','')}", 'can_delete': True})
+                 add_candidate(ip, port, f"FAILED: {data.get('error','')}", True, 0)
+        
+        # Convert to list
+        peers_list = list(peers_by_ip.values())
+        
+        # Remove internal priority field before sending
+        for p in peers_list:
+             del p['priority']
         
         # Add basic stats
         best = self.network_manager.chain_manager.block_index.get_best_block()
@@ -359,9 +396,20 @@ class WebServer:
         
     async def handle_get_logs(self, request):
         ip = request.query.get('ip')
-        port = int(request.query.get('port'))
-        logs = self.network_manager.peer_logs.get((ip, port), [])
-        return web.json_response({'logs': logs})
+        # port = int(request.query.get('port')) # We ignore specific port now and merge all for this IP
+        
+        merged_logs = []
+        for (peer_ip, peer_port), logs in self.network_manager.peer_logs.items():
+            if peer_ip == ip:
+                merged_logs.extend(logs)
+                
+        # Sort logs by timestamp string [HH:MM:SS]
+        # This is a simple string sort, which works given 24h format, 
+        # but might mix days if logs span midnight. 
+        # Given the 50-entry ring buffer and short lifespans, this is acceptable.
+        merged_logs.sort()
+        
+        return web.json_response({'logs': merged_logs})
 
     async def handle_send_test(self, request):
         data = await request.json()
@@ -677,6 +725,13 @@ class WebServer:
                     zip_file.write(file_path, arcname=arcname)
         
         buffer.seek(0)
+        return web.Response(
+            body=buffer.getvalue(),
+            headers={
+                'Content-Disposition': 'attachment; filename="icsi_miner.zip"',
+                'Content-Type': 'application/zip'
+            }
+        )
     async def handle_data_download(self, request):
         import zipfile
         import io
