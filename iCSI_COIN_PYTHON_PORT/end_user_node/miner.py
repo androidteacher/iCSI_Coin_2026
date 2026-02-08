@@ -49,8 +49,12 @@ def bits_to_target(bits):
     coefficient = bits & 0xffffff
     return coefficient * (256**(exponent - 3))
 
-def mine(url, user, password, threads=1):
+def mine(url, user, password, address=None, threads=1):
     logger.info(f"Starting miner on {url}")
+    if address:
+        logger.info(f"Mining to address: {address}")
+    else:
+        logger.info("Mining to Node's default wallet")
     
     # Session for keep-alive
     session = requests.Session()
@@ -58,7 +62,11 @@ def mine(url, user, password, threads=1):
     
     while True:
         # 1. Get Work
-        resp = rpc_call(url, "getblocktemplate", session=session)
+        params = []
+        if address:
+            params.append({"mining_address": address})
+            
+        resp = rpc_call(url, "getblocktemplate", params=params, session=session)
         if not resp or resp.get('error'):
             logger.error(f"Failed to get work: {resp.get('error') if resp else 'No response'}")
             time.sleep(5)
@@ -146,6 +154,7 @@ if __name__ == "__main__":
     parser.add_argument("--url", default="http://127.0.0.1:9340", help="RPC URL")
     parser.add_argument("--user", default="user", help="RPC User")
     parser.add_argument("--pass", dest="password", default="pass", help="RPC Password")
+    parser.add_argument("--address", help="Wallet address to mine rewards to")
     args = parser.parse_args()
     
-    mine(args.url, args.user, args.password)
+    mine(args.url, args.user, args.password, args.address)
