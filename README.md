@@ -1,5 +1,9 @@
 # iCSI_Coin (Docker)
-<img src="pics/Banner.png" width="80%">
+<p align="center">
+  <img src="pics/Banner.png" width="80%">
+  <br>
+  <em>iCSI Coin Miner</em>
+</p>
 
 ## Disclaimer
 > **This is an educational environment designed to teach concepts related to blockchain/crypto currency through hands-on experience.**
@@ -86,6 +90,8 @@ Install the latest version of docker: [Click Here](https://cyberlessons101.com/d
 ## Final Step
 Log in at **http://localhost:8080** and create a username and password.
 
-<img src="pics/login.png" width="50%">
-
-<p align="center"><em>iCSI Coin: Taking over the world one block at a time!</em></p>
+<p align="center">
+  <img src="pics/login.png" width="50%">
+  <br>
+  <em>iCSI Coin: Taking over the world one block at a time!</em>
+</p>
