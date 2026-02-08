@@ -413,7 +413,7 @@ function openManageWallet() {
     document.getElementById('manageNameView').classList.remove('hidden');
     document.getElementById('manageNameEdit').classList.add('hidden');
 
-    document.getElementById('manageWalletModal').style.display = 'block';
+    document.getElementById('manageWalletModal').style.display = 'flex';
 }
 
 function showRenameField() {

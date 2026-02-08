@@ -66,6 +66,18 @@
             -webkit-appearance: none;
             margin: 0;
         }
+
+        @keyframes slideUp {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
     </style>
     <script>
         // Apply theme immediately to prevent flash
@@ -475,44 +487,66 @@
 
     <!-- Manage Wallet Modal -->
     <div id="manageWalletModal"
-        class="fixed inset-0 bg-black/80 backdrop-blur-sm hidden items-center justify-center z-50">
+        class="fixed inset-0 bg-black/80 backdrop-blur-sm hidden flex items-center justify-center z-50">
         <div
-            class="bg-surface border border-border rounded-xl p-8 w-[90%] max-w-md shadow-2xl animate-[slideUp_0.3s_ease-out]">
-            <div class="flex justify-between items-center mb-6">
-                <h3 class="font-heading font-bold text-xl uppercase text-white">Manage Wallet</h3>
+            class="bg-surface border border-border rounded-xl p-8 w-[95%] max-w-xl shadow-2xl animate-[slideUp_0.3s_ease-out]">
+            <div class="flex justify-between items-center mb-8">
+                <h3 class="font-heading font-bold text-3xl uppercase text-white tracking-wider">Manage Wallet</h3>
                 <button onclick="closeModal('manageWalletModal')"
-                    class="text-zinc-500 hover:text-white text-xl">✕</button>
+                    class="text-zinc-500 hover:text-white text-3xl transition-colors">✕</button>
             </div>
 
             <!-- Wallet Info -->
-            <div class="bg-black rounded-xl border border-border p-5 mb-6 space-y-4">
-                <div class="flex justify-between items-center">
-                    <span class="text-[10px] font-bold uppercase tracking-widest text-zinc-600">Name</span>
-                    <div id="manageNameView" class="flex items-center gap-2">
-                        <span id="manageWalletName" class="text-sm font-bold text-white"></span>
+            <div class="bg-black rounded-xl border border-border p-8 mb-8 space-y-6">
+                <!-- Name Section -->
+                <div class="flex justify-between items-center group">
+                    <span class="text-sm font-bold uppercase tracking-widest text-zinc-500">Wallet Name</span>
+                    <div id="manageNameView" class="flex items-center gap-4">
+                        <span id="manageWalletName" class="text-2xl font-bold text-white tracking-wide"></span>
                         <button onclick="showRenameField()"
-                            class="text-[10px] text-primary hover:text-[#9333ea] font-bold uppercase tracking-wider transition-colors">Rename</button>
+                            class="px-3 py-1 bg-zinc-900 hover:bg-zinc-800 text-xs text-primary font-bold uppercase tracking-wider rounded-lg border border-zinc-800 transition-all">
+                            Rename
+                        </button>
                     </div>
-                    <div id="manageNameEdit" class="hidden flex items-center gap-2">
+                    <div id="manageNameEdit" class="hidden flex flex-col gap-2 items-start w-full mt-2">
                         <input type="text" id="renameInput"
-                            class="bg-zinc-900 border border-border rounded-lg px-3 py-1.5 text-sm focus:border-primary focus:outline-none text-white w-40">
-                        <button onclick="saveWalletName()"
-                            class="text-[10px] bg-primary text-black px-3 py-1.5 rounded-lg font-bold uppercase hover:bg-[#9333ea] transition-colors">Save</button>
-                        <button onclick="cancelRename()"
-                            class="text-[10px] text-zinc-500 hover:text-white font-bold uppercase transition-colors">Cancel</button>
+                            class="bg-zinc-900 border border-border rounded-lg px-4 py-2 text-lg focus:border-primary focus:outline-none text-white w-full placeholder-zinc-700">
+                        <div class="flex gap-2 w-full">
+                            <button onclick="saveWalletName()"
+                                class="flex-1 bg-primary text-black px-4 py-2 rounded-lg font-bold uppercase hover:bg-[#9333ea] transition-colors shadow-lg shadow-primary/20 text-sm">
+                                Save
+                            </button>
+                            <button onclick="cancelRename()"
+                                class="flex-1 bg-zinc-800 text-zinc-400 hover:text-white font-bold uppercase px-4 py-2 rounded-lg border border-zinc-700 hover:bg-zinc-700 transition-colors text-sm">
+                                Cancel
+                            </button>
+                        </div>
                     </div>
                 </div>
-                <div class="h-px bg-zinc-900"></div>
+
+                <div class="h-px bg-zinc-900/50"></div>
+
+                <!-- Balance Section -->
                 <div class="flex justify-between items-center">
-                    <span class="text-[10px] font-bold uppercase tracking-widest text-zinc-600">Balance</span>
-                    <span id="manageWalletBalance" class="text-sm font-bold text-primary font-mono"></span>
+                    <span class="text-sm font-bold uppercase tracking-widest text-zinc-500">Balance</span>
+                    <div class="text-right">
+                        <span id="manageWalletBalance" class="text-3xl font-bold text-primary font-mono block"></span>
+                        <span class="text-xs text-zinc-600 font-mono uppercase tracking-widest">Available Funds</span>
+                    </div>
                 </div>
-                <div class="h-px bg-zinc-900"></div>
+
+                <div class="h-px bg-zinc-900/50"></div>
+
+                <!-- Address Section -->
                 <div>
-                    <span
-                        class="text-[10px] font-bold uppercase tracking-widest text-zinc-600 block mb-1">Address</span>
-                    <span id="manageWalletAddr"
-                        class="font-mono text-[10px] text-zinc-400 break-all select-all cursor-pointer hover:text-white transition-colors"></span>
+                    <span class="text-sm font-bold uppercase tracking-widest text-zinc-500 block mb-3">Wallet
+                        Address</span>
+                    <div class="relative group cursor-pointer" title="Click to Copy">
+                        <span id="manageWalletAddr"
+                            class="block w-full bg-zinc-900/50 border border-zinc-800 rounded-lg p-4 font-mono text-sm text-zinc-300 break-all select-all hover:text-white hover:border-primary/50 transition-all"></span>
+                        <span
+                            class="absolute top-2 right-2 text-xs text-zinc-500 opacity-0 group-hover:opacity-100 transition-opacity">Copy</span>
+                    </div>
                 </div>
             </div>
         </div>
