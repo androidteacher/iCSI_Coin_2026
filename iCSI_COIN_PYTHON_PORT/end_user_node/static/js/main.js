@@ -7,6 +7,7 @@ const API = {
     testNat: '/api/stun/test',
     reset: '/api/reset',
     stats: '/api/stats',
+    discovery: '/api/discovery/status',
     walletList: '/api/wallet/list',
     walletCreate: '/api/wallet/create',
     walletDelete: '/api/wallet/delete',
@@ -44,6 +45,9 @@ function startPolling() {
 
     loadWallets(); // Initial load
     walletInterval = setInterval(loadWallets, 5000); // Poll every 5s
+
+    checkDiscovery(); // Initial check
+    setInterval(checkDiscovery, 5000); // Poll every 5s
 }
 
 /* --- NETWORK --- */
@@ -86,16 +90,48 @@ async function connectToNetwork() {
 
 }
 
+async function checkDiscovery() {
+    try {
+        const res = await fetch(API.discovery);
+        const data = await res.json();
+        const dot = document.getElementById('discoveryDot');
+        const text = document.getElementById('discoveryText');
+        const seedInput = document.getElementById('seedIp');
+
+        if (data.discovered_seed) {
+            dot.className = 'inline-block w-2 h-2 rounded-full bg-cyan-400';
+            text.className = 'text-cyan-400';
+            text.innerText = `Seed found: ${data.discovered_seed}`;
+            // Auto-fill seed IP if empty or still showing own IP
+            if (!seedInput.value || seedInput.value === data.own_ip) {
+                seedInput.value = data.discovered_seed;
+            }
+        } else if (data.known_multicast_peers && data.known_multicast_peers.length > 0) {
+            dot.className = 'inline-block w-2 h-2 rounded-full bg-yellow-400';
+            text.className = 'text-yellow-400';
+            text.innerText = `${data.known_multicast_peers.length} peer(s) found`;
+        } else if (data.beacon_active) {
+            dot.className = 'inline-block w-2 h-2 rounded-full bg-zinc-500 animate-pulse';
+            text.className = 'text-zinc-500';
+            text.innerText = 'Scanning for peers...';
+        }
+    } catch (e) {
+        // Silently ignore discovery errors
+    }
+}
+
 async function testNat() {
     const resDiv = document.getElementById('natResult');
     resDiv.innerText = "Testing...";
 
     try {
-        // We assume STUN IP is same as Seed IP already configured, or grab from input if we want dynamic
-        // The endpoint uses whatever is configured in backend or we pass it? 
-        // Our backend handle_test_stun uses manager's config. 
-        // Let's rely on manager's config which was set by 'connect'.
-        const res = await fetch(API.testNat, { method: 'POST', body: JSON.stringify({}) }); // Empty body uses default
+        // Send the current seed IP from the input field for NAT testing
+        const seedIp = document.getElementById('seedIp').value;
+        const res = await fetch(API.testNat, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ stun_ip: seedIp })
+        });
         const data = await res.json();
 
         if (data.success) {

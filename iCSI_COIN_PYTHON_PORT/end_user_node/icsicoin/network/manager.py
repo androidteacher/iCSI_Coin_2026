@@ -15,6 +15,7 @@ from icsicoin.core.primitives import Transaction, Block
 from icsicoin.consensus.validation import validate_block, validate_transaction
 from icsicoin.core.chain import ChainManager
 from icsicoin.core.mempool import Mempool
+from icsicoin.network.multicast import MulticastBeacon, get_local_ip
 import binascii
 
 try:
@@ -70,7 +71,20 @@ class NetworkManager:
         self.stun_ip = os.getenv('STUN_IP', '127.0.0.1')
         self.stun_port = int(os.getenv('STUN_PORT', 3478))
         self.external_ip = None
+        self.local_ip = get_local_ip()
+        self.discovered_seed = None  # IP of seed discovered via multicast
         self.sync_lock = asyncio.Lock()
+
+        # Multicast discovery beacon
+        # Seed nodes advertise ports 9333-9335; end user nodes advertise nothing
+        seed_ports = []
+        if self.port in (9333, 9334, 9335):
+            seed_ports = [9333, 9334, 9335]
+        self.multicast_beacon = MulticastBeacon(
+            p2p_port=self.port,
+            seed_ports=seed_ports,
+            on_discover=self._on_multicast_discover
+        )
 
     def configure_stun(self, ip, port):
         self.stun_ip = ip
@@ -128,8 +142,43 @@ class NetworkManager:
         self.tasks.add(t4)
         t4.add_done_callback(self.tasks.discard)
 
+        # Multicast Discovery (LAN auto-discovery)
+        t5 = asyncio.create_task(self.multicast_beacon.start_sender())
+        self.tasks.add(t5)
+        t5.add_done_callback(self.tasks.discard)
+
+        t6 = asyncio.create_task(self.multicast_beacon.start_listener())
+        self.tasks.add(t6)
+        t6.add_done_callback(self.tasks.discard)
+
+    async def _on_multicast_discover(self, ip, ports, p2p_port):
+        """Called when a new peer is discovered via multicast."""
+        # If this peer advertises seed ports (9333-9335), treat it as a seed
+        seed_ports = {9333, 9334, 9335}
+        if seed_ports.issubset(set(ports)):
+            if self.discovered_seed is None:
+                self.discovered_seed = ip
+                self.configure_stun(ip, 3478)
+                logger.info(f"🌐 Auto-discovered SEED node: {ip} (ports: {ports})")
+
+                # Auto-connect to all seed ports
+                for sp in ports:
+                    target = f"{ip}:{sp}"
+                    t = asyncio.create_task(self.connect_to_peer(target))
+                    self.tasks.add(t)
+                    t.add_done_callback(self.tasks.discard)
+        else:
+            # Regular peer — connect to its P2P port
+            target = f"{ip}:{p2p_port}"
+            if (ip, p2p_port) not in self.peers:
+                logger.info(f"🌐 Auto-discovered peer: {target}")
+                t = asyncio.create_task(self.connect_to_peer(target))
+                self.tasks.add(t)
+                t.add_done_callback(self.tasks.discard)
+
     async def stop(self):
         self.running = False
+        self.multicast_beacon.stop()
         if self.server:
             self.server.close()
             await self.server.wait_closed()

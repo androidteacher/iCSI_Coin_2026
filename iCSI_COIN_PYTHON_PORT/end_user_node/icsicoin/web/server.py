@@ -5,6 +5,7 @@ import os
 import binascii
 import json
 import io
+import socket as socket_mod
 from icsicoin.core.primitives import Block
 from icsicoin.mining.controller import MinerController
 import jinja2
@@ -46,6 +47,7 @@ class WebServer:
         self.app.router.add_post('/api/test/send', self.handle_send_test)
         self.app.router.add_get('/api/stats', self.handle_get_stats)
         self.app.router.add_post('/api/stun/test', self.handle_test_stun)
+        self.app.router.add_get('/api/discovery/status', self.handle_discovery_status)
         
         # API - Wallet
         self.app.router.add_get('/api/wallet/list', self.handle_wallet_list)
@@ -82,8 +84,14 @@ class WebServer:
         # Context
         stun_ip = getattr(self.network_manager, 'stun_ip', '127.0.0.1')
         
+        # Pre-fill seed IP with discovered seed or node's own LAN IP
+        default_seed_ip = (
+            getattr(self.network_manager, 'discovered_seed', None)
+            or getattr(self.network_manager, 'local_ip', '')
+        )
+        
         ctx = {
-            'seed_ip': "", # Persistent? Could store in browser localStorage or cookie.
+            'seed_ip': default_seed_ip,
             'port': self.network_manager.port,
             'stun_ip': stun_ip
         }
@@ -93,10 +101,14 @@ class WebServer:
     
     async def handle_connect(self, request):
         data = await request.json()
-        seed_ip = data.get('seed_ip')
+        seed_ip = data.get('seed_ip', '').strip()
         
+        # If no IP given, use discovered seed or own IP
         if not seed_ip:
-             return web.json_response({'error': 'Missing Seed IP'}, status=400)
+            seed_ip = (
+                getattr(self.network_manager, 'discovered_seed', None)
+                or getattr(self.network_manager, 'local_ip', '127.0.0.1')
+            )
              
         # 1. Configure STUN
         # Enforce 3478 as per requirement
@@ -110,7 +122,7 @@ class WebServer:
             asyncio.create_task(self.network_manager.connect_to_peer(target))
             connected += 1
             
-        return web.json_response({'status': 'initiated', 'connected_count': connected})
+        return web.json_response({'status': 'initiated', 'connected_count': connected, 'seed_ip': seed_ip})
 
     async def handle_peers(self, request):
         peers_list = []
@@ -194,13 +206,29 @@ class WebServer:
         })
 
     async def handle_test_stun(self, request):
-        # Trigger explicit STUN test via manager
-        # Need to expose a method in manager or use existing
-        # Re-using logic from before
+        # Accept IP from frontend, fall back to manager's STUN config
+        try:
+            data = await request.json()
+            stun_ip = data.get('stun_ip', '').strip() or self.network_manager.stun_ip
+        except Exception:
+            stun_ip = self.network_manager.stun_ip
+        
+        # Update manager's STUN config to match
+        self.network_manager.configure_stun(stun_ip, self.network_manager.stun_port)
+        
         success, msg = await self.network_manager.test_stun_connection(
-            self.network_manager.stun_ip, self.network_manager.stun_port
+            stun_ip, self.network_manager.stun_port
         )
         return web.json_response({'success': success, 'message': msg})
+
+    async def handle_discovery_status(self, request):
+        """Returns multicast discovery status."""
+        return web.json_response({
+            'discovered_seed': self.network_manager.discovered_seed,
+            'own_ip': getattr(self.network_manager, 'local_ip', ''),
+            'beacon_active': getattr(self.network_manager.multicast_beacon, 'running', False),
+            'known_multicast_peers': list(getattr(self.network_manager.multicast_beacon, 'known_peers', []))
+        })
 
     # --- WALLET HANDLERS ---
 
