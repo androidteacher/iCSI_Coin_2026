@@ -151,7 +151,8 @@
     <div class="max-w-[1400px] mx-auto grid grid-cols-1 xl:grid-cols-[350px_1fr_400px] gap-8 p-6 pt-4 items-start">
 
         <!-- LEFT COLUMN: STATUS & CONTROLS -->
-        <aside class="space-y-6 xl:sticky xl:top-6">
+        <!-- LEFT COLUMN: STATUS & CONTROLS -->
+        <aside class="space-y-6">
 
             <!-- Node Status Panel (Slid Up) -->
 
@@ -311,8 +312,8 @@
         </main>
 
         <!-- RIGHT COLUMN: PEERS & LOGS -->
-        <aside class="space-y-6 xl:sticky xl:top-6">
-            <div class="bg-surface border border-border rounded-xl p-6 h-[calc(100vh-3rem)] flex flex-col shadow-sm">
+        <aside class="space-y-6">
+            <div class="bg-surface border border-border rounded-xl p-6 shadow-sm">
                 <h2
                     class="font-heading font-bold text-lg uppercase tracking-wider flex items-center gap-2 mb-6 text-white shrink-0">
                     <span class="w-2 h-2 rounded-full bg-cyan-500 shadow-[0_0_10px_#06b6d4]"></span> Network Peers
@@ -321,7 +322,7 @@
                 <input type="text" id="peerSearch" placeholder="Filter Peers..." onkeyup="filterPeers()"
                     class="w-full bg-black border border-border rounded-lg px-4 py-3 text-sm mb-4 focus:border-blue-500 focus:outline-none shrink-0 text-white placeholder-zinc-700">
 
-                <div class="flex-1 overflow-y-auto pr-2 custom-scrollbar">
+                <div class="overflow-x-auto">
                     <table class="w-full text-left border-collapse">
                         <thead class="sticky top-0 bg-surface z-10 shadow-sm">
                             <tr>
