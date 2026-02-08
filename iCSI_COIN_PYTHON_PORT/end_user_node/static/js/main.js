@@ -85,7 +85,7 @@ async function connectToNetwork() {
         }
     } catch (e) {
         alert("Connection Failed");
-        btn.innerText = "[ INITIALIZE NETWORK ]";
+        btn.innerText = "[ ADD NODE ]";
     }
 
 }
@@ -200,16 +200,26 @@ async function showLogs(ip, port) {
     const modal = document.getElementById('logModal');
     const content = document.getElementById('logContent');
     const title = document.getElementById('logModalTitle');
+    const blockCountEl = document.getElementById('logBlockCount');
 
-    modal.style.display = "block";
+    modal.style.display = "flex";
     title.innerText = `LOGS: ${ip}:${port}`;
     content.innerText = "Loading...";
+    if (blockCountEl) blockCountEl.innerText = "...";
 
     try {
         const res = await fetch(`${API.logs}?ip=${ip}&port=${port}`);
         const data = await res.json();
-        content.innerText = data.logs.join('\n') || "No logs.";
-    } catch (e) { content.innerText = "Error"; }
+        const logs = data.logs || [];
+        content.innerText = logs.join('\n') || "No logs.";
+
+        // Count block-related log entries
+        const blockCount = logs.filter(l => /\bblock\b/i.test(l)).length;
+        if (blockCountEl) blockCountEl.innerText = blockCount;
+    } catch (e) {
+        content.innerText = "Error";
+        if (blockCountEl) blockCountEl.innerText = "—";
+    }
 }
 
 /* --- WALLET --- */

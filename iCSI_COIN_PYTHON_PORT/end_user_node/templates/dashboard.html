@@ -87,8 +87,8 @@
                 <form id="connectionForm" class="space-y-4">
                     <div>
                         <label
-                            class="block font-heading font-bold text-xs uppercase tracking-widest text-muted mb-2">Initial
-                            Seed IP <span class="text-zinc-600">(Optional)</span></label>
+                            class="block font-heading font-bold text-xs uppercase tracking-widest text-muted mb-2">Manually
+                            Add Another Node <span class="text-zinc-600">(Optional)</span></label>
                         <input type="text" id="seedIp" placeholder="Auto-detected" value="{{ seed_ip }}"
                             class="w-full bg-black border border-border rounded-lg px-4 py-3 text-sm focus:outline-none focus:border-primary transition-colors placeholder-zinc-700 text-white">
                         <p class="text-[10px] text-zinc-600 mt-2 font-mono">Auto-connects to Ports 9333-9335</p>
@@ -102,7 +102,7 @@
 
                     <button type="button" id="connectBtn" onclick="connectToNetwork()"
                         class="w-full py-2 rounded-full bg-primary text-black font-bold text-xs uppercase tracking-wider shadow-[0_0_20px_rgba(168,85,247,0.15)] hover:bg-[#9333ea] active:scale-[0.98] transition-all">
-                        Initialize Network
+                        Add Node
                     </button>
 
                     <div class="h-px bg-zinc-900 my-6"></div>
@@ -354,10 +354,14 @@
 
     <div id="logModal" class="fixed inset-0 bg-black/80 backdrop-blur-sm hidden items-center justify-center z-50">
         <div
-            class="bg-surface border border-border rounded-xl p-0 w-[90%] max-w-4xl h-[80vh] flex flex-col shadow-2xl overflow-hidden animate-[slideUp_0.3s_ease-out]">
+            class="bg-surface border border-border rounded-xl p-0 w-[95%] max-w-7xl h-[85vh] flex flex-col shadow-2xl overflow-hidden animate-[slideUp_0.3s_ease-out]">
             <div class="flex justify-between items-center p-6 border-b border-border bg-black">
                 <h3 id="logModalTitle" class="font-heading font-bold text-xl uppercase text-primary">Peer Logs</h3>
                 <button onclick="closeModal('logModal')" class="text-zinc-500 hover:text-white text-xl">✕</button>
+            </div>
+            <div id="logSummary" class="px-6 py-3 bg-zinc-950 border-b border-border font-mono text-xs flex gap-6">
+                <span class="text-zinc-500">Number of Blocks Seen Here: <span id="logBlockCount"
+                        class="text-cyan-400 font-bold">0</span></span>
             </div>
             <div id="logContent"
                 class="flex-1 overflow-y-auto p-6 font-mono text-xs text-zinc-400 whitespace-pre-wrap bg-[#050505]">
