@@ -86,6 +86,7 @@ class WebServer:
         self.app.router.add_get('/explorer/block/{block_hash}', self.handle_explorer_detail_page)
         self.app.router.add_get('/api/explorer/blocks', self.handle_api_explorer_blocks)
         self.app.router.add_get('/api/explorer/block/{block_hash}', self.handle_api_explorer_block_detail)
+        self.app.router.add_get('/api/explorer/balance/{address}', self.handle_api_explorer_balance)
 
         self.runner = None
         self.site = None
@@ -190,15 +191,25 @@ class WebServer:
             next_hash = chain.get_block_hash(height + 1)
 
         # Transactions
+        # Transactions
         txs = []
         for tx in block.vtx:
+            outputs = []
+            for vout in tx.vout:
+                addr = self._extract_address(vout.script_pubkey)
+                outputs.append({
+                    'amount': vout.amount / 100000000.0,
+                    'address': addr
+                })
+
             txs.append({
                 'txid': tx.get_hash().hex(),
                 'version': tx.version,
                 'locktime': tx.locktime,
                 'vin_count': len(tx.vin),
                 'vout_count': len(tx.vout),
-                'is_coinbase': tx.is_coinbase()
+                'is_coinbase': tx.is_coinbase(),
+                'outputs': outputs
             })
 
         return web.json_response({
@@ -216,6 +227,33 @@ class WebServer:
             'transactions': txs,
             'size': len(block.serialize())
         })
+
+    async def handle_api_explorer_balance(self, request):
+        address = request.match_info['address']
+        try:
+            # Reconstruct P2PKH script
+            pubkey_hash = binascii.unhexlify(address)
+            script = b'\x76\xa9\x14' + pubkey_hash + b'\x88\xac'
+            
+            chain = self.network_manager.chain_manager
+            utxos = chain.chain_state.get_utxos_by_script(script)
+            
+            balance = sum([u['amount'] for u in utxos]) / 100000000.0
+            
+            return web.json_response({
+                'address': address,
+                'balance': balance,
+                'utxo_count': len(utxos)
+            })
+        except Exception as e:
+            return web.json_response({'error': f"Invalid Address or Error: {e}"}, status=400)
+
+    def _extract_address(self, script_pubkey):
+        # P2PKH: 76 a9 14 <20-bytes> 88 ac
+        if len(script_pubkey) == 25 and script_pubkey.startswith(b'\x76\xa9\x14') and script_pubkey.endswith(b'\x88\xac'):
+             pubkey_hash = script_pubkey[3:23]
+             return binascii.hexlify(pubkey_hash).decode('utf-8')
+        return "Non-Standard / OP_RETURN"
 
     async def handle_index(self, request):
         template = self.jinja_env.get_template('dashboard.html')

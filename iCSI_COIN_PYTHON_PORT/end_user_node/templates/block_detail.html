@@ -110,9 +110,9 @@
                 <table class="w-full text-left">
                     <thead>
                         <tr class="border-b border-zinc-800 text-xs text-muted uppercase tracking-wider font-heading">
-                            <th class="p-3">TXID</th>
-                            <th class="p-3">Type</th>
-                            <th class="p-3 text-right">Inputs / Outputs</th>
+                            <th class="p-3 w-[20%]">TXID</th>
+                            <th class="p-3 w-[10%]">Type</th>
+                            <th class="p-3 w-[70%]">Outputs (To / Amount)</th>
                         </tr>
                     </thead>
                     <tbody id="txTable" class="text-sm font-mono divide-y divide-zinc-800/50">
@@ -141,6 +141,7 @@
                 const data = await response.json();
                 const h = data.header;
 
+                // Update Header UI
                 document.getElementById('blockHeight').innerText = h.height !== -1 ? h.height : 'Unknown';
                 document.getElementById('blockHash').innerText = h.hash;
                 document.getElementById('prevLink').innerText = h.prev_block;
@@ -162,14 +163,34 @@
                 // Txs
                 const txTable = document.getElementById('txTable');
                 txTable.innerHTML = '';
+
                 data.transactions.forEach(tx => {
                     const row = document.createElement('tr');
                     const type = tx.is_coinbase ? '<span class="text-yellow-500 font-bold text-xs px-2 py-1 bg-yellow-900/20 rounded">COINBASE</span>' : '<span class="text-zinc-500 text-xs">STANDARD</span>';
 
+                    // Generate Outputs HTML
+                    const outputsHtml = tx.outputs && tx.outputs.length > 0
+                        ? tx.outputs.map(out => `
+                            <div class="flex justify-between items-center py-2 border-b border-zinc-800/30 last:border-0 hover:bg-zinc-900/30 px-2 rounded -mx-2 transition-colors">
+                                <span class="text-secondary cursor-pointer hover:underline hover:text-white transition-colors" 
+                                      onclick="checkBalance('${out.address}')" title="Click to check balance">
+                                    ${out.address}
+                                </span>
+                                <span class="text-white font-bold ml-4">${out.amount.toFixed(8)} <span class="text-zinc-600 text-xs font-normal">ICSI</span></span>
+                            </div>
+                          `).join('')
+                        : '<span class="text-zinc-600 italic">No Decodeable Outputs</span>';
+
                     row.innerHTML = `
-                        <td class="p-3 text-secondary truncate max-w-[200px]">${tx.txid}</td>
-                        <td class="p-3">${type}</td>
-                        <td class="p-3 text-right text-zinc-400">${tx.vin_count} In / ${tx.vout_count} Out</td>
+                        <td class="p-3 align-top">
+                            <div class="text-muted truncate max-w-[120px] md:max-w-[180px]" title="${tx.txid}">${tx.txid}</div>
+                        </td>
+                        <td class="p-3 align-top">${type}</td>
+                        <td class="p-3 align-top">
+                            <div class="space-y-1">
+                                ${outputsHtml}
+                            </div>
+                        </td>
                     `;
                     txTable.appendChild(row);
                 });
@@ -182,8 +203,55 @@
             }
         }
 
+        async function checkBalance(address) {
+            const modal = document.getElementById('balanceModal');
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+
+            document.getElementById('modalAddress').innerText = address;
+            document.getElementById('modalBalance').innerText = "Loading...";
+            document.getElementById('modalUtxos').innerText = "-";
+
+            try {
+                const res = await fetch(`/api/explorer/balance/${address}`);
+                const data = await res.json();
+                if (data.error) throw new Error(data.error);
+
+                document.getElementById('modalBalance').innerText = data.balance.toFixed(8);
+                document.getElementById('modalUtxos').innerText = data.utxo_count;
+            } catch (e) {
+                document.getElementById('modalBalance').innerText = "Error";
+            }
+        }
+
+        function closeBalanceModal() {
+            const modal = document.getElementById('balanceModal');
+            modal.classList.add('hidden');
+            modal.classList.remove('flex');
+        }
+
         loadBlockDetails();
     </script>
+
+    <!-- Balance Modal -->
+    <div id="balanceModal" class="fixed inset-0 bg-black/80 hidden items-center justify-center z-50 backdrop-blur-sm">
+        <div
+            class="bg-surface border border-border rounded-xl p-8 max-w-md w-full shadow-2xl relative animate-[fadeIn_0.2s_ease-out]">
+            <button onclick="closeBalanceModal()"
+                class="absolute top-4 right-4 text-zinc-500 hover:text-white">✕</button>
+            <h3 class="font-heading font-bold text-xl text-white mb-2">Wallet Balance</h3>
+            <p class="text-xs font-mono text-zinc-500 break-all mb-6" id="modalAddress">...</p>
+
+            <div class="text-center py-4 bg-black/50 rounded-lg border border-border">
+                <div class="text-4xl font-bold text-primary mb-1" id="modalBalance">0.00</div>
+                <div class="text-sm text-zinc-400 font-mono">ICSI COINS</div>
+            </div>
+
+            <div class="mt-6 pt-6 border-t border-zinc-800 flex justify-between text-xs text-zinc-400 font-mono">
+                <span>Active UTXOs: <span id="modalUtxos" class="text-white">0</span></span>
+            </div>
+        </div>
+    </div>
 </body>
 
 </html>
