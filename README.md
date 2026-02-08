@@ -38,8 +38,8 @@ sudo apt install docker.io docker-compose
 
 Clone the repository and enter the project folder:
 ```bash
-git clone https://github.com/your-repo/iCSI_Coin.git
-cd iCSI_Coin/iCSI_COIN_PYTHON_PORT
+git clone https://github.com/androidteacher/iCSI_Coin_2026.git
+cd iCSI_Coin_2026/iCSI_COIN_PYTHON_PORT
 ```
 
 ### Startup Scripts
@@ -84,9 +84,6 @@ cd end_user_node
 
 ---
 
-
-
----
 
 ## Final Step
 Log in at **http://localhost:8080** and create a username and password.
