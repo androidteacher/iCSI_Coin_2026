@@ -93,7 +93,8 @@ def mine(url, user, password, address=None, threads=1):
         version = template['version']
         
         # Construct Header
-        header = BlockHeader(version, prev_hash, merkle_root, timestamp, bits, 0)
+        # INTENTIONAL CORRUPTION FOR TESTING LOGGING
+        header = BlockHeader(version, prev_hash, b'\x00'*32, timestamp, bits, 0)
         
         # Mining Loop
         logger.info(f"Mining Block {height} with difficulty {bits}...")
@@ -139,10 +140,15 @@ def mine(url, user, password, address=None, threads=1):
             block_hex = binascii.hexlify(block.serialize()).decode('utf-8')
             
             submit_resp = rpc_call(url, "submitblock", [block_hex], session=session)
-            if submit_resp and submit_resp['result'] == 'accepted':
+            if submit_resp and submit_resp.get('result') == 'accepted':
                 logger.info(f"Block accepted! Height: {height}")
             else:
-                logger.error(f"Block rejected: {submit_resp}")
+                logger.error(f"Block rejected at Height {height}!")
+                logger.error(f"Block Context: PrevHash={binascii.hexlify(prev_hash).decode()[:16]}..., Time={timestamp}, Merkle={binascii.hexlify(merkle_root).decode()[:16]}...")
+                if submit_resp:
+                     logger.error(f"Node Response: {submit_resp}")
+                else:
+                     logger.error("Node Response: None (Network Error?)")
                 
             # Sleep a bit to avoid race or spam
             time.sleep(0.5) 

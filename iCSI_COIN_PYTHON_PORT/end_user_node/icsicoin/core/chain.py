@@ -116,63 +116,52 @@ class ChainManager:
         parent_info = self.block_index.get_block_info(prev_hash)
         
         if not parent_info:
-            # Orphan
-            logger.info(f"Block {block_hash} is invalid/orphan (parent {prev_hash} missing). Adding to orphan pool.")
-            self.orphan_blocks[block_hash] = block
-            if prev_hash not in self.orphan_dep:
-                self.orphan_dep[prev_hash] = []
-            self.orphan_dep[prev_hash].append(block)
-            return False 
+             logger.info(f"Block {block_hash} already processing/processed.")
+             return True, "Already processed"
 
-        # 4. Save to Disk
-        # We save it now so we have it. Status will be 'valid-header' or similar until connected?
-        # For simplicity, we write it and index it.
-        block_bytes = block.serialize()
-        loc = self.block_store.write_block(block_bytes)
-        
-        # 5. Connect or Store
-        # Calculate Work. For now, we assume simple "longest chain = highest height".
-        # Real work calc requires target.
-        parent_height = parent_info.get('height', 0)
-        new_height = parent_height + 1
-        
-        current_tip = self.block_index.get_best_block()
-        current_height = current_tip['height'] if current_tip else -1
-        
-        # Add to index
-        self.block_index.add_block(
-             block_hash, loc[0], loc[1], len(block_bytes),
-             prev_hash=prev_hash,
-             height=new_height,
-             status=2 # 2=Valid Data, not main chain yet?
-        )
-        
-        # 6. Chain Selection Logic
-        if new_height > current_height:
-            # Make this the new tip!
-            logger.info(f"New Best Block: {block_hash} (Height: {new_height})")
+        # 3. Connect to Chain (State Updates)
+        # We need to determine if this extends the longest chain.
+        # For Phase 5, we assume linear extension of current tip.
+        # Check Prev Hash
+        best_block = self.block_index.get_best_block()
+        if best_block:
+            prev_hash = block.header.prev_block.hex()
+            if prev_hash != best_block['block_hash']:
+                # Orphan or Fork?
+                # If prev_hash exists in index but is not best, it's a fork.
+                # If prev_hash does not exist, it's an orphan.
+                if self.block_index.get_block_info(prev_hash):
+                     return False, f"Fork detected (prev={prev_hash[:8]}), Reorgs not fully supported yet"
+                
+                logger.warning(f"Orphan block: {block_hash}, Prev: {prev_hash}")
+                # Store as orphan? 
+                # For now, reject.
+                return False, f"Orphan block (prev={prev_hash[:8]} not found)"
+                
+        # 4. Connect
+        # Determine height for the new block
+        height = (best_block['height'] + 1) if best_block else 0
+        if self._connect_block(block, height): # Pass height to _connect_block
+            # 5. Store Block Body (Disk)
+            # Serialize
+            data = block.serialize()
+            file_num, offset = self.block_store.write_block(data)
             
-            # If we are just extending the tip (linear)
-            # Handle genesis case where current_tip is None
-            if current_tip is None or prev_hash == current_tip['block_hash']:
-                 self._connect_block(block, new_height)
-            else:
-                 # REORG!
-                 self._handle_reorg(block, new_height, current_tip)
-                 
-            # Process Orphans that depended on this
-            self._process_orphans(block_hash)
-            return True
+            # 6. Index It
+            # Height is Best + 1
             
-        else:
-            logger.info(f"Block {block_hash} valid but not best chain (Height: {new_height} <= {current_height})")
-            return True
+            self.block_index.add_block(block_hash, file_num, offset, len(data), block.header.prev_block.hex(), height, status=3)
+            logger.info(f"Block {block_hash} connected at height {height}")
+            return True, "Accepted"
+            
+        return False, "Connect failed (State validation mismatch)"
 
     def _connect_block(self, block, height):
         # Update UTXO set
         # This is where we run full contextual validation
-        if not validate_block(block, self.chain_state):
-             logger.error(f"Block {block.get_hash().hex()} failed contextual validation during connection!")
+        is_valid, reason = validate_block(block, self.chain_state)
+        if not is_valid:
+             logger.error(f"Block {block.get_hash().hex()} failed contextual validation: {reason}")
              # Mark invalid?
              return False
              

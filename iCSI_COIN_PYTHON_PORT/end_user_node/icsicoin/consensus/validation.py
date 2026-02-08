@@ -129,8 +129,9 @@ def validate_block(block, utxo_set):
     # 1. Check Merkle Root
     calculated_root = get_merkle_root(block.vtx)
     if calculated_root != block.header.merkle_root:
-        logger.error(f"Block validation failed: Merkle Root mismatch. Header: {block.header.merkle_root.hex()}, Calc: {calculated_root.hex()}")
-        return False
+        reason = f"Merkle Root mismatch. Header: {block.header.merkle_root.hex()}, Calc: {calculated_root.hex()}"
+        logger.error(f"Block validation failed: {reason}")
+        return False, reason
 
     # Track spent outputs in this block to prevent double-spending within the block
     spent_in_block = set()
@@ -140,19 +141,21 @@ def validate_block(block, utxo_set):
         # Coinbase (first tx) is special
         is_coinbase = (i == 0)
         
-        if not validate_transaction(tx, utxo_set, is_coinbase):
-             logger.error(f"Block validation failed: Invalid transaction {tx.get_hash().hex()} at index {i}")
-             return False
+        is_valid, reason = validate_transaction(tx, utxo_set, is_coinbase)
+        if not is_valid:
+             logger.error(f"Block validation failed: Invalid transaction {tx.get_hash().hex()} at index {i}: {reason}")
+             return False, f"Invalid Tx {i}: {reason}"
 
         if not is_coinbase:
             for vin in tx.vin:
                 prev_out = (vin.prev_hash, vin.prev_index)
                 if prev_out in spent_in_block:
-                    logger.error(f"Block validation failed: Intra-block double spend. Input {vin.prev_hash.hex()}:{vin.prev_index} used twice.")
-                    return False # Double spend within block
+                    reason = f"Intra-block double spend. Input {vin.prev_hash.hex()}:{vin.prev_index} used twice."
+                    logger.error(f"Block validation failed: {reason}")
+                    return False, reason # Double spend within block
                 spent_in_block.add(prev_out)
             
-    return True
+    return True, "Valid"
 
 def validate_transaction(tx, utxo_set, is_coinbase=False):
     """
@@ -160,20 +163,22 @@ def validate_transaction(tx, utxo_set, is_coinbase=False):
     """
     # Basic Checks
     if not tx.vin and not is_coinbase: 
-        logger.error("Tx validation failed: No inputs and not coinbase")
-        return False
+        reason = "Tx validation failed: No inputs and not coinbase"
+        logger.error(reason)
+        return False, reason
     if not tx.vout: 
-        logger.error("Tx validation failed: No outputs")
-        return False
+        reason = "Tx validation failed: No outputs"
+        logger.error(reason)
+        return False, reason
 
     if is_coinbase:
         # Check coinbase maturity, etc (deferred)
-        return True
+        return True, "Valid Coinbase"
 
     # Check Inputs
     if utxo_set is None:
         # Context-free check only (structure)
-        return True
+        return True, "Valid Structure"
 
     total_in = 0
     for i, txin in enumerate(tx.vin):
@@ -183,15 +188,17 @@ def validate_transaction(tx, utxo_set, is_coinbase=False):
         
         if not utxo:
             # Input does not exist or is already spent
-            logger.error(f"Tx validation failed: Input {prev_hash_hex}:{txin.prev_index} not found in UTXO set.")
-            return False
+            reason = f"Input {prev_hash_hex}:{txin.prev_index} not found/spent"
+            logger.error(f"Tx validation failed: {reason}")
+            return False, reason
             
         total_in += utxo['amount']
 
     # Check Amounts (Input >= Output)
     total_out = sum(out.amount for out in tx.vout)
     if total_out > total_in:
-        logger.error(f"Tx validation failed: Output total {total_out} exceeds input {total_in}")
-        return False
+        reason = f"Output total {total_out} exceeds input {total_in}"
+        logger.error(f"Tx validation failed: {reason}")
+        return False, reason
 
-    return True
+    return True, "Valid"

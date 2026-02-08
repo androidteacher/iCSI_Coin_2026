@@ -172,12 +172,13 @@ class RPCServer:
                 f = io.BytesIO(block_bytes)
                 block = Block.deserialize(f)
                 
-                if self.chain_manager.process_block(block):
+                success, reason = self.chain_manager.process_block(block)
+                if success:
                     result = "accepted"
                     # Broadcast to network
                     asyncio.create_task(self.network_manager.announce_new_block(block))
                 else:
-                    result = "rejected-or-orphan" # simplified
+                    result = f"rejected: {reason}"
             except Exception as e:
                  error = {"code": -1, "message": f"Block decode failed: {e}"}
 
