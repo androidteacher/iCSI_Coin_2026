@@ -102,6 +102,11 @@ class WebServer:
         if self.runner:
             await self.runner.cleanup()
 
+    async def render_template(self, template_name, **context):
+        template = self.jinja_env.get_template(template_name)
+        content = template.render(context)
+        return web.Response(text=content, content_type='text/html')
+
     async def handle_explorer_page(self, request):
         return await self.render_template('explorer.html')
 
