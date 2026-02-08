@@ -164,6 +164,54 @@
                 </div>
             </div>
 
+            <!-- Recipients / Beggars Panel -->
+            <div class="bg-surface border border-border rounded-xl p-6 shadow-sm">
+                <h2
+                    class="font-heading font-bold text-lg uppercase tracking-wider flex items-center gap-2 mb-4 text-white">
+                    <span class="w-2 h-2 rounded-full bg-yellow-500 shadow-[0_0_10px_#eab308]"></span> Recipients /
+                    Beggars
+                </h2>
+
+                <!-- Active Beg Status -->
+                <div id="begStatus"
+                    class="hidden mb-4 px-4 py-3 rounded-lg bg-yellow-950/40 border border-yellow-800/40 font-mono text-xs">
+                    <div class="flex items-center gap-2 text-yellow-400">
+                        <span class="w-2 h-2 rounded-full bg-yellow-400 animate-pulse"></span>
+                        <span>Begging Active — <span id="begTimer">20:00</span> remaining</span>
+                    </div>
+                    <div id="begAddress" class="text-yellow-600 text-[10px] mt-1 truncate"></div>
+                </div>
+
+                <!-- Dropdown Actions -->
+                <div class="space-y-2">
+                    <div id="begStartSection">
+                        <label class="block text-[10px] text-zinc-500 uppercase tracking-widest mb-1 font-bold">Wallet
+                            to
+                            Advertise</label>
+                        <select id="begWalletSelect"
+                            class="w-full bg-black border border-border rounded-lg px-3 py-2 text-xs font-mono text-white focus:outline-none focus:border-primary transition-colors mb-2">
+                            <option value="">Select Wallet...</option>
+                        </select>
+                        <button onclick="startBegging()"
+                            class="w-full py-2 rounded-full bg-yellow-600 text-black font-bold text-xs uppercase tracking-wider hover:bg-yellow-500 active:scale-[0.98] transition-all">
+                            💰 Beg for Coins
+                        </button>
+                    </div>
+
+                    <button onclick="stopBegging()" id="stopBegBtn"
+                        class="hidden w-full py-2 rounded-full border border-yellow-800/50 text-yellow-500 font-bold text-xs uppercase tracking-wider hover:bg-yellow-950/50 transition-all">
+                        ✋ Stop Begging
+                    </button>
+
+                    <div class="h-px bg-zinc-900 my-3"></div>
+
+                    <button onclick="showBeggarList()"
+                        class="w-full py-2 rounded-full border border-border text-muted font-bold text-xs uppercase hover:text-white hover:bg-zinc-900 transition-colors">
+                        📋 View Beggars List
+                    </button>
+                </div>
+            </div>
+
         </aside>
 
         <!-- CENTER COLUMN: WALLET & FEED -->
@@ -232,7 +280,8 @@
                         class="w-full py-3 bg-zinc-800 hover:bg-zinc-700 text-white font-bold uppercase text-xs rounded-lg tracking-wider transition-colors shadow-md">
                         Send Transaction
                     </button>
-                    <div id="sendResult" class="mt-3 text-center text-xs font-mono text-zinc-500 min-h-[1rem]"></div>
+                    <div id="sendResult" class="mt-3 text-center text-xs font-mono text-zinc-500 min-h-[1rem]">
+                    </div>
                 </div>
             </div>
 
@@ -240,7 +289,8 @@
             <div class="bg-surface border border-border rounded-xl p-6 shadow-sm">
                 <h2
                     class="font-heading font-bold text-lg uppercase tracking-wider flex items-center gap-2 mb-6 text-white">
-                    <span class="w-2 h-2 rounded-full bg-purple-500 shadow-[0_0_10px_#a855f7]"></span> Mining Operations
+                    <span class="w-2 h-2 rounded-full bg-purple-500 shadow-[0_0_10px_#a855f7]"></span> Mining
+                    Operations
                 </h2>
 
                 <div class="flex flex-col md:flex-row gap-4 mb-6">
@@ -365,6 +415,25 @@
             </div>
             <div id="logContent"
                 class="flex-1 overflow-y-auto p-6 font-mono text-xs text-zinc-400 whitespace-pre-wrap bg-[#050505]">
+            </div>
+        </div>
+    </div>
+
+    <!-- Beggar List Modal -->
+    <div id="beggarListModal"
+        class="fixed inset-0 bg-black/80 backdrop-blur-sm hidden items-center justify-center z-50">
+        <div
+            class="bg-surface border border-border rounded-xl p-0 w-[95%] max-w-3xl h-[70vh] flex flex-col shadow-2xl overflow-hidden animate-[slideUp_0.3s_ease-out]">
+            <div class="flex justify-between items-center p-6 border-b border-border bg-black">
+                <h3 class="font-heading font-bold text-xl uppercase text-yellow-400">📋 Beggars List</h3>
+                <button onclick="closeModal('beggarListModal')"
+                    class="text-zinc-500 hover:text-white text-xl">✕</button>
+            </div>
+            <div class="px-6 py-3 bg-zinc-950 border-b border-border font-mono text-xs text-zinc-500">
+                Wallet addresses requesting coins on the network. Click an address to copy it.
+            </div>
+            <div id="beggarListContent" class="flex-1 overflow-y-auto p-6 space-y-3">
+                <div class="text-zinc-500 text-sm font-mono text-center py-8">Loading...</div>
             </div>
         </div>
     </div>

@@ -16,7 +16,10 @@ const API = {
     walletRename: '/api/wallet/rename',
     minerStatus: '/api/miner/status',
     minerStart: '/api/miner/start',
-    minerStop: '/api/miner/stop'
+    minerStop: '/api/miner/stop',
+    beggarStart: '/api/beggar/start',
+    beggarStop: '/api/beggar/stop',
+    beggarList: '/api/beggar/list'
 };
 
 let pollInterval = null;
@@ -48,6 +51,9 @@ function startPolling() {
 
     checkDiscovery(); // Initial check
     setInterval(checkDiscovery, 5000); // Poll every 5s
+
+    checkBeggarStatus(); // Initial beggar check
+    setInterval(checkBeggarStatus, 5000); // Poll beggar every 5s
 }
 
 /* --- NETWORK --- */
@@ -484,3 +490,135 @@ function closeModal(id) { document.getElementById(id).style.display = 'none'; }
 window.onclick = (e) => {
     if (e.target.classList.contains('modal')) e.target.style.display = 'none';
 };
+
+/* --- BEGGAR SYSTEM --- */
+
+async function populateBegWalletSelect() {
+    try {
+        const res = await fetch(API.walletList);
+        const data = await res.json();
+        const select = document.getElementById('begWalletSelect');
+        if (!select) return;
+        const currentVal = select.value;
+        select.innerHTML = '<option value="">Select Wallet...</option>';
+        (data.wallets || []).forEach(w => {
+            const opt = document.createElement('option');
+            opt.value = w.address;
+            opt.textContent = `${w.label || w.address.slice(0, 12) + '...'}  (${(w.balance || 0).toFixed(4)} iCSI)`;
+            select.appendChild(opt);
+        });
+        if (currentVal) select.value = currentVal;
+    } catch (e) { }
+}
+
+async function startBegging() {
+    const select = document.getElementById('begWalletSelect');
+    const address = select ? select.value : '';
+    if (!address) { alert('Please select a wallet to advertise.'); return; }
+    try {
+        await fetch(API.beggarStart, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ address })
+        });
+        checkBeggarStatus();
+    } catch (e) { alert('Failed to start begging'); }
+}
+
+async function stopBegging() {
+    try {
+        await fetch(API.beggarStop, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({})
+        });
+        checkBeggarStatus();
+    } catch (e) { alert('Failed to stop begging'); }
+}
+
+async function checkBeggarStatus() {
+    try {
+        const res = await fetch(API.beggarList);
+        const data = await res.json();
+        const statusDiv = document.getElementById('begStatus');
+        const timerSpan = document.getElementById('begTimer');
+        const addrDiv = document.getElementById('begAddress');
+        const startSection = document.getElementById('begStartSection');
+        const stopBtn = document.getElementById('stopBegBtn');
+
+        if (data.active_beg) {
+            statusDiv.classList.remove('hidden');
+            stopBtn.classList.remove('hidden');
+            startSection.classList.add('hidden');
+            addrDiv.innerText = data.active_beg.address;
+            const mins = Math.floor(data.active_beg.remaining_seconds / 60);
+            const secs = data.active_beg.remaining_seconds % 60;
+            timerSpan.innerText = `${mins}:${String(secs).padStart(2, '0')}`;
+        } else {
+            statusDiv.classList.add('hidden');
+            stopBtn.classList.add('hidden');
+            startSection.classList.remove('hidden');
+            populateBegWalletSelect();
+        }
+    } catch (e) { }
+}
+
+async function showBeggarList() {
+    const modal = document.getElementById('beggarListModal');
+    const content = document.getElementById('beggarListContent');
+    modal.style.display = 'flex';
+    content.innerHTML = '<div class="text-zinc-500 text-sm font-mono text-center py-8">Loading...</div>';
+
+    try {
+        const res = await fetch(API.beggarList);
+        const data = await res.json();
+        const beggars = data.beggars || [];
+
+        if (beggars.length === 0) {
+            content.innerHTML = '<div class="text-zinc-500 text-sm font-mono text-center py-8">No beggars on the network yet.</div>';
+            return;
+        }
+
+        content.innerHTML = beggars.map(b => {
+            const shortAddr = b.address.length > 20 ? b.address.slice(0, 10) + '...' + b.address.slice(-10) : b.address;
+            const ago = Math.floor((Date.now() / 1000 - b.last_seen) / 60);
+            return `
+            <div class="bg-black border border-zinc-800 rounded-lg p-4 flex items-center justify-between gap-4 hover:border-yellow-800/50 transition-colors">
+                <div class="flex-1 min-w-0">
+                    <div class="font-mono text-xs text-yellow-400 truncate cursor-pointer hover:text-yellow-300" title="${b.address}" onclick="copyBeggarAddress('${b.address}')">
+                        💰 ${shortAddr}
+                    </div>
+                    <div class="flex gap-4 mt-1">
+                        <span class="text-[10px] text-zinc-500">Balance: <span class="text-cyan-400">${(b.balance || 0).toFixed(4)} iCSI</span></span>
+                        <span class="text-[10px] text-zinc-600">Seen ${ago}m ago</span>
+                    </div>
+                </div>
+                <button onclick="copyBeggarAddress('${b.address}')" class="px-3 py-1.5 bg-zinc-900 hover:bg-zinc-800 text-yellow-400 text-[10px] font-bold uppercase rounded-md transition-colors whitespace-nowrap">
+                    📋 Copy
+                </button>
+            </div>`;
+        }).join('');
+    } catch (e) {
+        content.innerHTML = '<div class="text-red-400 text-sm font-mono text-center py-8">Error loading beggars list.</div>';
+    }
+}
+
+function copyBeggarAddress(address) {
+    navigator.clipboard.writeText(address).then(() => {
+        // Brief visual feedback
+        const btn = event.target;
+        const original = btn.innerText;
+        btn.innerText = '✓ Copied!';
+        btn.classList.add('text-green-400');
+        setTimeout(() => { btn.innerText = original; btn.classList.remove('text-green-400'); }, 1500);
+    }).catch(() => {
+        // Fallback for non-https
+        const ta = document.createElement('textarea');
+        ta.value = address;
+        document.body.appendChild(ta);
+        ta.select();
+        document.execCommand('copy');
+        document.body.removeChild(ta);
+        alert('Address copied!');
+    });
+}

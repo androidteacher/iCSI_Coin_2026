@@ -63,6 +63,11 @@ class WebServer:
         self.app.router.add_post('/api/miner/start', self.handle_miner_start)
         self.app.router.add_post('/api/miner/stop', self.handle_miner_stop)
 
+        # API - Beggar
+        self.app.router.add_post('/api/beggar/start', self.handle_beggar_start)
+        self.app.router.add_post('/api/beggar/stop', self.handle_beggar_stop)
+        self.app.router.add_get('/api/beggar/list', self.handle_beggar_list)
+
         self.runner = None
         self.site = None
 
@@ -379,3 +384,27 @@ class WebServer:
     async def handle_miner_stop(self, request):
         success, msg = self.miner_controller.stop_mining()
         return web.json_response({'success': success, 'message': msg})
+
+    # --- BEGGAR HANDLERS ---
+
+    async def handle_beggar_start(self, request):
+        data = await request.json()
+        address = data.get('address', '').strip()
+        if not address:
+            return web.json_response({'error': 'No wallet address provided'}, status=400)
+        await self.network_manager.start_begging(address)
+        return web.json_response({'status': 'begging', 'address': address})
+
+    async def handle_beggar_stop(self, request):
+        await self.network_manager.stop_begging()
+        return web.json_response({'status': 'stopped'})
+
+    async def handle_beggar_list(self, request):
+        beggars = self.network_manager.get_beggar_list()
+        active = None
+        if self.network_manager.active_beg:
+            import time as time_mod
+            ab = self.network_manager.active_beg
+            remaining = max(0, int(20 * 60 - (time_mod.time() - ab['started_at'])))
+            active = {'address': ab['address'], 'remaining_seconds': remaining}
+        return web.json_response({'beggars': beggars, 'active_beg': active})

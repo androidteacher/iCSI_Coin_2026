@@ -86,6 +86,10 @@ class NetworkManager:
             on_discover=self._on_multicast_discover
         )
 
+        # Beggar system state
+        self.beggar_list = {}  # {address: {first_seen, last_seen, source_ip}}
+        self.active_beg = None  # {address, started_at, task} or None
+
     def configure_stun(self, ip, port):
         self.stun_ip = ip
         self.stun_port = int(port)
@@ -179,10 +183,87 @@ class NetworkManager:
     async def stop(self):
         self.running = False
         self.multicast_beacon.stop()
+        if self.active_beg and self.active_beg.get('task'):
+            self.active_beg['task'].cancel()
+            self.active_beg = None
         if self.server:
             self.server.close()
             await self.server.wait_closed()
         logger.info("Network manager stopped.")
+
+    # --- BEGGAR SYSTEM ---
+
+    async def start_begging(self, address):
+        """Start broadcasting a beggar advertisement every 60s for 20 minutes."""
+        # Stop any existing beg
+        if self.active_beg and self.active_beg.get('task'):
+            self.active_beg['task'].cancel()
+
+        async def _beg_loop():
+            started = time.time()
+            duration = 20 * 60  # 20 minutes
+            interval = 60  # 60 seconds
+            while time.time() - started < duration:
+                payload = json.dumps({
+                    'address': address,
+                    'comment': f'Wallet Beggar: {address}'
+                }).encode('utf-8')
+                msg = Message('beggar', payload)
+                for peer_addr, peer_writer in self.active_connections.items():
+                    try:
+                        peer_writer.write(msg.serialize())
+                        await peer_writer.drain()
+                    except: pass
+                logger.info(f"💰 Beggar broadcast sent: {address}")
+                await asyncio.sleep(interval)
+            # Auto-expire
+            logger.info(f"💰 Beggar expired after 20 minutes: {address}")
+            self.active_beg = None
+
+        task = asyncio.create_task(_beg_loop())
+        self.tasks.add(task)
+        task.add_done_callback(self.tasks.discard)
+        self.active_beg = {'address': address, 'started_at': time.time(), 'task': task}
+        logger.info(f"💰 Started begging with address: {address}")
+
+    async def stop_begging(self):
+        """Stop begging and broadcast removal to peers."""
+        if not self.active_beg:
+            return
+        address = self.active_beg['address']
+        if self.active_beg.get('task'):
+            self.active_beg['task'].cancel()
+
+        # Broadcast removal
+        payload = json.dumps({'address': address}).encode('utf-8')
+        msg = Message('beggar_rm', payload)
+        for peer_addr, peer_writer in self.active_connections.items():
+            try:
+                peer_writer.write(msg.serialize())
+                await peer_writer.drain()
+            except: pass
+
+        self.active_beg = None
+        logger.info(f"💰 Stopped begging: {address}")
+
+    def get_beggar_list(self):
+        """Return list of beggars with balances from chain state."""
+        result = []
+        for address, info in self.beggar_list.items():
+            # Look up balance from chain state
+            balance = 0
+            try:
+                utxos = self.chain_state.get_utxos_by_script(address)
+                balance = sum(u.get('amount', 0) for u in utxos)
+            except: pass
+            result.append({
+                'address': address,
+                'balance': balance,
+                'first_seen': info.get('first_seen', 0),
+                'last_seen': info.get('last_seen', 0),
+                'source': info.get('source_ip', '')
+            })
+        return result
 
     async def process_message_loop(self, reader, writer, addr):
         """Unified message processing loop for both inbound and outbound connections."""
@@ -537,6 +618,50 @@ class NetworkManager:
 
                     except Exception as e:
                         logger.error(f"GETBLOCKS error: {e}")
+
+                elif command == 'beggar':
+                    try:
+                        data = json.loads(payload.decode('utf-8'))
+                        address = data.get('address', '')
+                        comment = data.get('comment', '')
+                        if address:
+                            now = int(time.time())
+                            is_new = address not in self.beggar_list
+                            self.beggar_list[address] = {
+                                'first_seen': self.beggar_list.get(address, {}).get('first_seen', now),
+                                'last_seen': now,
+                                'source_ip': str(addr)
+                            }
+                            if is_new:
+                                logger.info(f"💰 Beggar discovered: {address} from {addr}")
+                                # Relay to other peers
+                                relay_msg = Message('beggar', payload)
+                                for peer_addr, peer_writer in self.active_connections.items():
+                                    if peer_addr != addr:
+                                        try:
+                                            peer_writer.write(relay_msg.serialize())
+                                            await peer_writer.drain()
+                                        except: pass
+                    except Exception as e:
+                        logger.error(f"Beggar message error: {e}")
+
+                elif command == 'beggar_rm':
+                    try:
+                        data = json.loads(payload.decode('utf-8'))
+                        address = data.get('address', '')
+                        if address and address in self.beggar_list:
+                            del self.beggar_list[address]
+                            logger.info(f"💰 Beggar removed: {address}")
+                            # Relay removal
+                            relay_msg = Message('beggar_rm', payload)
+                            for peer_addr, peer_writer in self.active_connections.items():
+                                if peer_addr != addr:
+                                    try:
+                                        peer_writer.write(relay_msg.serialize())
+                                        await peer_writer.drain()
+                                    except: pass
+                    except Exception as e:
+                        logger.error(f"Beggar_rm error: {e}")
                 
         except Exception as e:
             logger.error(f"Error handling client {addr}: {e}")
