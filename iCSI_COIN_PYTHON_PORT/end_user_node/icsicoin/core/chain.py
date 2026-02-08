@@ -37,7 +37,7 @@ class ChainManager:
              prev_block=b'\x00'*32,
              merkle_root=merkle_root,
              timestamp=1231006505,
-             bits=0x1f019999, # Tuned for ~5-10s CPU mining (Exp 31), Increased 10x per user request
+             bits=0x1f099996, # 6x easier than original (dynamic retarget adjusts)
              nonce=2083236893
         )
         return Block(header, [tx])
@@ -64,6 +64,27 @@ class ChainManager:
 
     def get_block_hash(self, height):
         return self.block_index.get_block_hash_by_height(height)
+
+    def get_block_by_height(self, height):
+        """Return a deserialized Block for the given height, or None."""
+        block_hash = self.block_index.get_block_hash_by_height(height)
+        if not block_hash:
+            return None
+        block_info = self.block_index.get_block_info(block_hash)
+        if not block_info:
+            return None
+        try:
+            import io
+            raw = self.block_store.read_block(
+                block_info['file_num'],
+                block_info['offset'],
+                block_info['length']
+            )
+            if raw:
+                return Block.deserialize(io.BytesIO(raw))
+        except Exception as e:
+            logger.error(f"Error reading block at height {height}: {e}")
+        return None
 
     def process_block(self, block: Block):
         block_hash = block.get_hash().hex()

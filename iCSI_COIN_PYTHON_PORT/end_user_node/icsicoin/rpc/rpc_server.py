@@ -118,18 +118,24 @@ class RPCServer:
             from icsicoin.consensus.merkle import get_merkle_root
             merkle_root = get_merkle_root(txs)
             
-            # 5. Return dict
+            # 5. Calculate dynamic difficulty
+            from icsicoin.consensus.validation import calculate_next_bits, bits_to_target
+            next_bits = calculate_next_bits(self.chain_manager, height)
+            next_target = bits_to_target(next_bits)
+            target_hex = format(next_target, '064x')
+            
+            # 6. Return dict
             # We return enough info for miner to build header
             result = {
                 "version": 1,
                 "previousblockhash": prev_hash_hex,
                 "curtime": int(time.time()),
-                "bits": 0x1f0fffff, # Tuned for ~5-10s CPU mining
+                "bits": next_bits,
                 "height": height,
                 "coinbase_value": 5000000000,
                 "transactions": [binascii.hexlify(tx.serialize()).decode('utf-8') for tx in txs],
                 "merkle_root": binascii.hexlify(merkle_root).decode('utf-8'),
-                "target": "000fffff00000000000000000000000000000000000000000000000000000000"
+                "target": target_hex
             }
 
         elif method == 'submitblock':

@@ -177,20 +177,9 @@ class WebServer:
         best_block = self.network_manager.chain_manager.block_index.get_best_block()
         height = best_block['height'] if best_block else 0
         
-        bits = 0x1f019999 # Default/Genesis bits (Updated to 10x diff)
-        if best_block:
-             try:
-                 # Read raw block to get bits
-                 raw = self.network_manager.block_store.read_block(
-                     best_block['file_num'], 
-                     best_block['offset'], 
-                     best_block['length']
-                 )
-                 if raw:
-                     block = Block.deserialize(io.BytesIO(raw))
-                     bits = block.header.bits
-             except Exception as e:
-                 logger.error(f"Error reading best block bits: {e}")
+        # Dynamic difficulty
+        from icsicoin.consensus.validation import calculate_next_bits
+        bits = calculate_next_bits(self.network_manager.chain_manager, height + 1)
 
         # Calculate Reward
         # 50 coins initial, halve every 210000 blocks
