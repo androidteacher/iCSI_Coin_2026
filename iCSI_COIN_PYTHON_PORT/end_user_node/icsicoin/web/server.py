@@ -98,37 +98,6 @@ class WebServer:
         await self.site.start()
         logger.info(f"Web server started on port {self.port}")
         
-        # Auto-Connect Feature
-        asyncio.create_task(self.check_remote_discovery())
-
-    async def check_remote_discovery(self):
-        """Fetches loc.txt from central server and auto-connects if enabled."""
-        url = "https://cyberlessons101.com:8000/loc.txt"
-        try:
-            # Bypass SSL verification for now as it might be a self-signed or test cert
-            async with aiohttp.ClientSession(connector=aiohttp.TCPConnector(ssl=False)) as session:
-                async with session.get(url, timeout=5) as resp:
-                    if resp.status == 200:
-                        text = await resp.text()
-                        lines = text.strip().split('\n')
-                        
-                        if len(lines) >= 2:
-                            status_line = lines[0].strip()
-                            if status_line == "public,on":
-                                ip_line = lines[1].strip()
-                                if ip_line.startswith("ip,"):
-                                    target_ip = ip_line.split(',')[1].strip()
-                                    logger.info(f"Auto-Connect: Discovered public node at {target_ip}")
-                                    
-                                    # Connect to default ports
-                                    ports = [9333, 9334, 9335]
-                                    for p in ports:
-                                        target = f"{target_ip}:{p}"
-                                        asyncio.create_task(self.network_manager.connect_to_peer(target))
-                            else:
-                                logger.info("Auto-Connect: Remote discovery reported 'public,off'")
-        except Exception as e:
-             logger.warning(f"Auto-Connect Failed: {e}")
 
     async def stop(self):
         self.miner_controller.stop_mining()

@@ -62,7 +62,9 @@ class NetworkManager:
         self.failed_peers = {} # (ip, port) -> {'timestamp': ts, 'error': str}
         self.peer_stats = {} # (ip, port) -> {'connected_at': ts, 'last_seen': ts}
         self.peer_logs = {} # (ip, port) -> list of strings
+        self.peer_logs = {} # (ip, port) -> list of strings
         self.peer_last_log_time = {} # (ip, port) -> timestamp (float)
+        self.peer_last_heard = {} # (ip, port) -> timestamp (float) - Tracks INCOMING data only
         self.tasks = set() # Keep strong references to background tasks
         self.server = None
         self.active_connections = {} # (ip, port) -> writer
@@ -100,6 +102,9 @@ class NetworkManager:
         if peer not in self.peer_logs:
             self.peer_logs[peer] = []
         
+        # NOTE: We DO NOT update peer_last_heard here. 
+        # log_peer_event captures outgoing attempts too.
+        
         timestamp = time.strftime('%H:%M:%S')
         log_entry = f"[{timestamp}] [{direction}] {message_type}: {details}"
         self.peer_logs[peer].append(log_entry)
@@ -131,9 +136,13 @@ class NetworkManager:
         if self.connect_nodes:
             logger.info(f"Connect-only mode active. Connecting to: {self.connect_nodes}")
             for node in self.connect_nodes:
-                 t = asyncio.create_task(self.connect_to_peer(node))
-                 self.tasks.add(t)
-                 t.add_done_callback(self.tasks.discard)
+                     t = asyncio.create_task(self.connect_to_peer(node))
+                     self.tasks.add(t)
+                     t.add_done_callback(self.tasks.discard)
+                     # Grace period for added nodes
+                     host = node.split(':')[0] if ':' in node else node
+                     port = int(node.split(':')[1]) if ':' in node else 9333
+                     self.peer_last_heard[(host, port)] = time.time()
         else:
              # Normal discovery mode
              pass
@@ -286,6 +295,9 @@ class NetworkManager:
                 
                 if addr in self.peer_stats:
                     self.peer_stats[addr]['last_seen'] = int(time.time())
+                
+                # Update HEARD FROM timer - This is the heartbeat!
+                self.peer_last_heard[addr] = time.time()
 
                 if command == 'verack':
                     logger.info(f"Received VERACK from {addr} - Handshake COMPLETE")
@@ -805,6 +817,9 @@ class NetworkManager:
         if key in self.failed_peers:
             del self.failed_peers[key]
 
+        if key in self.peer_last_heard:
+            del self.peer_last_heard[key]
+
     def forget_peer(self, peer):
         """Completely removes a peer from all tracking lists."""
         ip, port = peer
@@ -841,7 +856,9 @@ class NetworkManager:
         self.failed_peers.clear()
         self.peer_stats.clear()
         self.peer_logs.clear()
+        self.peer_logs.clear()
         self.peer_last_log_time.clear()
+        self.peer_last_heard.clear()
         logger.info("Experimental: Network data reset requested by user.")
 
 
@@ -902,28 +919,41 @@ class NetworkManager:
             except Exception as e:
                 logger.error(f"Refresh error: {e}")
             
-            # Aggressive Cleanup: Remove peers inactive for > 60s
+            # Aggressive Cleanup: Remove peers inactive for > 120s based on HEARD FROM
+            # Note: We now use 120s and rely on peer_last_heard to avoid killing nodes we are trying to dial
             now = time.time()
             cleanup_candidates = []
             
             # Check active peers
             for peer in list(self.peers):
-                last_log = self.peer_last_log_time.get(peer, 0)
-                if now - last_log > 60:
+                # Init last_heard if missing (grace period for new peers or existing ones)
+                if peer not in self.peer_last_heard:
+                    self.peer_last_heard[peer] = now
+                    
+                last_heard = self.peer_last_heard.get(peer, 0)
+                if now - last_heard > 120:
                      cleanup_candidates.append(peer)
             
             # Check failed peers (cleanup logs/stats)
+            # Failed peers might not be in peer_last_heard if they never sent data
             for peer in list(self.failed_peers.keys()):
-                 # failed_peers usually have a timestamp in their data too
-                 # but let's check log time as the master activity tracker
-                 last_log = self.peer_last_log_time.get(peer, 0)
-                 if now - last_log > 60:
+                 last_heard = self.peer_last_heard.get(peer, 0)
+                 # If never heard from (0), use timestamp of failure? No, just kill them if old.
+                 if last_heard == 0:
+                     # If they have a failure timestamp, use that age
+                     fail_time = self.failed_peers[peer].get('timestamp', 0)
+                     if now - fail_time > 120:
+                         cleanup_candidates.append(peer)
+                 elif now - last_heard > 120:
                       cleanup_candidates.append(peer)
 
             # Execution
+            if cleanup_candidates:
+                logger.info(f"🧹 Maintenance: Checking {len(cleanup_candidates)} candidates for cleanup...")
+                
             for peer in cleanup_candidates:
                 ip, port = peer
-                logger.info(f"🧹 Pruning inactive peer: {ip}:{port} (No activity in >60s)")
+                logger.info(f"🧹 Pruning DEAD peer: {ip}:{port} (Not HEARD from in >120s)")
                 self.forget_peer(peer)
 
             await asyncio.sleep(5) # Poll faster for UI responsiveness
