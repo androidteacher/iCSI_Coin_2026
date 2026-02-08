@@ -125,32 +125,8 @@ class RPCServer:
                 vout=[TxOut(amount=50*100000000, script_pubkey=script_pubkey)]
             )
             
-            # 3. Select Mempool Txs (Greedy non-conflicting selection)
-            # txs = [coinbase_tx] + self.mempool.get_all_transactions()
-            selected_txs = [coinbase_tx]
-            spent_in_block = set()
-            
-            # Mempool txs
-            candidate_txs = self.mempool.get_all_transactions()
-            # Sort by fee/priority? For now just FCFS/Arbitrary
-            
-            for tx in candidate_txs:
-                is_conflict = False
-                # Check inputs
-                current_tx_inputs = []
-                for vin in tx.vin:
-                    prev_out = (vin.prev_hash, vin.prev_index)
-                    if prev_out in spent_in_block:
-                        is_conflict = True
-                        break
-                    current_tx_inputs.append(prev_out)
-                
-                if not is_conflict:
-                    selected_txs.append(tx)
-                    for inp in current_tx_inputs:
-                        spent_in_block.add(inp)
-            
-            txs = selected_txs
+            # 3. Select Mempool Txs
+            txs = [coinbase_tx] + self.mempool.get_all_transactions()
             
             # 4. Build Block Object to calculate Merkle Root
             # Merkle Root calculation is implicit in Block logic usually, or we do it here.

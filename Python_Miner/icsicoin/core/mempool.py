@@ -11,14 +11,6 @@ class Mempool:
         if tx_hash in self.transactions:
             return False
         
-        # Check if any input is already spent by a tx in the mempool
-        for vin in tx.vin:
-            for existing_tx in self.transactions.values():
-                for existing_vin in existing_tx.vin:
-                    if vin.prev_hash == existing_vin.prev_hash and vin.prev_index == existing_vin.prev_index:
-                        logger.warning(f"Rejected TX {tx_hash}: Input {vin.prev_hash.hex()}:{vin.prev_index} already spent in mempool by {existing_tx.get_hash().hex()}")
-                        return False
-
         # In a real node, we would validate mempool acceptance (fees, standardness, etc.)
         self.transactions[tx_hash] = tx
         logger.info(f"Added TX {tx_hash} to mempool. Size: {len(self.transactions)}")
