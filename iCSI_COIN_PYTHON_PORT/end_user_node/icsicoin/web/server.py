@@ -57,10 +57,13 @@ class WebServer:
         self.app.router.add_get('/api/rpc/config', self.handle_rpc_config_get)
         self.app.router.add_post('/api/rpc/config', self.handle_rpc_config_post)
         
+        # Miner Download
+        self.app.router.add_get('/api/miner/download', self.handle_miner_download)
+
         # API - Wallet
         self.app.router.add_get('/api/wallet/list', self.handle_wallet_list)
         self.app.router.add_post('/api/wallet/create', self.handle_wallet_create)
-        self.app.router.add_post('/api/wallet/delete', self.handle_wallet_delete) # Not implemented in Wallet yet, stick to purge
+        self.app.router.add_post('/api/wallet/delete', self.handle_wallet_delete)
         self.app.router.add_post('/api/wallet/send', self.handle_wallet_send)
         self.app.router.add_get('/api/wallet/export', self.handle_wallet_export)
         self.app.router.add_post('/api/wallet/import', self.handle_wallet_import)
@@ -442,3 +445,58 @@ class WebServer:
                             return web.json_response({'error': f'RPC Server returned {resp.status}'}, status=502)
         except Exception as e:
             return web.json_response({'error': f"Failed to reach RPC server: {e}"}, status=502)
+
+    async def handle_miner_download(self, request):
+        import zipfile
+        import io
+        
+        buffer = io.BytesIO()
+        with zipfile.ZipFile(buffer, 'w', zipfile.ZIP_DEFLATED) as zip_file:
+            # 1. Add miner.py (assuming it is in the parent directory of icsicoin/web/server.py... wait, no)
+            # server.py is in end_user_node/icsicoin/web/server.py
+            # miner.py is in end_user_node/miner.py
+            # So root is three levels up? 
+            # __file__ = .../icsicoin/web/server.py
+            # root = .../
+            
+            # Let's verify paths.
+            # WORKDIR is /app in Docker.
+            # server.py is imported.
+            # We can use reference from where we run.
+            
+            # Docker WORKDIR is /app
+            # /app/miner.py exists.
+            # /app/icsicoin/ exists.
+            
+            base_dir = os.getcwd() # Should be /app
+            
+            # Add miner.py
+            miner_path = os.path.join(base_dir, 'miner.py')
+            if os.path.exists(miner_path):
+                zip_file.write(miner_path, arcname='miner.py')
+            
+            # Add requirements.txt (Create on fly)
+            zip_file.writestr('requirements.txt', 'requests\nscrypt\n')
+
+            # Add icsicoin package
+            icsicoin_dir = os.path.join(base_dir, 'icsicoin')
+            for root, dirs, files in os.walk(icsicoin_dir):
+                if '__pycache__' in dirs:
+                    dirs.remove('__pycache__') # Don't traverse
+                
+                for file in files:
+                    if file == '.DS_Store' or file.endswith('.pyc'):
+                        continue
+                    
+                    file_path = os.path.join(root, file)
+                    arcname = os.path.relpath(file_path, base_dir)
+                    zip_file.write(file_path, arcname=arcname)
+        
+        buffer.seek(0)
+        return web.Response(
+            body=buffer.getvalue(),
+            headers={
+                'Content-Disposition': 'attachment; filename="icsi_miner.zip"',
+                'Content-Type': 'application/zip'
+            }
+        )

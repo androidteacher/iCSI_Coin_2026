@@ -648,6 +648,32 @@ function copyBeggarAddress(address) {
     });
 }
 
+// --- Download Miner Logic ---
+
+function openDownloadMinerModal() {
+    openModal('downloadMinerModal');
+
+    // Auto-populate command with current host and credentials
+    const host = window.location.hostname;
+    const rpcPort = 9342; // External RPC port
+
+    // Fetch current auth to populate command
+    fetch('/api/rpc/config')
+        .then(res => res.json())
+        .then(data => {
+            const user = data.user || 'user';
+            const pass = data.password || 'pass';
+
+            const cmd = `python3 miner.py --url http://${host}:${rpcPort} --user ${user} --pass ${pass}`;
+            document.getElementById('minerCommand').innerText = cmd;
+        })
+        .catch(() => {
+            // Fallback
+            const cmd = `python3 miner.py --url http://${host}:${rpcPort} --user user --pass pass`;
+            document.getElementById('minerCommand').innerText = cmd;
+        });
+}
+
 // --- RPC Auth Logic ---
 
 function openRpcConfigModal() {
