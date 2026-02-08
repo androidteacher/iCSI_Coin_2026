@@ -62,6 +62,7 @@ class NetworkManager:
         self.failed_peers = {} # (ip, port) -> {'timestamp': ts, 'error': str}
         self.peer_stats = {} # (ip, port) -> {'connected_at': ts, 'last_seen': ts}
         self.peer_logs = {} # (ip, port) -> list of strings
+        self.peer_last_log_time = {} # (ip, port) -> timestamp (float)
         self.tasks = set() # Keep strong references to background tasks
         self.server = None
         self.active_connections = {} # (ip, port) -> writer
@@ -102,6 +103,7 @@ class NetworkManager:
         timestamp = time.strftime('%H:%M:%S')
         log_entry = f"[{timestamp}] [{direction}] {message_type}: {details}"
         self.peer_logs[peer].append(log_entry)
+        self.peer_last_log_time[peer] = time.time()
         
         # Keep ring buffer of last 50 entries
         if len(self.peer_logs[peer]) > 50:
@@ -762,7 +764,15 @@ class NetworkManager:
             if remote_listening_port > 0:
                  self.active_connections[(addr[0], remote_listening_port)] = writer
             
-            await self.process_message_loop(reader, writer, addr)
+            # Delegate to unified loop using canonical address (listening port) if available
+            canonical_addr = (addr[0], remote_listening_port) if remote_listening_port > 0 else addr
+            
+            # If changed, ensure stats/logs container exists for canonical key
+            if canonical_addr != addr:
+                 if canonical_addr not in self.peer_stats:
+                      self.peer_stats[canonical_addr] = {'connected_at': int(time.time()), 'last_seen': int(time.time())}
+
+            await self.process_message_loop(reader, writer, canonical_addr)
         except Exception as e:
             logger.error(f"Error handling client {addr}: {e}")
             self.log_peer_event(addr, "ERR", "EXCEPTION", str(e))
@@ -794,7 +804,36 @@ class NetworkManager:
         key = (ip, port)
         if key in self.failed_peers:
             del self.failed_peers[key]
+
+    def forget_peer(self, peer):
+        """Completely removes a peer from all tracking lists."""
+        ip, port = peer
+        
+        # 1. Close Connection
+        if peer in self.active_connections:
+            writer = self.active_connections[peer]
+            try:
+                writer.close()
+            except: pass
+            del self.active_connections[peer]
+
+        # 2. Remove from collections
+        self.peers.discard(peer)
+        self.known_peers.discard(peer)
+        self.pending_peers.discard(peer)
+        
+        if peer in self.failed_peers:
+            del self.failed_peers[peer]
+        
+        if peer in self.peer_stats:
+            del self.peer_stats[peer]
             
+        if peer in self.peer_logs:
+            del self.peer_logs[peer]
+        
+        if peer in self.peer_last_log_time:
+            del self.peer_last_log_time[peer]
+
     def reset_data(self):
         self.peers.clear()
         self.known_peers.clear()
@@ -802,6 +841,7 @@ class NetworkManager:
         self.failed_peers.clear()
         self.peer_stats.clear()
         self.peer_logs.clear()
+        self.peer_last_log_time.clear()
         logger.info("Experimental: Network data reset requested by user.")
 
 
@@ -862,17 +902,30 @@ class NetworkManager:
             except Exception as e:
                 logger.error(f"Refresh error: {e}")
             
-            # Prune failed peers > 30s
+            # Aggressive Cleanup: Remove peers inactive for > 60s
             now = time.time()
-            to_remove = []
-            for peer, data in self.failed_peers.items():
-                if now - data['timestamp'] > 30:
-                    to_remove.append(peer)
+            cleanup_candidates = []
             
-            for peer in to_remove:
-                if peer in self.failed_peers:
-                    del self.failed_peers[peer]
+            # Check active peers
+            for peer in list(self.peers):
+                last_log = self.peer_last_log_time.get(peer, 0)
+                if now - last_log > 60:
+                     cleanup_candidates.append(peer)
             
+            # Check failed peers (cleanup logs/stats)
+            for peer in list(self.failed_peers.keys()):
+                 # failed_peers usually have a timestamp in their data too
+                 # but let's check log time as the master activity tracker
+                 last_log = self.peer_last_log_time.get(peer, 0)
+                 if now - last_log > 60:
+                      cleanup_candidates.append(peer)
+
+            # Execution
+            for peer in cleanup_candidates:
+                ip, port = peer
+                logger.info(f"🧹 Pruning inactive peer: {ip}:{port} (No activity in >60s)")
+                self.forget_peer(peer)
+
             await asyncio.sleep(5) # Poll faster for UI responsiveness
 
     async def announce_self(self):
@@ -1078,6 +1131,13 @@ class NetworkManager:
             await self.process_message_loop(reader, writer, target)
 
         except Exception as e:
+            # Immediate Cleanup on Connection Reset (Errno 104)
+            # This prevents infinite loops of retries or ICE attempts for dead nodes that actively reject us
+            if isinstance(e, ConnectionResetError) or (isinstance(e, OSError) and e.errno == 104):
+                 logger.warning(f"Connection RESET by {host}:{port} - Forgetting peer immediately.")
+                 self.forget_peer(target)
+                 return
+
             logger.warning(f"Failed to connect to {host}:{port}: {e}")
             
             # Try ICE P2P if TCP failed (NAT traversal attempt)

@@ -97,6 +97,38 @@ class WebServer:
         self.site = web.TCPSite(self.runner, '0.0.0.0', self.port)
         await self.site.start()
         logger.info(f"Web server started on port {self.port}")
+        
+        # Auto-Connect Feature
+        asyncio.create_task(self.check_remote_discovery())
+
+    async def check_remote_discovery(self):
+        """Fetches loc.txt from central server and auto-connects if enabled."""
+        url = "https://cyberlessons101.com:8000/loc.txt"
+        try:
+            # Bypass SSL verification for now as it might be a self-signed or test cert
+            async with aiohttp.ClientSession(connector=aiohttp.TCPConnector(ssl=False)) as session:
+                async with session.get(url, timeout=5) as resp:
+                    if resp.status == 200:
+                        text = await resp.text()
+                        lines = text.strip().split('\n')
+                        
+                        if len(lines) >= 2:
+                            status_line = lines[0].strip()
+                            if status_line == "public,on":
+                                ip_line = lines[1].strip()
+                                if ip_line.startswith("ip,"):
+                                    target_ip = ip_line.split(',')[1].strip()
+                                    logger.info(f"Auto-Connect: Discovered public node at {target_ip}")
+                                    
+                                    # Connect to default ports
+                                    ports = [9333, 9334, 9335]
+                                    for p in ports:
+                                        target = f"{target_ip}:{p}"
+                                        asyncio.create_task(self.network_manager.connect_to_peer(target))
+                            else:
+                                logger.info("Auto-Connect: Remote discovery reported 'public,off'")
+        except Exception as e:
+             logger.warning(f"Auto-Connect Failed: {e}")
 
     async def stop(self):
         self.miner_controller.stop_mining()
@@ -303,21 +335,43 @@ class WebServer:
 
     async def handle_peers(self, request):
         peers_list = []
+        import time 
+        now = time.time()
+        
+        def is_visible(peer):
+            # Rule 1: Must have logs
+            if peer not in self.network_manager.peer_logs or not self.network_manager.peer_logs[peer]:
+                return False
+            # Rule 2: Active in last 60s
+            last_time = self.network_manager.peer_last_log_time.get(peer, 0)
+            if now - last_time > 60:
+                return False
+            return True
+
         # Active
         if self.network_manager and hasattr(self.network_manager, 'peers'):
               for (ip, port) in list(self.network_manager.peers):
-                  peers_list.append({'ip': ip, 'port': port, 'status': 'ACTIVE', 'can_delete': False})
+                  if is_visible((ip, port)):
+                      peers_list.append({'ip': ip, 'port': port, 'status': 'ACTIVE', 'can_delete': False})
         
         # ICE
         if hasattr(self.network_manager, 'ice_connections'):
              for (ip, port) in self.network_manager.ice_connections:
                  if (ip, port) not in self.network_manager.peers:
-                     peers_list.append({'ip': ip, 'port': port, 'status': 'ACTIVE (ICE)', 'can_delete': False})
+                     if is_visible((ip, port)):
+                         peers_list.append({'ip': ip, 'port': port, 'status': 'ACTIVE (ICE)', 'can_delete': False})
 
-        # Failed
+        # Failed (Optional: Do we filter failed peers too? User said "nodes with 'no logs' are invisible". 
+        # Usually failed nodes have logs (the error). But if they haven't been active in 60s, hide them?
+        # User said "If a node hasn't seen log activity in 1 minute, drop it".
+        # So yes, apply to all.
         if hasattr(self.network_manager, 'failed_peers'):
              for (ip, port), data in self.network_manager.failed_peers.items():
-                 peers_list.append({'ip': ip, 'port': port, 'status': f"FAILED: {data.get('error','')}", 'can_delete': True})
+                 # Failed peers might not be in peer_logs if they failed before logging?
+                 # But log_peer_event is called on error.
+                 # Let's check visibility.
+                 if is_visible((ip, port)):
+                     peers_list.append({'ip': ip, 'port': port, 'status': f"FAILED: {data.get('error','')}", 'can_delete': True})
         
         # Add basic stats
         best = self.network_manager.chain_manager.block_index.get_best_block()
