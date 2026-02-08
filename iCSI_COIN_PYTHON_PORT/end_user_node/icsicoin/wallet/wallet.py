@@ -93,7 +93,7 @@ class Wallet:
                 total += u['amount']
         return total
 
-    def create_transaction(self, to_addr, amount, chain_state, fee=1000):
+    def create_transaction(self, to_addr, amount, chain_state, current_height, fee=1000):
         """Create a signed transaction sending 'amount' to 'to_addr'."""
         # 1. Collect UTXOs
         from icsicoin.core.primitives import Transaction, TxIn, TxOut
@@ -106,6 +106,8 @@ class Wallet:
         # Iterate all my addresses to find funds
         change_addr_str = None
         
+        had_skips_due_to_maturity = False
+
         for key in self.keys:
             addr = key['addr']
             pubkey_hash = binascii.unhexlify(addr)
@@ -119,6 +121,21 @@ class Wallet:
                 change_addr_str = addr # Send change back to first address with funds
                 
             for u in utxos:
+                # Coinbase Maturity Check (100 blocks)
+                if u.get('is_coinbase', False):
+                    # Depth = current_height - block_height + 1? 
+                    # Usually: if height is 100 and mined at 100, depth is 1.
+                    # Mined at 100, can spend at 200 (100 blocks later)? 
+                    # "100 confirmations" usually means depth >= 100.
+                    # so if mined at H, can spend at H+100?
+                    # Rule: "Coinbase transaction outputs can only be spent after they have received at least 100 confirmations."
+                    # If mined at height H, it has 1 confirmation. at H+99 it has 100.
+                    # So current_height - u['block_height'] + 1 >= 100
+                    depth = current_height - u.get('block_height', 0) + 1
+                    if depth < 100:
+                        had_skips_due_to_maturity = True
+                        continue
+
                 collected += u['amount']
                 # Create Unsigned Input
                 # We need script_sig logic. 
@@ -138,6 +155,8 @@ class Wallet:
                 break
                 
         if collected < needed:
+            if had_skips_due_to_maturity:
+                raise ValueError("You have to wait for the blockchain to mature.")
             raise ValueError(f"Insufficient funds. Have {collected}, need {needed}")
             
         # 2. Outputs

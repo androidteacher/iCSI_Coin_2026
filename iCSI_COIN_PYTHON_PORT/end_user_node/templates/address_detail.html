@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>iCSI Coin - Address Detail</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&family=Rajdhani:wght@500;600;700&display=swap"
+        rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        background: '#000000',
+                        surface: '#09090b',
+                        border: '#27272a',
+                        primary: '#a855f7',
+                        secondary: '#06b6d4',
+                        muted: '#a1a1aa',
+                    },
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                        mono: ['JetBrains Mono', 'monospace'],
+                        heading: ['Rajdhani', 'sans-serif'],
+                    }
+                }
+            }
+        }
+    </script>
+</head>
+
+<body class="bg-background text-white font-sans min-h-screen antialiased selection:bg-primary selection:text-black">
+
+    <!-- Top Navigation Bar -->
+    <nav class="max-w-[1400px] mx-auto px-6 pt-6 pb-2">
+        <div class="bg-surface border border-border rounded-xl px-6 py-3 flex items-center justify-between shadow-lg">
+            <div class="flex items-center gap-3">
+                <span class="w-3 h-3 rounded-full bg-secondary shadow-[0_0_12px_#06b6d4]"></span>
+                <span class="font-heading font-bold text-lg uppercase tracking-widest text-white">iCSI Coin</span>
+                <span class="text-zinc-600 text-xs font-mono ml-2">Blockchain Explorer</span>
+            </div>
+            <div class="flex items-center gap-2">
+                <a href="/explorer"
+                    class="px-4 py-2 rounded-lg bg-zinc-800 border border-zinc-700 text-zinc-300 font-bold text-xs uppercase tracking-wider hover:bg-zinc-700 hover:text-white transition-all">
+                    ← Back to Explorer
+                </a>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <div class="max-w-[1400px] mx-auto p-6 space-y-6">
+
+        <!-- Header Card -->
+        <div class="bg-surface border border-border rounded-xl p-6 shadow-sm">
+            <h2 class="font-heading font-bold text-xl uppercase tracking-wider flex items-center gap-2 text-white mb-4">
+                <span class="text-secondary">👤</span> Address Detail
+            </h2>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <!-- Address -->
+                <div class="bg-black/30 p-4 rounded-lg border border-zinc-800">
+                    <div class="text-[10px] uppercase tracking-widest text-zinc-500 font-bold mb-1">Address</div>
+                    <div class="font-mono text-secondary break-all select-all">{{ address }}</div>
+                </div>
+
+                <!-- Balance -->
+                <div class="bg-black/30 p-4 rounded-lg border border-zinc-800">
+                    <div class="text-[10px] uppercase tracking-widest text-zinc-500 font-bold mb-1">Balance</div>
+                    <div class="font-mono text-white text-2xl" id="balanceDisplay">Loading...</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- UTXO List -->
+        <div class="bg-surface border border-border rounded-xl p-6 shadow-sm">
+            <h3 class="font-heading font-bold text-lg uppercase tracking-wider text-white mb-4">
+                Unspent Outputs (UTXOs)
+            </h3>
+            <div class="overflow-x-auto">
+                <table class="w-full text-left border-collapse">
+                    <thead>
+                        <tr class="border-b border-zinc-800 text-xs text-muted uppercase tracking-wider font-heading">
+                            <th class="p-3">TXID</th>
+                            <th class="p-3">Index</th>
+                            <th class="p-3 text-right">Amount (ICSI)</th>
+                        </tr>
+                    </thead>
+                    <tbody id="utxoTable" class="text-sm font-mono divide-y divide-zinc-800/50">
+                        <tr>
+                            <td colspan="3" class="p-4 text-center text-zinc-500">Loading UTXOs...</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+        const address = "{{ address }}";
+
+        async function loadBalance() {
+            try {
+                const response = await fetch(`/api/explorer/balance/${address}`);
+                const data = await response.json();
+
+                if (data.error) {
+                    document.getElementById('balanceDisplay').innerText = "Error";
+                    return;
+                }
+
+                document.getElementById('balanceDisplay').innerText = data.balance.toFixed(8) + " ICSI";
+
+                // Load UTXOs (Assuming we can get them from the same endpoint or similar)
+                // The balance endpoint API currently returns total balance and utxo count, but maybe we can fetch list if we modify API
+                // Or we can just list the UTXOs since we are on the detail page.
+                // Let's verify what /api/explorer/balance/{address} returns.
+                // It returns address, balance, utxo_count. It does NOT return the list.
+                // WE SHOULD UPDATE THE API to return the list too for this page.
+
+                renderUTXOs(data.utxos || []);
+
+            } catch (e) {
+                console.error(e);
+                document.getElementById('balanceDisplay').innerText = "Error loading";
+            }
+        }
+
+        function renderUTXOs(utxos) {
+            const tbody = document.getElementById('utxoTable');
+            tbody.innerHTML = '';
+
+            if (utxos.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="3" class="p-4 text-center text-zinc-500">No UTXOs found (Address empty)</td></tr>';
+                return;
+            }
+
+            utxos.forEach(u => {
+                const row = document.createElement('tr');
+                row.className = 'hover:bg-zinc-900/50 transition-colors';
+
+                // Link to transaction/block if possible? We don't have tx view.
+                // We show TXID
+
+                row.innerHTML = `
+                    <td class="p-3 text-zinc-400 break-all select-all">${u.txid}</td>
+                    <td class="p-3 text-zinc-500">${u.vout}</td>
+                    <td class="p-3 text-right text-green-400 font-bold">${(u.amount / 100000000).toFixed(8)}</td>
+                `;
+                tbody.appendChild(row);
+            });
+        }
+
+        // We need to ensure the API returns UTXO list. 
+        // I will update server.py to include 'utxos' list in the response.
+        loadBalance();
+    </script>
+</body>
+
+</html>

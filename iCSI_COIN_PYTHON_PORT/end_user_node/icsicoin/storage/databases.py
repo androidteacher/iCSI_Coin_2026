@@ -94,17 +94,27 @@ class ChainStateDB:
                     vout_index INTEGER,
                     amount INTEGER,
                     script_pubkey BLOB,
+                    block_height INTEGER DEFAULT 0,
+                    is_coinbase BOOLEAN DEFAULT 0,
                     PRIMARY KEY (txid, vout_index)
                 )
             """)
+            # Migration check: Check if columns exist, if not add them
+            cursor = conn.execute("PRAGMA table_info(utxo)")
+            columns = [info[1] for info in cursor.fetchall()]
+            if 'block_height' not in columns:
+                conn.execute("ALTER TABLE utxo ADD COLUMN block_height INTEGER DEFAULT 0")
+            if 'is_coinbase' not in columns:
+                conn.execute("ALTER TABLE utxo ADD COLUMN is_coinbase BOOLEAN DEFAULT 0")
+                
             conn.commit()
 
-    def add_utxo(self, txid, vout_index, amount, script_pubkey):
+    def add_utxo(self, txid, vout_index, amount, script_pubkey, block_height, is_coinbase):
         with sqlite3.connect(self.db_path) as conn:
             conn.execute("""
-                INSERT OR REPLACE INTO utxo (txid, vout_index, amount, script_pubkey)
-                VALUES (?, ?, ?, ?)
-            """, (txid, vout_index, amount, script_pubkey))
+                INSERT OR REPLACE INTO utxo (txid, vout_index, amount, script_pubkey, block_height, is_coinbase)
+                VALUES (?, ?, ?, ?, ?, ?)
+            """, (txid, vout_index, amount, script_pubkey, block_height, is_coinbase))
             conn.commit()
 
     def remove_utxo(self, txid, vout_index):
@@ -114,16 +124,16 @@ class ChainStateDB:
 
     def get_utxo(self, txid, vout_index):
         with sqlite3.connect(self.db_path) as conn:
-            cursor = conn.execute("SELECT amount, script_pubkey FROM utxo WHERE txid = ? AND vout_index = ?", (txid, vout_index))
+            cursor = conn.execute("SELECT amount, script_pubkey, block_height, is_coinbase FROM utxo WHERE txid = ? AND vout_index = ?", (txid, vout_index))
             row = cursor.fetchone()
             if row:
-                return {'amount': row[0], 'script_pubkey': row[1]}
+                return {'amount': row[0], 'script_pubkey': row[1], 'block_height': row[2], 'is_coinbase': bool(row[3])}
             return None
 
     def get_utxos_by_script(self, script_pubkey):
         """Find all UTXOs paying to a specific script (address)."""
         # Note: script_pubkey should be bytes
         with sqlite3.connect(self.db_path) as conn:
-            cursor = conn.execute("SELECT txid, vout_index, amount FROM utxo WHERE script_pubkey = ?", (script_pubkey,))
+            cursor = conn.execute("SELECT txid, vout_index, amount, block_height, is_coinbase FROM utxo WHERE script_pubkey = ?", (script_pubkey,))
             rows = cursor.fetchall()
-            return [{'txid': r[0], 'vout': r[1], 'amount': r[2]} for r in rows]
+            return [{'txid': r[0], 'vout': r[1], 'amount': r[2], 'block_height': r[3], 'is_coinbase': bool(r[4])} for r in rows]

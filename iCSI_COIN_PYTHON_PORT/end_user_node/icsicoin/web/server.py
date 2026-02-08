@@ -112,6 +112,9 @@ class WebServer:
         self.app.router.add_route('*', '/api/explorer/blocks', self.handle_api_explorer_blocks)
         self.app.router.add_route('*', '/api/explorer/block/{block_hash}', self.handle_api_explorer_block_detail)
         self.app.router.add_route('*', '/api/explorer/balance/{address}', self.handle_api_explorer_balance)
+        self.app.router.add_route('*', '/api/explorer/search', self.handle_api_explorer_search)
+        
+        self.app.router.add_get('/explorer/address/{address}', self.handle_explorer_address_page)
         self.app.router.add_get('/api-docs', self.handle_api_docs_page)
 
         self.runner = None
@@ -315,6 +318,10 @@ class WebServer:
     async def handle_explorer_page(self, request):
         return await self.render_template('explorer.html')
 
+    async def handle_explorer_address_page(self, request):
+        address = request.match_info['address']
+        return await self.render_template('address_detail.html', address=address)
+
     async def handle_api_docs_page(self, request):
         return await self.render_template('api_docs.html')
 
@@ -447,10 +454,13 @@ class WebServer:
             
             balance = sum([u['amount'] for u in utxos]) / 100000000.0
             
+            balance = sum([u['amount'] for u in utxos]) / 100000000.0
+            
             return web.json_response({
                 'address': address,
                 'balance': balance,
-                'utxo_count': len(utxos)
+                'utxo_count': len(utxos),
+                'utxos': utxos # Include full List
             })
         except Exception as e:
             return web.json_response({'error': f"Invalid Address or Error: {e}"}, status=400)
@@ -461,6 +471,44 @@ class WebServer:
              pubkey_hash = script_pubkey[3:23]
              return binascii.hexlify(pubkey_hash).decode('utf-8')
         return "Non-Standard / OP_RETURN"
+
+    async def handle_api_explorer_search(self, request):
+        query = request.query.get('q', '').strip()
+        if not query:
+             return web.json_response({'error': 'Empty query'})
+             
+        chain = self.network_manager.chain_manager
+        
+        # 1. Block Height (Integer)
+        if query.isdigit():
+            height = int(query)
+            block_hash = chain.get_block_hash(height)
+            if block_hash:
+                 return web.json_response({'redirect': f'/explorer/block/{block_hash}'})
+            else:
+                 return web.json_response({'error': f'Block at height {height} not found'})
+                 
+        # 2. Block Hash (Hex 64 chars)
+        if len(query) == 64 and all(c in '0123456789abcdefABCDEF' for c in query):
+             # Check if exists
+             if chain.block_index.get_block_info(query):
+                  return web.json_response({'redirect': f'/explorer/block/{query}'})
+             # Fallback: TxID check (if we had index)
+             # For now, assume it's a block or fail?
+             # Or we can check if it's a known TXID by scanning mempool?
+             # Let's check mempool first?
+             # if self.network_manager.mempool.get_transaction(query):
+             #      return web.json_response({'redirect': f'/explorer/tx/{query}'}) # We don't have tx page
+        
+             return web.json_response({'error': 'Block/Tx not found'})
+
+        # 3. Address (Hex 40 chars or Base58 ~34 chars)
+        # iCSI uses Hex addresses (40 chars usually? RIPEMD160 is 20 bytes = 40 hex chars)
+        # Let's be lenient.
+        if len(query) == 40 and all(c in '0123456789abcdefABCDEF' for c in query):
+             return web.json_response({'redirect': f'/explorer/address/{query}'})
+             
+        return web.json_response({'error': 'Invalid search query'})
 
     async def handle_index(self, request):
         template = self.jinja_env.get_template('dashboard.html')
@@ -754,8 +802,13 @@ class WebServer:
         try:
             # Convert to satoshi
             satoshi = int(amount * 100000000)
+            
+            # Get current height for maturity check
+            best = self.network_manager.chain_manager.block_index.get_best_block()
+            current_height = best['height'] if best else 0
+
             tx = self.network_manager.wallet.create_transaction(
-                to_addr, satoshi, self.network_manager.chain_manager.chain_state
+                to_addr, satoshi, self.network_manager.chain_manager.chain_state, current_height
             )
             
             # Broadcast

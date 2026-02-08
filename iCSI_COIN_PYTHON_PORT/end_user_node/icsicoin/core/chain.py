@@ -191,15 +191,10 @@ class ChainManager:
             
             # Create Outputs
             tx_hash = tx.get_hash().hex()
+            is_coinbase = tx.is_coinbase()
             for i, vout in enumerate(tx.vout):
-                 # add_utxo(tx_hash, index, amount, script_pubkey/address, height?)
-                 # Checking signature: add_utxo(self, tx_hash, index, amount, script_pubkey)
-                 # vout.script_pubkey is bytes, converting to hex?
-                 # Let's check primitives.py. script_pubkey is bytes.
-                 # Database expects hex string or bytes? schema is TEXT usually or BLOB.
-                 # Let's check schema in databases.py (not shown but inferred).
-                 # Better to pass hex if schema is TEXT.
-                 self.chain_state.add_utxo(tx_hash, i, vout.amount, vout.script_pubkey)
+                 # add_utxo(tx_hash, index, amount, script_pubkey, block_height, is_coinbase)
+                 self.chain_state.add_utxo(tx_hash, i, vout.amount, vout.script_pubkey, height, is_coinbase)
                  
         # Update Best Block in Index
         self.block_index.update_best_block(block.get_hash().hex())

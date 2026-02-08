@@ -294,11 +294,11 @@ function updateWalletDisplay() {
     const opt = select.selectedOptions[0];
     if (opt) {
         displayBal.innerText = parseFloat(opt.dataset.balance).toFixed(2);
-        displayAddr.innerText = opt.value;
+        displayAddr.value = opt.value; // Use .value for input
         selectedWallet = opt.value;
     } else {
         displayBal.innerText = "0.00";
-        displayAddr.innerText = "---";
+        displayAddr.value = "---"; // Use .value for input
         selectedWallet = null;
     }
 }
