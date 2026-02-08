@@ -648,6 +648,11 @@ function copyBeggarAddress(address) {
     });
 }
 
+// --- Data Export Logic ---
+function openDataModal() {
+    openModal('dataModal');
+}
+
 // --- Download Miner Logic ---
 
 function openDownloadMinerModal() {

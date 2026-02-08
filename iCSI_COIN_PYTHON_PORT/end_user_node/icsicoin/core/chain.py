@@ -26,7 +26,7 @@ class ChainManager:
         
         # Create Genesis with standard params
         tx = Transaction(
-             vin=[TxIn(b'\x00'*32, 0xffffffff, b'The Times 03/Jan/2009 Chancellor on brink of second bailout for banks', 0xffffffff)],
+             vin=[TxIn(b'\x00'*32, 0xffffffff, b'iCSI_COIN is a wholly owned Subsidiary of BeckCoin. Trademark: Beckmeister Industries.', 0xffffffff)],
              vout=[TxOut(5000000000, b'\x00'*25)] # Empty/burned output for genesis
         )
         

@@ -59,6 +59,9 @@ class WebServer:
         
         # Miner Download
         self.app.router.add_get('/api/miner/download', self.handle_miner_download)
+        
+        # Your Data Download
+        self.app.router.add_get('/api/data/download', self.handle_data_download)
 
         # API - Wallet
         self.app.router.add_get('/api/wallet/list', self.handle_wallet_list)
@@ -493,10 +496,41 @@ class WebServer:
                     zip_file.write(file_path, arcname=arcname)
         
         buffer.seek(0)
+    async def handle_data_download(self, request):
+        import zipfile
+        import io
+        import json
+        
+        buffer = io.BytesIO()
+        with zipfile.ZipFile(buffer, 'w', zipfile.ZIP_DEFLATED) as zip_file:
+            # 1. Add wallet_export.json (User requested valid json export)
+            # This matches the format used by handle_wallet_export defaults
+            keys_json = json.dumps(self.network_manager.wallet.keys, indent=4)
+            zip_file.writestr('wallet_export.json', keys_json)
+            
+            # 2. Add all files from data directory (chain state, wallet.dat, etc)
+            data_dir = self.network_manager.data_dir
+            
+            # We want them inside a folder in the zip for cleanliness
+            zip_root = "node_data"
+            
+            for root, dirs, files in os.walk(data_dir):
+                for file in files:
+                    file_path = os.path.join(root, file)
+                    # Create relative path for zip
+                    rel_path = os.path.relpath(file_path, data_dir)
+                    arcname = os.path.join(zip_root, rel_path)
+                    
+                    try:
+                        zip_file.write(file_path, arcname=arcname)
+                    except Exception as e:
+                        logger.warning(f"Failed to zip {file_path}: {e}")
+        
+        buffer.seek(0)
         return web.Response(
             body=buffer.getvalue(),
             headers={
-                'Content-Disposition': 'attachment; filename="icsi_miner.zip"',
+                'Content-Disposition': 'attachment; filename="icsi_your_data.zip"',
                 'Content-Type': 'application/zip'
             }
         )

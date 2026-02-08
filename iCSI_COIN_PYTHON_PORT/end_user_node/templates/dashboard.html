@@ -84,6 +84,10 @@
                     class="px-4 py-2 rounded-lg bg-purple-600/10 border border-purple-800/40 text-purple-400 font-bold text-xs uppercase tracking-wider hover:bg-purple-600/20 hover:border-purple-600/60 transition-all flex items-center gap-2">
                     ⛏ Download Miner
                 </button>
+                <button onclick="openDataModal()"
+                    class="px-4 py-2 rounded-lg bg-blue-600/10 border border-blue-800/40 text-blue-400 font-bold text-xs uppercase tracking-wider hover:bg-blue-600/20 hover:border-blue-600/60 transition-all flex items-center gap-2">
+                    💾 Your Data
+                </button>
                 <button onclick="openRpcConfigModal()"
                     class="px-4 py-2 rounded-lg bg-zinc-800 border border-zinc-700 text-zinc-300 font-bold text-xs uppercase tracking-wider hover:bg-zinc-700 hover:text-white transition-all">
                     🔒 RPC Auth
@@ -595,7 +599,51 @@ pip install -r requirements.txt</code></pre>
         </div>
     </div>
 
-    <script src="/static/js/main.js?v=7"></script>
+    <!-- Your Data Modal -->
+    <div id="dataModal" class="fixed inset-0 bg-black/80 backdrop-blur-sm hidden items-center justify-center z-50">
+        <div
+            class="bg-zinc-900 border border-zinc-700 rounded-xl p-8 w-[95%] max-w-lg shadow-2xl animate-[slideUp_0.3s_ease-out]">
+            <div class="flex justify-between items-center mb-6">
+                <h3 class="font-heading font-bold text-xl uppercase text-white">Your Node Data</h3>
+                <button onclick="closeModal('dataModal')" class="text-zinc-500 hover:text-white text-xl">✕</button>
+            </div>
+
+            <div class="space-y-6">
+                <div class="bg-blue-900/20 p-4 rounded-lg border border-blue-800/50">
+                    <div class="flex items-start gap-3">
+                        <span class="text-2xl">💾</span>
+                        <div>
+                            <h4 class="text-blue-400 font-bold mb-1">Full Data Backup</h4>
+                            <p class="text-sm text-zinc-400">
+                                This archive contains your entire node state:
+                            </p>
+                            <ul class="list-disc list-inside text-xs text-zinc-500 mt-2 space-y-1">
+                                <li><strong>wallet_export.json</strong>: Importable JSON key export</li>
+                                <li><strong>wallet.dat</strong>: Raw wallet file (Sensitive!)</li>
+                                <li><strong>blocks/</strong>: Blockchain history</li>
+                                <li><strong>chainstate.sqlite</strong>: UTXO database</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="bg-red-900/20 p-4 rounded-lg border border-red-800/50 flex items-center gap-3">
+                    <span class="text-red-400 text-xl">⚠️</span>
+                    <p class="text-xs text-red-300">
+                        <strong>Warning:</strong> This file contains your PRIVATE KEYS. <br>
+                        Do not share this file with anyone!
+                    </p>
+                </div>
+
+                <a href="/api/data/download"
+                    class="block w-full py-3 bg-blue-600 hover:bg-blue-500 text-white font-bold text-center rounded-lg transition-colors">
+                    Download Archive (.zip)
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <script src="/static/js/main.js?v=8"></script>
 </body>
 
 </html>
