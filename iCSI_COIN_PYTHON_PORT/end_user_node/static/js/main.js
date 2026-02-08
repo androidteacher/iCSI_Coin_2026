@@ -64,6 +64,7 @@ async function updateStats() {
         const data = await res.json();
 
         document.getElementById('netDiff').innerText = data.difficulty;
+        document.getElementById('netDiffCountdown').innerText = data.difficulty_countdown + " Blocks";
         document.getElementById('netReward').innerText = data.reward.toFixed(8) + " ICSI";
         document.getElementById('netHalving').innerText = data.halving_countdown + " Blocks";
     } catch (e) {
@@ -483,8 +484,13 @@ async function updateMiner() {
 
 /* --- UTILS --- */
 
-function openCreateWalletModal() { document.getElementById('createWalletModal').style.display = 'block'; }
-function openImportWalletModal() { document.getElementById('importWalletModal').style.display = 'block'; }
+function openCreateWalletModal() { document.getElementById('createWalletModal').style.display = 'flex'; }
+function openImportWalletModal() { document.getElementById('importWalletModal').style.display = 'flex'; }
+
+function openModal(id) {
+    const el = document.getElementById(id);
+    if (el) el.style.display = 'flex';
+}
 
 function closeModal(id) {
     document.getElementById(id).style.display = 'none';
@@ -640,4 +646,60 @@ function copyBeggarAddress(address) {
         document.body.removeChild(ta);
         alert('Address copied!');
     });
+}
+
+// --- RPC Auth Logic ---
+
+function openRpcConfigModal() {
+    openModal('rpcConfigModal');
+    loadRpcConfig();
+}
+
+function checkMinerAuth() {
+    alert("To verify if your miner supports Auth:\n\n1. Check if 'Enforce Username/Password' is ENABLED in RPC Auth.\n2. If enabled, your miner MUST be started with:\n   --user <username> --pass <password>\n\nIf you see '401 Unauthorized' in your miner logs, either correct the password or DISABLE enforcement here.");
+}
+
+async function loadRpcConfig() {
+    try {
+        const response = await fetch('/api/rpc/config');
+        const data = await response.json();
+
+        document.getElementById('rpcUser').value = data.user;
+        document.getElementById('rpcPass').value = data.password;
+        document.getElementById('rpcEnforce').checked = data.enforce_auth;
+    } catch (error) {
+        console.error("Failed to load RPC config:", error);
+        alert("Failed to load RPC config");
+    }
+}
+
+async function saveRpcConfig() {
+    const user = document.getElementById('rpcUser').value;
+    const password = document.getElementById('rpcPass').value;
+    const enforce = document.getElementById('rpcEnforce').checked;
+
+    try {
+        const response = await fetch('/api/rpc/config', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                user: user,
+                password: password,
+                enforce_auth: enforce
+            })
+        });
+
+        const result = await response.json();
+        if (response.ok) {
+            alert("RPC Configuration Saved");
+            closeModal('rpcConfigModal');
+        } else {
+            alert("Error: " + result.error);
+        }
+    } catch (error) {
+        console.error("Failed to save RPC config:", error);
+        alert("Failed to save RPC config");
+    }
 }

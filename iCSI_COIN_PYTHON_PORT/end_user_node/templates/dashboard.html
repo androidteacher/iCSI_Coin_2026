@@ -80,6 +80,10 @@
                     💰 Beggars List
                     <span id="begMenuDot" class="hidden w-2 h-2 rounded-full bg-yellow-400 animate-pulse"></span>
                 </button>
+                <button onclick="openRpcConfigModal()"
+                    class="px-4 py-2 rounded-lg bg-zinc-800 border border-zinc-700 text-zinc-300 font-bold text-xs uppercase tracking-wider hover:bg-zinc-700 hover:text-white transition-all">
+                    🔒 RPC Auth
+                </button>
             </div>
         </div>
     </nav>
@@ -171,6 +175,10 @@
                     <div class="flex justify-between items-center py-2 border-b border-zinc-900">
                         <span class="text-zinc-500">Difficulty</span>
                         <span id="netDiff" class="text-white">---</span>
+                    </div>
+                    <div class="flex justify-between items-center py-2 border-b border-zinc-900">
+                        <span class="text-zinc-500">Next Diff. Increase</span>
+                        <span id="netDiffCountdown" class="text-white">---</span>
                     </div>
                     <div class="flex justify-between items-center py-2 border-b border-zinc-900">
                         <span class="text-zinc-500">Reward</span>
@@ -275,6 +283,11 @@
                         <button id="stopMineBtn" onclick="stopMining()" disabled
                             class="px-6 py-2 bg-pink-500 hover:bg-pink-400 text-white font-bold uppercase text-xs rounded-full transition-colors disabled:opacity-50 disabled:cursor-not-allowed shadow-[0_0_15px_rgba(236,72,153,0.3)] ">Stop</button>
                     </div>
+                </div>
+                <div class="mb-4 text-right">
+                    <button onclick="checkMinerAuth()"
+                        class="text-[10px] text-zinc-500 hover:text-white underline decoration-zinc-700 hover:decoration-white transition-all">Does
+                        my miner accept Auth?</button>
                 </div>
 
                 <div id="miningTerminal"
@@ -490,7 +503,46 @@
         </div>
     </div>
 
-    <script src="/static/js/main.js?v=5"></script>
+    <!-- RPC Config Modal -->
+    <div id="rpcConfigModal" class="fixed inset-0 bg-black/80 backdrop-blur-sm hidden items-center justify-center z-50">
+        <div
+            class="bg-zinc-900 border border-zinc-700 rounded-xl p-8 w-[90%] max-w-md shadow-2xl animate-[slideUp_0.3s_ease-out]">
+            <div class="flex justify-between items-center mb-6">
+                <h3 class="font-heading font-bold text-xl uppercase text-white">RPC Authentication</h3>
+                <button onclick="closeModal('rpcConfigModal')" class="text-zinc-500 hover:text-white text-xl">✕</button>
+            </div>
+
+            <div class="space-y-4 mb-6">
+                <div>
+                    <label class="block text-xs font-bold uppercase text-zinc-500 mb-2 tracking-wider">Username</label>
+                    <input type="text" id="rpcUser"
+                        class="w-full bg-black border border-zinc-700 rounded-lg px-4 py-3 text-sm focus:border-cyan-500 focus:outline-none text-white">
+                </div>
+                <div>
+                    <label class="block text-xs font-bold uppercase text-zinc-500 mb-2 tracking-wider">Password</label>
+                    <input type="text" id="rpcPass"
+                        class="w-full bg-black border border-zinc-700 rounded-lg px-4 py-3 text-sm focus:border-cyan-500 focus:outline-none text-white">
+                </div>
+                <div class="flex items-center gap-3 py-2">
+                    <input type="checkbox" id="rpcEnforce"
+                        class="w-4 h-4 rounded border-gray-300 text-cyan-500 focus:ring-cyan-500">
+                    <label for="rpcEnforce" class="text-sm text-zinc-300 select-none cursor-pointer">Enforce
+                        Username/Password</label>
+                </div>
+                <p class="text-[10px] text-zinc-500 font-mono leading-relaxed border-l-2 border-yellow-600 pl-3">
+                    <span class="text-yellow-600 font-bold">WARNING:</span> If enforced, external miners must specify
+                    <code>--user</code> and <code>--pass</code> arguments matching these credentials.
+                </p>
+            </div>
+
+            <button onclick="saveRpcConfig()"
+                class="w-full py-3 bg-cyan-600 text-white font-bold uppercase text-sm rounded-lg hover:bg-cyan-500 transition-colors shadow-[0_0_20px_rgba(8,145,178,0.2)]">
+                Save Configuration
+            </button>
+        </div>
+    </div>
+
+    <script src="/static/js/main.js?v=6"></script>
 </body>
 
 </html>

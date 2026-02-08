@@ -1,5 +1,6 @@
 import logging
 import asyncio
+import aiohttp
 from aiohttp import web
 import os
 import binascii
@@ -18,6 +19,7 @@ class WebServer:
         self.network_manager = network_manager
         self.app = web.Application()
         self.rpc_port = rpc_port
+        self.enforce_auth = False # Default: permissive
         
         # Setup Jinja2
         template_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), 'templates')
@@ -48,6 +50,10 @@ class WebServer:
         self.app.router.add_get('/api/stats', self.handle_get_stats)
         self.app.router.add_post('/api/stun/test', self.handle_test_stun)
         self.app.router.add_get('/api/discovery/status', self.handle_discovery_status)
+        
+        # API - RPC Config
+        self.app.router.add_get('/api/rpc/config', self.handle_rpc_config_get)
+        self.app.router.add_post('/api/rpc/config', self.handle_rpc_config_post)
         
         # API - Wallet
         self.app.router.add_get('/api/wallet/list', self.handle_wallet_list)
@@ -178,7 +184,7 @@ class WebServer:
         height = best_block['height'] if best_block else 0
         
         # Dynamic difficulty
-        from icsicoin.consensus.validation import calculate_next_bits
+        from icsicoin.consensus.validation import calculate_next_bits, DIFFICULTY_ADJUSTMENT_INTERVAL
         bits = calculate_next_bits(self.network_manager.chain_manager, height + 1)
 
         # Calculate Reward
@@ -196,6 +202,7 @@ class WebServer:
             'difficulty': bits,
             'reward': reward,
             'halving_countdown': halving_countdown,
+            'difficulty_countdown': DIFFICULTY_ADJUSTMENT_INTERVAL - (height % DIFFICULTY_ADJUSTMENT_INTERVAL),
             'test_msg_received': self.network_manager.test_msg_count
         })
 
@@ -397,3 +404,32 @@ class WebServer:
             remaining = max(0, int(20 * 60 - (time_mod.time() - ab['started_at'])))
             active = {'address': ab['address'], 'remaining_seconds': remaining}
         return web.json_response({'beggars': beggars, 'active_beg': active})
+
+    async def handle_rpc_config_get(self, request):
+        url = f"http://127.0.0.1:{self.rpc_port}/api/rpc/config"
+        try:
+            async with aiohttp.ClientSession() as session:
+                async with session.get(url) as resp:
+                    if resp.status == 200:
+                        return web.json_response(await resp.json())
+                    else:
+                        return web.json_response({'error': f'RPC Server returned {resp.status}'}, status=502)
+        except Exception as e:
+            return web.json_response({'error': f"Failed to reach RPC server: {e}"}, status=502)
+
+    async def handle_rpc_config_post(self, request):
+        url = f"http://127.0.0.1:{self.rpc_port}/api/rpc/config"
+        try:
+            data = await request.json()
+            async with aiohttp.ClientSession() as session:
+                async with session.post(url, json=data) as resp:
+                    if resp.status == 200:
+                        return web.json_response(await resp.json())
+                    else:
+                        try:
+                            err = await resp.json()
+                            return web.json_response(err, status=resp.status)
+                        except:
+                            return web.json_response({'error': f'RPC Server returned {resp.status}'}, status=502)
+        except Exception as e:
+            return web.json_response({'error': f"Failed to reach RPC server: {e}"}, status=502)

@@ -14,6 +14,7 @@ class RPCServer:
         self.port = port
         self.user = user
         self.password = password
+        self.enforce_auth = False # Default: permissive
         self.allow_ip = allow_ip
         self.network_manager = network_manager
         self.chain_manager = chain_manager
@@ -21,6 +22,8 @@ class RPCServer:
         self.wallet = wallet
         self.app = web.Application()
         self.app.router.add_post('/', self.handle_request)
+        self.app.router.add_get('/api/rpc/config', self.handle_rpc_config_get)
+        self.app.router.add_post('/api/rpc/config', self.handle_rpc_config_post)
         self.runner = None
         self.site = None
 
@@ -37,8 +40,26 @@ class RPCServer:
         logger.info("RPC Server stopped")
 
     async def handle_request(self, request):
-        # Basic Auth Check (if configured)
-        # For MVP we might skip strict auth or implement basic header check later
+        # Basic Auth Check
+        if self.enforce_auth:
+            auth_header = request.headers.get('Authorization')
+            if not auth_header:
+                return web.Response(text="Unauthorized", status=401, headers={'WWW-Authenticate': 'Basic realm="RPC"'})
+            
+            try:
+                auth_type, encoded = auth_header.split(None, 1)
+                if auth_type.lower() != 'basic':
+                     return web.Response(text="Unauthorized (Use Basic Auth)", status=401)
+                
+                import base64
+                decoded = base64.b64decode(encoded).decode('utf-8')
+                username, password = decoded.split(':', 1)
+                
+                if username != self.user or password != self.password:
+                     return web.Response(text="Unauthorized (Invalid Credentials)", status=401)
+            except Exception:
+                 return web.Response(text="Unauthorized (Bad Request)", status=401)
+
         # Parsing JSON
         try:
             data = await request.json()
@@ -196,3 +217,21 @@ class RPCServer:
         import signal
         import os
         os.kill(os.getpid(), signal.SIGINT)
+
+    async def handle_rpc_config_get(self, request):
+        return web.json_response({
+            'user': self.user,
+            'password': self.password,
+            'enforce_auth': self.enforce_auth
+        })
+
+    async def handle_rpc_config_post(self, request):
+        try:
+            data = await request.json()
+            if 'user' in data: self.user = data['user']
+            if 'password' in data: self.password = data['password']
+            if 'enforce_auth' in data: self.enforce_auth = bool(data['enforce_auth'])
+            
+            return web.json_response({'status': 'updated'})
+        except Exception as e:
+            return web.json_response({'error': str(e)}, status=400)

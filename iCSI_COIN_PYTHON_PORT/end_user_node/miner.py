@@ -25,7 +25,7 @@ logging.basicConfig(
 )
 logger = logging.getLogger("Miner")
 
-def rpc_call(url, method, params=None):
+def rpc_call(url, method, params=None, session=None):
     headers = {'content-type': 'application/json'}
     payload = {
         "method": method,
@@ -34,7 +34,10 @@ def rpc_call(url, method, params=None):
         "id": 1,
     }
     try:
-        response = requests.post(url, data=json.dumps(payload), headers=headers)
+        if session:
+            response = session.post(url, data=json.dumps(payload), headers=headers)
+        else:
+            response = requests.post(url, data=json.dumps(payload), headers=headers)
         response.raise_for_status()
         return response.json()
     except Exception as e:
@@ -55,7 +58,7 @@ def mine(url, user, password, threads=1):
     
     while True:
         # 1. Get Work
-        resp = rpc_call(url, "getblocktemplate")
+        resp = rpc_call(url, "getblocktemplate", session=session)
         if not resp or resp.get('error'):
             logger.error(f"Failed to get work: {resp.get('error') if resp else 'No response'}")
             time.sleep(5)
@@ -127,7 +130,7 @@ def mine(url, user, password, threads=1):
             block = Block(header, txs)
             block_hex = binascii.hexlify(block.serialize()).decode('utf-8')
             
-            submit_resp = rpc_call(url, "submitblock", [block_hex])
+            submit_resp = rpc_call(url, "submitblock", [block_hex], session=session)
             if submit_resp and submit_resp['result'] == 'accepted':
                 logger.info(f"Block accepted! Height: {height}")
             else:

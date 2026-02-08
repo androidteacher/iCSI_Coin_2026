@@ -113,9 +113,10 @@ class MinerController:
             
             header = BlockHeader(version, prev_hash, merkle_root, timestamp, bits, 0)
             
-            self._log(f"Mining Block {height}... Diff: {bits}")
+            self._log(f"Mining Block {height}... Block_Difficulty: {bits}")
             
             start_time = time.time()
+            last_report_time = start_time
             hashes = 0
             found = False
             
@@ -128,6 +129,15 @@ class MinerController:
                 header_bytes = header.serialize()
                 pow_hash = scrypt.hash(header_bytes, header_bytes, N=1024, r=1, p=1, buflen=32)
                 pow_int = int.from_bytes(pow_hash, 'little')
+                hashes += 1
+                
+                # Report hash rate every 10 seconds
+                now = time.time()
+                if now - last_report_time >= 10:
+                    elapsed = now - start_time
+                    rate = hashes / elapsed if elapsed > 0 else 0
+                    self._log(f"⛏ Hash Rate: {rate:.1f} H/s | {hashes} hashes in {elapsed:.0f}s")
+                    last_report_time = now
                 
                 if pow_int <= target:
                     found = True
@@ -144,6 +154,9 @@ class MinerController:
                     submit_resp = self._rpc_call("submitblock", [block_hex])
                     if submit_resp and submit_resp['result'] == 'accepted':
                         self._log(f"<span class='cyan'>Block {height} ACCEPTED!</span>")
+                        elapsed = time.time() - start_time
+                        rate = hashes / elapsed if elapsed > 0 else 0
+                        self._log(f"⛏ {hashes} hashes in {elapsed:.1f}s ({rate:.1f} H/s)")
                     else:
                         self._log(f"<span class='red'>Block Rejected</span>")
                     
