@@ -1,104 +1,88 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" class="dark">
 
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Login - iCSI Coin Node</title>
-    <style>
-        body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background-color: #1a1a1a;
-            color: #f0f0f0;
-            display: flex;
-            justify_content: center;
-            align-items: center;
-            height: 100vh;
-            margin: 0;
-        }
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&family=Rajdhani:wght@500;600;700&display=swap"
+        rel="stylesheet">
 
-        .container {
-            background-color: #2d2d2d;
-            padding: 2rem;
-            border-radius: 8px;
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
-            width: 100%;
-            max-width: 400px;
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        background: '#000000',
+                        surface: '#09090b', // Zinc 950
+                        border: '#27272a',   // Zinc 800
+                        primary: '#a855f7',  // Purple 500
+                        secondary: '#06b6d4', // Cyan
+                        muted: '#a1a1aa',    // Zinc 400
+                    },
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                        mono: ['JetBrains Mono', 'monospace'],
+                        heading: ['Rajdhani', 'sans-serif'],
+                    }
+                }
+            }
         }
-
-        h1 {
-            text-align: center;
-            color: #4CAF50;
-            margin-bottom: 2rem;
-        }
-
-        .form-group {
-            margin-bottom: 1rem;
-        }
-
-        label {
-            display: block;
-            margin-bottom: 0.5rem;
-            color: #aaa;
-        }
-
-        input {
-            width: 100%;
-            padding: 0.5rem;
-            background-color: #3d3d3d;
-            border: 1px solid #4d4d4d;
-            border-radius: 4px;
-            color: white;
-            box-sizing: border-box;
-        }
-
-        input:focus {
-            outline: none;
-            border-color: #4CAF50;
-        }
-
-        button {
-            width: 100%;
-            padding: 0.75rem;
-            background-color: #4CAF50;
-            color: white;
-            border: none;
-            border-radius: 4px;
-            cursor: pointer;
-            font-size: 1rem;
-            margin-top: 1rem;
-        }
-
-        button:hover {
-            background-color: #45a049;
-        }
-
-        .error {
-            color: #ff6b6b;
-            margin-top: 0.5rem;
-            font-size: 0.9rem;
-            text-align: center;
-            display: none;
-        }
-    </style>
+    </script>
 </head>
 
-<body>
-    <div class="container">
-        <h1>Node Login</h1>
+<body
+    class="bg-background text-white font-sans min-h-screen flex items-center justify-center p-4 selection:bg-primary selection:text-black">
 
-        <form id="loginForm">
-            <div class="form-group">
-                <label for="username">Username</label>
-                <input type="text" id="username" required autofocus>
+    <div class="w-full max-w-md">
+        <!-- Logo / Header -->
+        <div class="text-center mb-8">
+            <div class="inline-flex items-center gap-3 mb-2">
+                <span class="w-4 h-4 rounded-full bg-primary shadow-[0_0_12px_#a855f7]"></span>
+                <span class="font-heading font-bold text-3xl uppercase tracking-widest text-white">iCSI Coin</span>
             </div>
-            <div class="form-group">
-                <label for="password">Password</label>
-                <input type="password" id="password" required>
-            </div>
-            <div class="error" id="errorMessage"></div>
-            <button type="submit">Login</button>
-        </form>
+            <p class="text-muted text-sm font-mono">Node Authentication</p>
+        </div>
+
+        <!-- Login Card -->
+        <div class="bg-surface border border-border rounded-xl shadow-2xl p-8 backdrop-blur-sm">
+            <h2 class="text-xl font-bold mb-6 text-white font-heading tracking-wide">Login to Dashboard</h2>
+
+            <form id="loginForm" class="space-y-5">
+                <div>
+                    <label for="username" class="block text-sm font-medium text-muted mb-1.5 ml-1">Username</label>
+                    <input type="text" id="username" required autofocus
+                        class="w-full bg-black/50 border border-zinc-800 rounded-lg px-4 py-3 text-white placeholder-zinc-600 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all">
+                </div>
+
+                <div>
+                    <label for="password" class="block text-sm font-medium text-muted mb-1.5 ml-1">Password</label>
+                    <input type="password" id="password" required
+                        class="w-full bg-black/50 border border-zinc-800 rounded-lg px-4 py-3 text-white placeholder-zinc-600 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all">
+                </div>
+
+                <div class="text-red-400 text-sm text-center hidden p-2 bg-red-900/20 border border-red-900/50 rounded-lg"
+                    id="errorMessage">
+                    <!-- Error Message -->
+                </div>
+
+                <button type="submit"
+                    class="w-full bg-primary hover:bg-purple-600 text-white font-bold py-3 px-4 rounded-lg transition-all transform hover:scale-[1.02] active:scale-[0.98] shadow-[0_0_15px_rgba(168,85,247,0.3)]">
+                    Access Dashboard
+                </button>
+            </form>
+        </div>
+
+        <div class="mt-8 text-center">
+            <p class="text-zinc-600 text-xs font-mono">iCSI Coin Python Port v1.0</p>
+        </div>
     </div>
 
     <script>
@@ -107,8 +91,12 @@
             const username = document.getElementById('username').value;
             const password = document.getElementById('password').value;
             const errorEl = document.getElementById('errorMessage');
+            const btn = e.target.querySelector('button');
+            const originalBtnText = btn.innerHTML;
 
-            errorEl.style.display = 'none';
+            errorEl.classList.add('hidden');
+            btn.disabled = true;
+            btn.innerHTML = '<span class="animate-pulse">Authenticating...</span>';
 
             try {
                 const response = await fetch('/api/auth/login', {
@@ -122,11 +110,15 @@
                 } else {
                     const data = await response.json();
                     errorEl.textContent = data.error || "Login failed.";
-                    errorEl.style.display = 'block';
+                    errorEl.classList.remove('hidden');
+                    btn.disabled = false;
+                    btn.innerHTML = originalBtnText;
                 }
             } catch (err) {
-                errorEl.textContent = "Connection error.";
-                errorEl.style.display = 'block';
+                errorEl.textContent = "Connection error. Please check your node.";
+                errorEl.classList.remove('hidden');
+                btn.disabled = false;
+                btn.innerHTML = originalBtnText;
             }
         });
     </script>
