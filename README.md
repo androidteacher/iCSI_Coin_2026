@@ -54,6 +54,9 @@ cd STARTUP_SCRIPTS
 ./start_user_node.sh
 ```
 
+*Do the `docker run` commands/startup scripts seem broken?*
+Install the latest version of docker: [Click Here](https://cyberlessons101.com/docker)
+
 ### Blockchain Reset Scripts
 If you need to wipe the blockchain data and start fresh, use the reset scripts.
 
@@ -81,9 +84,7 @@ cd end_user_node
 
 ---
 
-### Troubleshooting
-*Do the `docker run` commands/startup scripts seem broken?*
-Install the latest version of docker: [Click Here](https://cyberlessons101.com/docker)
+
 
 ---
 
