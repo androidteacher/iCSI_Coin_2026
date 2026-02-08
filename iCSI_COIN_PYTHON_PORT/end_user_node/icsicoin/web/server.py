@@ -115,7 +115,14 @@ class WebServer:
 
     async def start(self):
         # Setup Session Middleware
-        setup_session(self.app, EncryptedCookieStorage(self.secret_key))
+        # We pass the Fernet instance directly to avoid aiohttp_session 
+        # double-encoding the key if passed as bytes.
+        try:
+            f = fernet.Fernet(self.secret_key)
+            setup_session(self.app, EncryptedCookieStorage(f))
+        except Exception as e:
+            logger.critical(f"Failed to initialize session storage: {e}")
+            raise e
         
         # Add Auth Middleware
         self.app.middlewares.append(self.auth_middleware)
@@ -159,12 +166,28 @@ class WebServer:
         # Check if we have a stored key
         if 'secret_key' in self.web_auth_config:
             try:
-                return base64.urlsafe_b64decode(self.web_auth_config['secret_key'])
-            except: pass
+                # Handle legacy double-encoded or simple string
+                stored = self.web_auth_config['secret_key']
+                
+                # Try simple encode first 
+                key = stored.encode()
+                
+                # Validate with Fernet
+                fernet.Fernet(key)
+                return key
+            except Exception:
+                # If simple fail, try the legacy decode (double encoded)
+                try:
+                    key = base64.urlsafe_b64decode(stored)
+                    fernet.Fernet(key)
+                    return key
+                except Exception:
+                    logger.warning("Invalid stored secret_key, generating new one.")
+                    pass
         
-        # Generate new
+        # Generate new (Simple storage)
         key = fernet.Fernet.generate_key()
-        self.web_auth_config['secret_key'] = base64.urlsafe_b64encode(key).decode()
+        self.web_auth_config['secret_key'] = key.decode()
         self._save_web_auth_config()
         return key
 

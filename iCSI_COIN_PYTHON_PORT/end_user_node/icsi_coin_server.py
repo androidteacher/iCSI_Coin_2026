@@ -2,6 +2,8 @@ import asyncio
 import argparse
 import logging
 import sys
+sys.path.insert(0, "/app")
+
 from icsicoin.network.manager import NetworkManager
 from icsicoin.wallet.wallet import Wallet
 from icsicoin.rpc.rpc_server import RPCServer
