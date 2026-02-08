@@ -93,8 +93,7 @@ def mine(url, user, password, address=None, threads=1):
         version = template['version']
         
         # Construct Header
-        # INTENTIONAL CORRUPTION FOR TESTING LOGGING
-        header = BlockHeader(version, prev_hash, b'\x00'*32, timestamp, bits, 0)
+        header = BlockHeader(version, prev_hash, merkle_root, timestamp, bits, 0)
         
         # Mining Loop
         logger.info(f"Mining Block {height} with difficulty {bits}...")

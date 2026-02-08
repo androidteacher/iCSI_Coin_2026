@@ -1,0 +1,200 @@
+2026-02-08 23:16:41,720 - aiohttp.access - INFO - 127.0.0.1 [08/Feb/2026:23:16:41 +0000] "POST / HTTP/1.1" 200 325 "-" "python-requests/2.32.5"
+2026-02-08 23:16:41,775 - MinerController - INFO - MINER LOG: <span class='green'>FOUND BLOCK! Nonce: 796</span>
+2026-02-08 23:16:41,776 - RPCServer - INFO - RPC Request: submitblock
+2026-02-08 23:16:41,777 - Validation - ERROR - Tx validation failed: Input a6fa85f5db00fb4d3d44509457429dc379d1f9daeaf1b134111bff6268fcad17:0 not found/spent
+2026-02-08 23:16:41,777 - Validation - ERROR - Block validation failed: Invalid transaction ff8c946fa426a43fd2f648e62945a36723adce0bf70b111f7f93cf908cb5a769 at index 1: Input a6fa85f5db00fb4d3d44509457429dc379d1f9daeaf1b134111bff6268fcad17:0 not found/spent
+2026-02-08 23:16:41,777 - ChainManager - ERROR - Block fcf8b147f9d5d933839b699a8aca18d4f8623c401d94f8015e625e6706af459e failed contextual validation: Invalid Tx 1: Input a6fa85f5db00fb4d3d44509457429dc379d1f9daeaf1b134111bff6268fcad17:0 not found/spent
+2026-02-08 23:16:41,777 - MinerController - INFO - MINER LOG: <span class='red'>Block Rejected</span>
+2026-02-08 23:16:41,778 - aiohttp.access - INFO - 127.0.0.1 [08/Feb/2026:23:16:41 +0000] "POST / HTTP/1.1" 200 325 "-" "python-requests/2.32.5"
+2026-02-08 23:16:41,778 - RPCServer - INFO - RPC Request: getblocktemplate
+2026-02-08 23:16:41,779 - aiohttp.access - INFO - 127.0.0.1 [08/Feb/2026:23:16:41 +0000] "POST / HTTP/1.1" 200 3211 "-" "python-requests/2.32.5"
+2026-02-08 23:16:41,779 - RPCServer - INFO - RPC Request: getblocktemplate
+2026-02-08 23:16:41,779 - aiohttp.access - INFO - 127.0.0.1 [08/Feb/2026:23:16:41 +0000] "POST / HTTP/1.1" 200 3211 "-" "python-requests/2.32.5"
+2026-02-08 23:16:41,780 - MinerController - INFO - MINER LOG: Mining Block 545... Block_Difficulty: 520722838
+2026-02-08 23:16:41,786 - RPCServer - INFO - RPC Request: submitblock
+2026-02-08 23:16:41,787 - Validation - ERROR - Tx validation failed: Input a6fa85f5db00fb4d3d44509457429dc379d1f9daeaf1b134111bff6268fcad17:0 not found/spent
+2026-02-08 23:16:41,787 - Validation - ERROR - Block validation failed: Invalid transaction ff8c946fa426a43fd2f648e62945a36723adce0bf70b111f7f93cf908cb5a769 at index 1: Input a6fa85f5db00fb4d3d44509457429dc379d1f9daeaf1b134111bff6268fcad17:0 not found/spent
+2026-02-08 23:16:41,787 - ChainManager - ERROR - Block fcf8b147f9d5d933839b699a8aca18d4f8623c401d94f8015e625e6706af459e failed contextual validation: Invalid Tx 1: Input a6fa85f5db00fb4d3d44509457429dc379d1f9daeaf1b134111bff6268fcad17:0 not found/spent
+2026-02-08 23:16:41,788 - aiohttp.access - INFO - 127.0.0.1 [08/Feb/2026:23:16:41 +0000] "POST / HTTP/1.1" 200 325 "-" "python-requests/2.32.5"
+2026-02-08 23:16:41,867 - RPCServer - INFO - RPC Request: getblocktemplate
+2026-02-08 23:16:41,869 - aiohttp.access - INFO - 127.0.0.1 [08/Feb/2026:23:16:41 +0000] "POST / HTTP/1.1" 200 3211 "-" "python-requests/2.32.5"
+2026-02-08 23:16:41,952 - aiohttp.access - INFO - 127.0.0.1 [08/Feb/2026:23:16:41 +0000] "GET /api/peers HTTP/1.1" 200 342 "http://localhost:8080/" "Mozilla/5.0 (X11; Linux x86_64; rv:147.0) Gecko/20100101 Firefox/147.0"
+2026-02-08 23:16:41,957 - aiohttp.access - INFO - 127.0.0.1 [08/Feb/2026:23:16:41 +0000] "GET /api/miner/status HTTP/1.1" 200 3252 "http://localhost:8080/" "Mozilla/5.0 (X11; Linux x86_64; rv:147.0) Gecko/20100101 Firefox/147.0"
+2026-02-08 23:16:41,973 - RPCServer - INFO - RPC Request: getblocktemplate
+2026-02-08 23:16:41,973 - aiohttp.access - INFO - 127.0.0.1 [08/Feb/2026:23:16:41 +0000] "POST / HTTP/1.1" 200 3211 "-" "python-requests/2.32.5"
+2026-02-08 23:16:41,986 - MinerController - INFO - MINER LOG: <span class='green'>FOUND BLOCK! Nonce: 796</span>
+2026-02-08 23:16:41,987 - RPCServer - INFO - RPC Request: submitblock
+2026-02-08 23:16:41,988 - Validation - ERROR - Tx validation failed: Input a6fa85f5db00fb4d3d44509457429dc379d1f9daeaf1b134111bff6268fcad17:0 not found/spent
+2026-02-08 23:16:41,989 - Validation - ERROR - Block validation failed: Invalid transaction ff8c946fa426a43fd2f648e62945a36723adce0bf70b111f7f93cf908cb5a769 at index 1: Input a6fa85f5db00fb4d3d44509457429dc379d1f9daeaf1b134111bff6268fcad17:0 not found/spent
+2026-02-08 23:16:41,989 - ChainManager - ERROR - Block fcf8b147f9d5d933839b699a8aca18d4f8623c401d94f8015e625e6706af459e failed contextual validation: Invalid Tx 1: Input a6fa85f5db00fb4d3d44509457429dc379d1f9daeaf1b134111bff6268fcad17:0 not found/spent
+2026-02-08 23:16:41,989 - aiohttp.access - INFO - 127.0.0.1 [08/Feb/2026:23:16:41 +0000] "POST / HTTP/1.1" 200 325 "-" "python-requests/2.32.5"
+2026-02-08 23:16:41,990 - MinerController - INFO - MINER LOG: <span class='red'>Block Rejected</span>
+2026-02-08 23:16:41,991 - RPCServer - INFO - RPC Request: getblocktemplate
+2026-02-08 23:16:41,991 - aiohttp.access - INFO - 127.0.0.1 [08/Feb/2026:23:16:41 +0000] "POST / HTTP/1.1" 200 3211 "-" "python-requests/2.32.5"
+2026-02-08 23:16:41,991 - MinerController - INFO - MINER LOG: Mining Block 545... Block_Difficulty: 520722838
+2026-02-08 23:16:42,002 - RPCServer - INFO - RPC Request: submitblock
+2026-02-08 23:16:42,002 - Validation - ERROR - Tx validation failed: Input a6fa85f5db00fb4d3d44509457429dc379d1f9daeaf1b134111bff6268fcad17:0 not found/spent
+2026-02-08 23:16:42,002 - Validation - ERROR - Block validation failed: Invalid transaction ff8c946fa426a43fd2f648e62945a36723adce0bf70b111f7f93cf908cb5a769 at index 1: Input a6fa85f5db00fb4d3d44509457429dc379d1f9daeaf1b134111bff6268fcad17:0 not found/spent
+2026-02-08 23:16:42,002 - ChainManager - ERROR - Block fcf8b147f9d5d933839b699a8aca18d4f8623c401d94f8015e625e6706af459e failed contextual validation: Invalid Tx 1: Input a6fa85f5db00fb4d3d44509457429dc379d1f9daeaf1b134111bff6268fcad17:0 not found/spent
+2026-02-08 23:16:42,002 - aiohttp.access - INFO - 127.0.0.1 [08/Feb/2026:23:16:42 +0000] "POST / HTTP/1.1" 200 325 "-" "python-requests/2.32.5"
+2026-02-08 23:16:42,004 - RPCServer - INFO - RPC Request: submitblock
+2026-02-08 23:16:42,004 - Validation - ERROR - Tx validation failed: Input a6fa85f5db00fb4d3d44509457429dc379d1f9daeaf1b134111bff6268fcad17:0 not found/spent
+2026-02-08 23:16:42,004 - Validation - ERROR - Block validation failed: Invalid transaction ff8c946fa426a43fd2f648e62945a36723adce0bf70b111f7f93cf908cb5a769 at index 1: Input a6fa85f5db00fb4d3d44509457429dc379d1f9daeaf1b134111bff6268fcad17:0 not found/spent
+2026-02-08 23:16:42,004 - ChainManager - ERROR - Block ef7f9fd8137652ba7d619db6914b3a3376b76f1ce358ee70a174d13d786197e4 failed contextual validation: Invalid Tx 1: Input a6fa85f5db00fb4d3d44509457429dc379d1f9daeaf1b134111bff6268fcad17:0 not found/spent
+2026-02-08 23:16:42,005 - aiohttp.access - INFO - 127.0.0.1 [08/Feb/2026:23:16:42 +0000] "POST / HTTP/1.1" 200 325 "-" "python-requests/2.32.5"
+2026-02-08 23:16:42,065 - RPCServer - INFO - RPC Request: submitblock
+2026-02-08 23:16:42,073 - Validation - ERROR - Tx validation failed: Input a6fa85f5db00fb4d3d44509457429dc379d1f9daeaf1b134111bff6268fcad17:0 not found/spent
+2026-02-08 23:16:42,073 - Validation - ERROR - Block validation failed: Invalid transaction ff8c946fa426a43fd2f648e62945a36723adce0bf70b111f7f93cf908cb5a769 at index 1: Input a6fa85f5db00fb4d3d44509457429dc379d1f9daeaf1b134111bff6268fcad17:0 not found/spent
+2026-02-08 23:16:42,073 - ChainManager - ERROR - Block fcf8b147f9d5d933839b699a8aca18d4f8623c401d94f8015e625e6706af459e failed contextual validation: Invalid Tx 1: Input a6fa85f5db00fb4d3d44509457429dc379d1f9daeaf1b134111bff6268fcad17:0 not found/spent
+2026-02-08 23:16:42,073 - aiohttp.access - INFO - 127.0.0.1 [08/Feb/2026:23:16:42 +0000] "POST / HTTP/1.1" 200 325 "-" "python-requests/2.32.5"
+2026-02-08 23:16:42,165 - RPCServer - INFO - RPC Request: submitblock
+2026-02-08 23:16:42,167 - Validation - ERROR - Tx validation failed: Input a6fa85f5db00fb4d3d44509457429dc379d1f9daeaf1b134111bff6268fcad17:0 not found/spent
+2026-02-08 23:16:42,167 - Validation - ERROR - Block validation failed: Invalid transaction ff8c946fa426a43fd2f648e62945a36723adce0bf70b111f7f93cf908cb5a769 at index 1: Input a6fa85f5db00fb4d3d44509457429dc379d1f9daeaf1b134111bff6268fcad17:0 not found/spent
+2026-02-08 23:16:42,167 - ChainManager - ERROR - Block fcf8b147f9d5d933839b699a8aca18d4f8623c401d94f8015e625e6706af459e failed contextual validation: Invalid Tx 1: Input a6fa85f5db00fb4d3d44509457429dc379d1f9daeaf1b134111bff6268fcad17:0 not found/spent
+2026-02-08 23:16:42,167 - aiohttp.access - INFO - 127.0.0.1 [08/Feb/2026:23:16:42 +0000] "POST / HTTP/1.1" 200 325 "-" "python-requests/2.32.5"
+2026-02-08 23:16:42,169 - aiohttp.access - INFO - 127.0.0.1 [08/Feb/2026:23:16:42 +0000] "GET /api/peers HTTP/1.1" 200 342 "http://localhost:8080/" "Mozilla/5.0 (X11; Linux x86_64; rv:147.0) Gecko/20100101 Firefox/147.0"
+2026-02-08 23:16:42,170 - aiohttp.access - INFO - 127.0.0.1 [08/Feb/2026:23:16:42 +0000] "GET /api/miner/status HTTP/1.1" 200 3252 "http://localhost:8080/" "Mozilla/5.0 (X11; Linux x86_64; rv:147.0) Gecko/20100101 Firefox/147.0"
+2026-02-08 23:16:42,192 - MinerController - INFO - MINER LOG: <span class='green'>FOUND BLOCK! Nonce: 796</span>
+2026-02-08 23:16:42,193 - RPCServer - INFO - RPC Request: submitblock
+2026-02-08 23:16:42,195 - Validation - ERROR - Tx validation failed: Input a6fa85f5db00fb4d3d44509457429dc379d1f9daeaf1b134111bff6268fcad17:0 not found/spent
+2026-02-08 23:16:42,195 - Validation - ERROR - Block validation failed: Invalid transaction ff8c946fa426a43fd2f648e62945a36723adce0bf70b111f7f93cf908cb5a769 at index 1: Input a6fa85f5db00fb4d3d44509457429dc379d1f9daeaf1b134111bff6268fcad17:0 not found/spent
+2026-02-08 23:16:42,195 - ChainManager - ERROR - Block fcf8b147f9d5d933839b699a8aca18d4f8623c401d94f8015e625e6706af459e failed contextual validation: Invalid Tx 1: Input a6fa85f5db00fb4d3d44509457429dc379d1f9daeaf1b134111bff6268fcad17:0 not found/spent
+2026-02-08 23:16:42,195 - aiohttp.access - INFO - 127.0.0.1 [08/Feb/2026:23:16:42 +0000] "POST / HTTP/1.1" 200 325 "-" "python-requests/2.32.5"
+2026-02-08 23:16:42,196 - aiohttp_session - WARNING - Cannot decrypt cookie value, create a new fresh session
+2026-02-08 23:16:42,196 - MinerController - INFO - MINER LOG: <span class='red'>Block Rejected</span>
+2026-02-08 23:16:42,197 - aiohttp.access - INFO - 192.168.80.1 [08/Feb/2026:23:16:42 +0000] "GET /api/beggar/list HTTP/1.1" 401 193 "http://192.168.80.132:8080/" "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:147.0) Gecko/20100101 Firefox/147.0"
+2026-02-08 23:16:42,198 - aiohttp_session - WARNING - Cannot decrypt cookie value, create a new fresh session
+2026-02-08 23:16:42,198 - aiohttp.access - INFO - 192.168.80.1 [08/Feb/2026:23:16:42 +0000] "GET /api/miner/status HTTP/1.1" 401 193 "http://192.168.80.132:8080/" "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:147.0) Gecko/20100101 Firefox/147.0"
+2026-02-08 23:16:42,199 - RPCServer - INFO - RPC Request: getblocktemplate
+2026-02-08 23:16:42,200 - aiohttp.access - INFO - 127.0.0.1 [08/Feb/2026:23:16:42 +0000] "POST / HTTP/1.1" 200 3211 "-" "python-requests/2.32.5"
+2026-02-08 23:16:42,200 - MinerController - INFO - MINER LOG: Mining Block 545... Block_Difficulty: 520722838
+2026-02-08 23:16:42,201 - aiohttp_session - WARNING - Cannot decrypt cookie value, create a new fresh session
+2026-02-08 23:16:42,203 - aiohttp.access - INFO - 192.168.80.1 [08/Feb/2026:23:16:42 +0000] "GET /api/wallet/list HTTP/1.1" 401 193 "http://192.168.80.132:8080/" "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:147.0) Gecko/20100101 Firefox/147.0"
+2026-02-08 23:16:42,222 - RPCServer - INFO - RPC Request: getblocktemplate
+2026-02-08 23:16:42,222 - aiohttp.access - INFO - 127.0.0.1 [08/Feb/2026:23:16:42 +0000] "POST / HTTP/1.1" 200 3211 "-" "python-requests/2.32.5"
+2026-02-08 23:16:42,289 - RPCServer - INFO - RPC Request: getblocktemplate
+2026-02-08 23:16:42,290 - aiohttp.access - INFO - 127.0.0.1 [08/Feb/2026:23:16:42 +0000] "POST / HTTP/1.1" 200 3211 "-" "python-requests/2.32.5"
+2026-02-08 23:16:42,403 - aiohttp_session - WARNING - Cannot decrypt cookie value, create a new fresh session
+2026-02-08 23:16:42,404 - aiohttp.access - INFO - 192.168.80.1 [08/Feb/2026:23:16:42 +0000] "GET /api/stats HTTP/1.1" 401 193 "http://192.168.80.132:8080/" "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:147.0) Gecko/20100101 Firefox/147.0"
+2026-02-08 23:16:42,405 - aiohttp_session - WARNING - Cannot decrypt cookie value, create a new fresh session
+2026-02-08 23:16:42,406 - aiohttp.access - INFO - 192.168.80.1 [08/Feb/2026:23:16:42 +0000] "GET /api/wallet/list HTTP/1.1" 401 193 "http://192.168.80.132:8080/" "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:147.0) Gecko/20100101 Firefox/147.0"
+2026-02-08 23:16:42,407 - aiohttp_session - WARNING - Cannot decrypt cookie value, create a new fresh session
+2026-02-08 23:16:42,407 - aiohttp.access - INFO - 192.168.80.1 [08/Feb/2026:23:16:42 +0000] "GET /api/discovery/status HTTP/1.1" 401 193 "http://192.168.80.132:8080/" "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:147.0) Gecko/20100101 Firefox/147.0"
+2026-02-08 23:16:42,407 - aiohttp_session - WARNING - Cannot decrypt cookie value, create a new fresh session
+2026-02-08 23:16:42,408 - aiohttp.access - INFO - 192.168.80.1 [08/Feb/2026:23:16:42 +0000] "GET /api/miner/status HTTP/1.1" 401 193 "http://192.168.80.132:8080/" "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:147.0) Gecko/20100101 Firefox/147.0"
+2026-02-08 23:16:42,505 - RPCServer - INFO - RPC Request: getblocktemplate
+2026-02-08 23:16:42,506 - aiohttp.access - INFO - 127.0.0.1 [08/Feb/2026:23:16:42 +0000] "POST / HTTP/1.1" 200 3211 "-" "python-requests/2.32.5"
+2026-02-08 23:16:42,508 - RPCServer - INFO - RPC Request: getblocktemplate
+2026-02-08 23:16:42,511 - aiohttp.access - INFO - 127.0.0.1 [08/Feb/2026:23:16:42 +0000] "POST / HTTP/1.1" 200 3211 "-" "python-requests/2.32.5"
+2026-02-08 23:16:42,575 - RPCServer - INFO - RPC Request: getblocktemplate
+2026-02-08 23:16:42,576 - aiohttp.access - INFO - 127.0.0.1 [08/Feb/2026:23:16:42 +0000] "POST / HTTP/1.1" 200 3211 "-" "python-requests/2.32.5"
+2026-02-08 23:16:42,674 - RPCServer - INFO - RPC Request: getblocktemplate
+2026-02-08 23:16:42,674 - aiohttp.access - INFO - 127.0.0.1 [08/Feb/2026:23:16:42 +0000] "POST / HTTP/1.1" 200 3211 "-" "python-requests/2.32.5"
+2026-02-08 23:16:42,713 - aiohttp_session - WARNING - Cannot decrypt cookie value, create a new fresh session
+2026-02-08 23:16:42,717 - aiohttp.access - INFO - 192.168.80.1 [08/Feb/2026:23:16:42 +0000] "GET /api/miner/status HTTP/1.1" 401 193 "http://192.168.80.132:8080/" "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:147.0) Gecko/20100101 Firefox/147.0"
+2026-02-08 23:16:42,727 - aiohttp_session - WARNING - Cannot decrypt cookie value, create a new fresh session
+2026-02-08 23:16:42,728 - aiohttp.access - INFO - 192.168.80.1 [08/Feb/2026:23:16:42 +0000] "GET /api/peers HTTP/1.1" 401 193 "http://192.168.80.132:8080/" "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:147.0) Gecko/20100101 Firefox/147.0"
+2026-02-08 23:16:42,728 - aiohttp_session - WARNING - Cannot decrypt cookie value, create a new fresh session
+2026-02-08 23:16:42,729 - aiohttp.access - INFO - 192.168.80.1 [08/Feb/2026:23:16:42 +0000] "GET /api/miner/status HTTP/1.1" 401 193 "http://192.168.80.132:8080/" "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:147.0) Gecko/20100101 Firefox/147.0"
+2026-02-08 23:16:42,770 - aiohttp.access - INFO - 127.0.0.1 [08/Feb/2026:23:16:42 +0000] "GET /api/stats HTTP/1.1" 200 298 "http://localhost:8080/" "Mozilla/5.0 (X11; Linux x86_64; rv:147.0) Gecko/20100101 Firefox/147.0"
+2026-02-08 23:16:42,788 - aiohttp.access - INFO - 127.0.0.1 [08/Feb/2026:23:16:42 +0000] "GET /api/wallet/list HTTP/1.1" 200 574 "http://localhost:8080/" "Mozilla/5.0 (X11; Linux x86_64; rv:147.0) Gecko/20100101 Firefox/147.0"
+2026-02-08 23:16:42,790 - aiohttp.access - INFO - 127.0.0.1 [08/Feb/2026:23:16:42 +0000] "GET /api/discovery/status HTTP/1.1" 200 280 "http://localhost:8080/" "Mozilla/5.0 (X11; Linux x86_64; rv:147.0) Gecko/20100101 Firefox/147.0"
+2026-02-08 23:16:42,792 - aiohttp.access - INFO - 127.0.0.1 [08/Feb/2026:23:16:42 +0000] "GET /api/beggar/list HTTP/1.1" 200 193 "http://localhost:8080/" "Mozilla/5.0 (X11; Linux x86_64; rv:147.0) Gecko/20100101 Firefox/147.0"
+2026-02-08 23:16:42,803 - aiohttp.access - INFO - 127.0.0.1 [08/Feb/2026:23:16:42 +0000] "GET /api/wallet/list HTTP/1.1" 200 574 "http://localhost:8080/" "Mozilla/5.0 (X11; Linux x86_64; rv:147.0) Gecko/20100101 Firefox/147.0"
+2026-02-08 23:16:42,840 - aiohttp.access - INFO - 192.168.80.1 [08/Feb/2026:23:16:42 +0000] "GET /api/discovery/status HTTP/1.1" 200 280 "http://192.168.80.132:8080/" "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:147.0) Gecko/20100101 Firefox/147.0"
+2026-02-08 23:16:42,843 - aiohttp.access - INFO - 192.168.80.1 [08/Feb/2026:23:16:42 +0000] "GET /api/miner/status HTTP/1.1" 200 3252 "http://192.168.80.132:8080/" "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:147.0) Gecko/20100101 Firefox/147.0"
+2026-02-08 23:16:42,847 - aiohttp.access - INFO - 192.168.80.1 [08/Feb/2026:23:16:42 +0000] "GET /api/peers HTTP/1.1" 200 342 "http://192.168.80.132:8080/" "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:147.0) Gecko/20100101 Firefox/147.0"
+2026-02-08 23:16:42,849 - aiohttp.access - INFO - 192.168.80.1 [08/Feb/2026:23:16:42 +0000] "GET /api/discovery/status HTTP/1.1" 200 280 "http://192.168.80.132:8080/" "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:147.0) Gecko/20100101 Firefox/147.0"
+2026-02-08 23:16:42,852 - aiohttp.access - INFO - 192.168.80.1 [08/Feb/2026:23:16:42 +0000] "GET /api/miner/status HTTP/1.1" 200 3252 "http://192.168.80.132:8080/" "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:147.0) Gecko/20100101 Firefox/147.0"
+2026-02-08 23:16:42,960 - aiohttp.access - INFO - 127.0.0.1 [08/Feb/2026:23:16:42 +0000] "GET /api/miner/status HTTP/1.1" 200 3252 "http://localhost:8080/" "Mozilla/5.0 (X11; Linux x86_64; rv:147.0) Gecko/20100101 Firefox/147.0"
+2026-02-08 23:16:43,170 - aiohttp.access - INFO - 127.0.0.1 [08/Feb/2026:23:16:43 +0000] "GET /api/miner/status HTTP/1.1" 200 3251 "http://localhost:8080/" "Mozilla/5.0 (X11; Linux x86_64; rv:147.0) Gecko/20100101 Firefox/147.0"
+2026-02-08 23:16:43,189 - aiohttp_session - WARNING - Cannot decrypt cookie value, create a new fresh session
+2026-02-08 23:16:43,191 - aiohttp.access - INFO - 192.168.80.1 [08/Feb/2026:23:16:43 +0000] "GET /api/peers HTTP/1.1" 401 193 "http://192.168.80.132:8080/" "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:147.0) Gecko/20100101 Firefox/147.0"
+2026-02-08 23:16:43,465 - aiohttp_session - WARNING - Cannot decrypt cookie value, create a new fresh session
+2026-02-08 23:16:43,468 - aiohttp.access - INFO - 192.168.80.1 [08/Feb/2026:23:16:43 +0000] "GET /api/beggar/list HTTP/1.1" 401 193 "http://192.168.80.132:8080/" "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:147.0) Gecko/20100101 Firefox/147.0"
+2026-02-08 23:16:43,471 - aiohttp_session - WARNING - Cannot decrypt cookie value, create a new fresh session
+2026-02-08 23:16:43,501 - aiohttp.access - INFO - 192.168.80.1 [08/Feb/2026:23:16:43 +0000] "GET /api/peers HTTP/1.1" 401 193 "http://192.168.80.132:8080/" "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:147.0) Gecko/20100101 Firefox/147.0"
+2026-02-08 23:16:43,501 - aiohttp_session - WARNING - Cannot decrypt cookie value, create a new fresh session
+2026-02-08 23:16:43,502 - aiohttp.access - INFO - 192.168.80.1 [08/Feb/2026:23:16:43 +0000] "GET /api/miner/status HTTP/1.1" 401 193 "http://192.168.80.132:8080/" "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:147.0) Gecko/20100101 Firefox/147.0"
+2026-02-08 23:16:43,504 - aiohttp_session - WARNING - Cannot decrypt cookie value, create a new fresh session
+2026-02-08 23:16:43,505 - aiohttp.access - INFO - 192.168.80.1 [08/Feb/2026:23:16:43 +0000] "GET /api/wallet/list HTTP/1.1" 401 193 "http://192.168.80.132:8080/" "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:147.0) Gecko/20100101 Firefox/147.0"
+2026-02-08 23:16:43,729 - aiohttp_session - WARNING - Cannot decrypt cookie value, create a new fresh session
+2026-02-08 23:16:43,729 - aiohttp.access - INFO - 192.168.80.1 [08/Feb/2026:23:16:43 +0000] "GET /api/peers HTTP/1.1" 401 193 "http://192.168.80.132:8080/" "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:147.0) Gecko/20100101 Firefox/147.0"
+2026-02-08 23:16:43,731 - aiohttp_session - WARNING - Cannot decrypt cookie value, create a new fresh session
+2026-02-08 23:16:43,731 - aiohttp.access - INFO - 192.168.80.1 [08/Feb/2026:23:16:43 +0000] "GET /api/miner/status HTTP/1.1" 401 193 "http://192.168.80.132:8080/" "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:147.0) Gecko/20100101 Firefox/147.0"
+2026-02-08 23:16:43,732 - aiohttp_session - WARNING - Cannot decrypt cookie value, create a new fresh session
+2026-02-08 23:16:43,734 - aiohttp.access - INFO - 192.168.80.1 [08/Feb/2026:23:16:43 +0000] "GET /api/miner/status HTTP/1.1" 401 193 "http://192.168.80.132:8080/" "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:147.0) Gecko/20100101 Firefox/147.0"
+2026-02-08 23:16:43,836 - aiohttp.access - INFO - 192.168.80.1 [08/Feb/2026:23:16:43 +0000] "GET /api/beggar/list HTTP/1.1" 200 193 "http://192.168.80.132:8080/" "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:147.0) Gecko/20100101 Firefox/147.0"
+2026-02-08 23:16:43,840 - aiohttp.access - INFO - 192.168.80.1 [08/Feb/2026:23:16:43 +0000] "GET /api/peers HTTP/1.1" 200 342 "http://192.168.80.132:8080/" "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:147.0) Gecko/20100101 Firefox/147.0"
+2026-02-08 23:16:43,846 - aiohttp.access - INFO - 192.168.80.1 [08/Feb/2026:23:16:43 +0000] "GET /api/miner/status HTTP/1.1" 200 3251 "http://192.168.80.132:8080/" "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:147.0) Gecko/20100101 Firefox/147.0"
+2026-02-08 23:16:43,856 - aiohttp.access - INFO - 192.168.80.1 [08/Feb/2026:23:16:43 +0000] "GET /api/wallet/list HTTP/1.1" 200 574 "http://192.168.80.132:8080/" "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:147.0) Gecko/20100101 Firefox/147.0"
+2026-02-08 23:16:43,898 - aiohttp.access - INFO - 192.168.80.1 [08/Feb/2026:23:16:43 +0000] "GET /api/miner/status HTTP/1.1" 200 3251 "http://192.168.80.132:8080/" "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:147.0) Gecko/20100101 Firefox/147.0"
+2026-02-08 23:16:43,962 - aiohttp.access - INFO - 127.0.0.1 [08/Feb/2026:23:16:43 +0000] "GET /api/stats HTTP/1.1" 200 298 "http://localhost:8080/" "Mozilla/5.0 (X11; Linux x86_64; rv:147.0) Gecko/20100101 Firefox/147.0"
+2026-02-08 23:16:43,969 - aiohttp.access - INFO - 127.0.0.1 [08/Feb/2026:23:16:43 +0000] "GET /api/peers HTTP/1.1" 200 342 "http://localhost:8080/" "Mozilla/5.0 (X11; Linux x86_64; rv:147.0) Gecko/20100101 Firefox/147.0"
+2026-02-08 23:16:43,970 - aiohttp.access - INFO - 127.0.0.1 [08/Feb/2026:23:16:43 +0000] "GET /api/miner/status HTTP/1.1" 200 3251 "http://localhost:8080/" "Mozilla/5.0 (X11; Linux x86_64; rv:147.0) Gecko/20100101 Firefox/147.0"
+2026-02-08 23:16:44,169 - RPCServer - INFO - RPC Request: submitblock
+2026-02-08 23:16:44,175 - Validation - ERROR - Tx validation failed: Input a6fa85f5db00fb4d3d44509457429dc379d1f9daeaf1b134111bff6268fcad17:0 not found/spent
+2026-02-08 23:16:44,175 - Validation - ERROR - Block validation failed: Invalid transaction ff8c946fa426a43fd2f648e62945a36723adce0bf70b111f7f93cf908cb5a769 at index 1: Input a6fa85f5db00fb4d3d44509457429dc379d1f9daeaf1b134111bff6268fcad17:0 not found/spent
+2026-02-08 23:16:44,175 - ChainManager - ERROR - Block 966986942ecdf1c93dd048a653cfa349a3e554bea3b3063d4c20408505e9f451 failed contextual validation: Invalid Tx 1: Input a6fa85f5db00fb4d3d44509457429dc379d1f9daeaf1b134111bff6268fcad17:0 not found/spent
+2026-02-08 23:16:44,176 - aiohttp.access - INFO - 127.0.0.1 [08/Feb/2026:23:16:44 +0000] "POST / HTTP/1.1" 200 325 "-" "python-requests/2.32.5"
+2026-02-08 23:16:44,180 - aiohttp.access - INFO - 127.0.0.1 [08/Feb/2026:23:16:44 +0000] "GET /api/peers HTTP/1.1" 200 342 "http://localhost:8080/" "Mozilla/5.0 (X11; Linux x86_64; rv:147.0) Gecko/20100101 Firefox/147.0"
+2026-02-08 23:16:44,184 - aiohttp.access - INFO - 127.0.0.1 [08/Feb/2026:23:16:44 +0000] "GET /api/miner/status HTTP/1.1" 200 3251 "http://localhost:8080/" "Mozilla/5.0 (X11; Linux x86_64; rv:147.0) Gecko/20100101 Firefox/147.0"
+2026-02-08 23:16:44,189 - aiohttp_session - WARNING - Cannot decrypt cookie value, create a new fresh session
+2026-02-08 23:16:44,190 - aiohttp.access - INFO - 192.168.80.1 [08/Feb/2026:23:16:44 +0000] "GET /api/miner/status HTTP/1.1" 401 193 "http://192.168.80.132:8080/" "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:147.0) Gecko/20100101 Firefox/147.0"
+2026-02-08 23:16:44,206 - RPCServer - INFO - RPC Request: submitblock
+2026-02-08 23:16:44,207 - Validation - ERROR - Tx validation failed: Input a6fa85f5db00fb4d3d44509457429dc379d1f9daeaf1b134111bff6268fcad17:0 not found/spent
+2026-02-08 23:16:44,207 - Validation - ERROR - Block validation failed: Invalid transaction ff8c946fa426a43fd2f648e62945a36723adce0bf70b111f7f93cf908cb5a769 at index 1: Input a6fa85f5db00fb4d3d44509457429dc379d1f9daeaf1b134111bff6268fcad17:0 not found/spent
+2026-02-08 23:16:44,207 - ChainManager - ERROR - Block 966986942ecdf1c93dd048a653cfa349a3e554bea3b3063d4c20408505e9f451 failed contextual validation: Invalid Tx 1: Input a6fa85f5db00fb4d3d44509457429dc379d1f9daeaf1b134111bff6268fcad17:0 not found/spent
+2026-02-08 23:16:44,207 - aiohttp.access - INFO - 127.0.0.1 [08/Feb/2026:23:16:44 +0000] "POST / HTTP/1.1" 200 325 "-" "python-requests/2.32.5"
+2026-02-08 23:16:44,231 - MinerController - INFO - MINER LOG: <span class='green'>FOUND BLOCK! Nonce: 4763</span>
+2026-02-08 23:16:44,233 - RPCServer - INFO - RPC Request: submitblock
+2026-02-08 23:16:44,234 - Validation - ERROR - Tx validation failed: Input a6fa85f5db00fb4d3d44509457429dc379d1f9daeaf1b134111bff6268fcad17:0 not found/spent
+2026-02-08 23:16:44,234 - Validation - ERROR - Block validation failed: Invalid transaction ff8c946fa426a43fd2f648e62945a36723adce0bf70b111f7f93cf908cb5a769 at index 1: Input a6fa85f5db00fb4d3d44509457429dc379d1f9daeaf1b134111bff6268fcad17:0 not found/spent
+2026-02-08 23:16:44,234 - ChainManager - ERROR - Block 966986942ecdf1c93dd048a653cfa349a3e554bea3b3063d4c20408505e9f451 failed contextual validation: Invalid Tx 1: Input a6fa85f5db00fb4d3d44509457429dc379d1f9daeaf1b134111bff6268fcad17:0 not found/spent
+2026-02-08 23:16:44,234 - aiohttp.access - INFO - 127.0.0.1 [08/Feb/2026:23:16:44 +0000] "POST / HTTP/1.1" 200 325 "-" "python-requests/2.32.5"
+2026-02-08 23:16:44,235 - MinerController - INFO - MINER LOG: <span class='red'>Block Rejected</span>
+2026-02-08 23:16:44,238 - RPCServer - INFO - RPC Request: getblocktemplate
+2026-02-08 23:16:44,241 - aiohttp.access - INFO - 127.0.0.1 [08/Feb/2026:23:16:44 +0000] "POST / HTTP/1.1" 200 3211 "-" "python-requests/2.32.5"
+2026-02-08 23:16:44,241 - MinerController - INFO - MINER LOG: Mining Block 545... Block_Difficulty: 520722838
+2026-02-08 23:16:44,393 - RPCServer - INFO - RPC Request: submitblock
+2026-02-08 23:16:44,395 - Validation - ERROR - Tx validation failed: Input a6fa85f5db00fb4d3d44509457429dc379d1f9daeaf1b134111bff6268fcad17:0 not found/spent
+2026-02-08 23:16:44,395 - Validation - ERROR - Block validation failed: Invalid transaction ff8c946fa426a43fd2f648e62945a36723adce0bf70b111f7f93cf908cb5a769 at index 1: Input a6fa85f5db00fb4d3d44509457429dc379d1f9daeaf1b134111bff6268fcad17:0 not found/spent
+2026-02-08 23:16:44,395 - ChainManager - ERROR - Block 966986942ecdf1c93dd048a653cfa349a3e554bea3b3063d4c20408505e9f451 failed contextual validation: Invalid Tx 1: Input a6fa85f5db00fb4d3d44509457429dc379d1f9daeaf1b134111bff6268fcad17:0 not found/spent
+2026-02-08 23:16:44,396 - aiohttp.access - INFO - 127.0.0.1 [08/Feb/2026:23:16:44 +0000] "POST / HTTP/1.1" 200 325 "-" "python-requests/2.32.5"
+2026-02-08 23:16:44,403 - RPCServer - INFO - RPC Request: submitblock
+2026-02-08 23:16:44,404 - Validation - ERROR - Tx validation failed: Input a6fa85f5db00fb4d3d44509457429dc379d1f9daeaf1b134111bff6268fcad17:0 not found/spent
+2026-02-08 23:16:44,404 - Validation - ERROR - Block validation failed: Invalid transaction ff8c946fa426a43fd2f648e62945a36723adce0bf70b111f7f93cf908cb5a769 at index 1: Input a6fa85f5db00fb4d3d44509457429dc379d1f9daeaf1b134111bff6268fcad17:0 not found/spent
+2026-02-08 23:16:44,404 - ChainManager - ERROR - Block 966986942ecdf1c93dd048a653cfa349a3e554bea3b3063d4c20408505e9f451 failed contextual validation: Invalid Tx 1: Input a6fa85f5db00fb4d3d44509457429dc379d1f9daeaf1b134111bff6268fcad17:0 not found/spent
+2026-02-08 23:16:44,404 - aiohttp.access - INFO - 127.0.0.1 [08/Feb/2026:23:16:44 +0000] "POST / HTTP/1.1" 200 325 "-" "python-requests/2.32.5"
+2026-02-08 23:16:44,560 - aiohttp_session - WARNING - Cannot decrypt cookie value, create a new fresh session
+2026-02-08 23:16:44,560 - aiohttp.access - INFO - 192.168.80.1 [08/Feb/2026:23:16:44 +0000] "GET /api/miner/status HTTP/1.1" 401 193 "http://192.168.80.132:8080/" "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:147.0) Gecko/20100101 Firefox/147.0"
+2026-02-08 23:16:44,619 - NetworkManager - INFO - Received GETADDR from ('192.168.80.132', 9334)
+2026-02-08 23:16:44,619 - NetworkManager - INFO - Sent ADDR with 7 peers to ('192.168.80.132', 9334): ['192.168.80.132:9341 (SELF)', '192.168.80.132:9334', '192.168.80.132:9333', '192.168.80.132:9336', '192.168.80.132:9335', '192.168.80.141:9341', '192.168.80.132:9341']
+2026-02-08 23:16:44,619 - NetworkManager - INFO - Received GETADDR from ('192.168.80.132', 9335)
+2026-02-08 23:16:44,619 - NetworkManager - INFO - Sent ADDR with 7 peers to ('192.168.80.132', 9335): ['192.168.80.132:9341 (SELF)', '192.168.80.132:9334', '192.168.80.132:9333', '192.168.80.132:9336', '192.168.80.132:9335', '192.168.80.141:9341', '192.168.80.132:9341']
+2026-02-08 23:16:44,626 - NetworkManager - INFO - Received GETADDR from ('192.168.80.132', 9336)
+2026-02-08 23:16:44,626 - NetworkManager - INFO - Sent ADDR with 7 peers to ('192.168.80.132', 9336): ['192.168.80.132:9341 (SELF)', '192.168.80.132:9334', '192.168.80.132:9333', '192.168.80.132:9336', '192.168.80.132:9335', '192.168.80.141:9341', '192.168.80.132:9341']
+2026-02-08 23:16:44,626 - NetworkManager - INFO - Received GETADDR from ('192.168.80.132', 9336)
+2026-02-08 23:16:44,627 - NetworkManager - INFO - Sent ADDR with 7 peers to ('192.168.80.132', 9336): ['192.168.80.132:9341 (SELF)', '192.168.80.132:9334', '192.168.80.132:9333', '192.168.80.132:9336', '192.168.80.132:9335', '192.168.80.141:9341', '192.168.80.132:9341']
+2026-02-08 23:16:44,661 - RPCServer - INFO - RPC Request: submitblock
+2026-02-08 23:16:44,664 - Validation - ERROR - Tx validation failed: Input a6fa85f5db00fb4d3d44509457429dc379d1f9daeaf1b134111bff6268fcad17:0 not found/spent
+2026-02-08 23:16:44,664 - Validation - ERROR - Block validation failed: Invalid transaction ff8c946fa426a43fd2f648e62945a36723adce0bf70b111f7f93cf908cb5a769 at index 1: Input a6fa85f5db00fb4d3d44509457429dc379d1f9daeaf1b134111bff6268fcad17:0 not found/spent
+2026-02-08 23:16:44,664 - ChainManager - ERROR - Block 966986942ecdf1c93dd048a653cfa349a3e554bea3b3063d4c20408505e9f451 failed contextual validation: Invalid Tx 1: Input a6fa85f5db00fb4d3d44509457429dc379d1f9daeaf1b134111bff6268fcad17:0 not found/spent
+2026-02-08 23:16:44,665 - aiohttp.access - INFO - 127.0.0.1 [08/Feb/2026:23:16:44 +0000] "POST / HTTP/1.1" 200 325 "-" "python-requests/2.32.5"
+2026-02-08 23:16:44,679 - RPCServer - INFO - RPC Request: getblocktemplate
+2026-02-08 23:16:44,680 - aiohttp.access - INFO - 127.0.0.1 [08/Feb/2026:23:16:44 +0000] "POST / HTTP/1.1" 200 3211 "-" "python-requests/2.32.5"
+2026-02-08 23:16:44,694 - RPCServer - INFO - RPC Request: submitblock
+2026-02-08 23:16:44,696 - Validation - ERROR - Tx validation failed: Input a6fa85f5db00fb4d3d44509457429dc379d1f9daeaf1b134111bff6268fcad17:0 not found/spent
+2026-02-08 23:16:44,696 - Validation - ERROR - Block validation failed: Invalid transaction ff8c946fa426a43fd2f648e62945a36723adce0bf70b111f7f93cf908cb5a769 at index 1: Input a6fa85f5db00fb4d3d44509457429dc379d1f9daeaf1b134111bff6268fcad17:0 not found/spent
+2026-02-08 23:16:44,696 - ChainManager - ERROR - Block 966986942ecdf1c93dd048a653cfa349a3e554bea3b3063d4c20408505e9f451 failed contextual validation: Invalid Tx 1: Input a6fa85f5db00fb4d3d44509457429dc379d1f9daeaf1b134111bff6268fcad17:0 not found/spent
+2026-02-08 23:16:44,697 - aiohttp.access - INFO - 127.0.0.1 [08/Feb/2026:23:16:44 +0000] "POST / HTTP/1.1" 200 325 "-" "python-requests/2.32.5"
+2026-02-08 23:16:44,710 - RPCServer - INFO - RPC Request: getblocktemplate
+2026-02-08 23:16:44,711 - aiohttp.access - INFO - 127.0.0.1 [08/Feb/2026:23:16:44 +0000] "POST / HTTP/1.1" 200 3211 "-" "python-requests/2.32.5"
+2026-02-08 23:16:44,743 - aiohttp_session - WARNING - Cannot decrypt cookie value, create a new fresh session
+2026-02-08 23:16:44,744 - aiohttp.access - INFO - 192.168.80.1 [08/Feb/2026:23:16:44 +0000] "GET /api/peers HTTP/1.1" 401 193 "http://192.168.80.132:8080/" "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:147.0) Gecko/20100101 Firefox/147.0"
+2026-02-08 23:16:44,744 - aiohttp_session - WARNING - Cannot decrypt cookie value, create a new fresh session
+2026-02-08 23:16:44,744 - aiohttp.access - INFO - 192.168.80.1 [08/Feb/2026:23:16:44 +0000] "GET /api/miner/status HTTP/1.1" 401 193 "http://192.168.80.132:8080/" "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:147.0) Gecko/20100101 Firefox/147.0"
+2026-02-08 23:16:44,759 - aiohttp_session - WARNING - Cannot decrypt cookie value, create a new fresh session
+2026-02-08 23:16:44,761 - aiohttp.access - INFO - 192.168.80.1 [08/Feb/2026:23:16:44 +0000] "GET /api/miner/status HTTP/1.1" 401 193 "http://192.168.80.132:8080/" "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:147.0) Gecko/20100101 Firefox/147.0"
+2026-02-08 23:16:44,774 - MinerController - INFO - MINER LOG: Mining stopped.
+2026-02-08 23:16:44,777 - aiohttp.access - INFO - 127.0.0.1 [08/Feb/2026:23:16:44 +0000] "POST /api/miner/stop HTTP/1.1" 200 204 "-" "curl/8.14.1"

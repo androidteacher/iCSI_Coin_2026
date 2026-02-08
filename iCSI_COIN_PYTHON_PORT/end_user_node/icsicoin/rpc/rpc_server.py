@@ -174,6 +174,10 @@ class RPCServer:
                 
                 success, reason = self.chain_manager.process_block(block)
                 if success:
+                    # Remove mined transactions from mempool
+                    for tx in block.vtx:
+                        self.mempool.remove_transaction(tx.get_hash().hex())
+
                     result = "accepted"
                     # Broadcast to network
                     asyncio.create_task(self.network_manager.announce_new_block(block))

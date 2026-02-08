@@ -520,6 +520,10 @@ class NetworkManager:
 
                             # Process via ChainManager
                             if self.chain_manager.process_block(block):
+                                # Remove received transactions from mempool
+                                for tx in block.vtx:
+                                    self.mempool.remove_transaction(tx.get_hash().hex())
+
                                 self.log_peer_event(addr, "CONSENSUS", "ACCEPTED", f"Block {b_hash[:16]}... added to chain")
                                 # Relay logic (simple flood)
                                 inv_msg = {

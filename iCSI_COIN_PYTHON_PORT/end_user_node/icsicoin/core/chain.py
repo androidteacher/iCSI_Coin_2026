@@ -96,7 +96,7 @@ class ChainManager:
         # 1. Check if already known
         if self.block_index.get_block_info(block_hash):
             logger.debug(f"Block {block_hash} already known")
-            return False
+            return False, "Already known"
 
         # 2. Basic Validation (PoW, Structure) - Context-free checks
         # We assume caller might have done some, but good to be safe.
@@ -104,9 +104,10 @@ class ChainManager:
         # We pass chain_state=None to validate_block for context-free checks only?
         # Our current validate_block includes everything. We might need to split it.
         # For now, let's assume validate_block does what it can.
-        if not validate_block(block, None): # Validate context-free first
-             logger.warning(f"Block {block_hash} failed context-free validation")
-             return False
+        is_valid, reason = validate_block(block, None) # Validate context-free first
+        if not is_valid:
+             logger.warning(f"Block {block_hash} failed context-free validation: {reason}")
+             return False, reason
 
         # 3. Check Parent
         prev_hash = block.header.prev_block.hex()
@@ -141,7 +142,9 @@ class ChainManager:
         # 4. Connect
         # Determine height for the new block
         height = (best_block['height'] + 1) if best_block else 0
-        if self._connect_block(block, height): # Pass height to _connect_block
+        
+        success, reason = self._connect_block(block, height)
+        if success:
             # 5. Store Block Body (Disk)
             # Serialize
             data = block.serialize()
@@ -154,7 +157,7 @@ class ChainManager:
             logger.info(f"Block {block_hash} connected at height {height}")
             return True, "Accepted"
             
-        return False, "Connect failed (State validation mismatch)"
+        return False, f"Connect failed: {reason}"
 
     def _connect_block(self, block, height):
         # Update UTXO set
@@ -163,7 +166,7 @@ class ChainManager:
         if not is_valid:
              logger.error(f"Block {block.get_hash().hex()} failed contextual validation: {reason}")
              # Mark invalid?
-             return False
+             return False, reason
              
         # Commit UTXO changes
         # validate_block (current impl) doesn't update DB, just checks.
@@ -190,7 +193,7 @@ class ChainManager:
         
         # New: Update status to 3 (Main Chain)
         self.block_index.update_block_status(block.get_hash().hex(), 3)
-        return True
+        return True, "Connected"
 
     def _disconnect_block(self, block):
         # Undo UTXO changes

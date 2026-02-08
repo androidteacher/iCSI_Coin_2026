@@ -1,0 +1,34 @@
+Note: Unnecessary use 
+Note: of -X or 
+Note: --request, POST 
+Note: is already 
+Note: inferred.
+* Host localhost:8080 was resolved.
+* IPv6: ::1
+* IPv4: 127.0.0.1
+  % Total    % Received % Xferd  Average Speed   Time    Time     Time  Current
+                                 Dload  Upload   Total   Spent    Left  Speed
+  0     0    0     0    0     0      0      0 --:--:-- --:--:-- --:--:--     0*   Trying [::1]:8080...
+* connect to ::1 port 8080 from ::1 port 35816 failed: Connection refused
+*   Trying 127.0.0.1:8080...
+* Connected to localhost (127.0.0.1) port 8080
+* using HTTP/1.x
+> POST /api/wallet/send HTTP/1.1
+> Host: localhost:8080
+> User-Agent: curl/8.14.1
+> Accept: */*
+> Content-Type: application/json
+> Content-Length: 71
+> 
+} [71 bytes data]
+* upload completely sent off: 71 bytes
+< HTTP/1.1 500 Internal Server Error
+< Content-Type: application/json; charset=utf-8
+< Content-Length: 40
+< Date: Sun, 08 Feb 2026 23:22:52 GMT
+< Server: Python/3.11 aiohttp/3.9.3
+< 
+{ [40 bytes data]
+100   111  100    40  100    71  16366  29050 --:--:-- --:--:-- --:--:-- 55500
+* Connection #0 to host localhost left intact
+{"error": "Non-hexadecimal digit found"}
