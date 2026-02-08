@@ -106,8 +106,8 @@ async function checkDiscovery() {
         const seedInput = document.getElementById('seedIp');
 
         if (data.discovered_seed) {
-            dot.className = 'inline-block w-2 h-2 rounded-full bg-cyan-400';
-            text.className = 'text-cyan-400';
+            dot.className = 'inline-block w-2 h-2 rounded-full bg-primary';
+            text.className = 'text-primary';
             text.innerText = `Seed found: ${data.discovered_seed}`;
             // Auto-fill seed IP if empty or still showing own IP
             if (!seedInput.value || seedInput.value === data.own_ip) {
@@ -143,7 +143,7 @@ async function testNat() {
 
         if (data.success) {
             resDiv.innerText = "SUCCESS: " + data.message;
-            resDiv.className = "mt-2 text-xs font-mono text-cyan-400 break-all";
+            resDiv.className = "mt-2 text-xs font-mono text-primary break-all";
         } else {
             resDiv.innerText = "FAILED: " + (data.message || "Timeout");
             resDiv.className = "mt-2 text-xs font-mono text-pink-500 break-all";
@@ -175,10 +175,10 @@ async function updatePeers() {
 
         if (activePeers.length > 0) {
             statusEl.innerText = "ONLINE";
-            statusEl.className = "w-full py-3 rounded-lg text-center font-bold tracking-widest text-sm mb-6 bg-cyan-950/30 border border-cyan-900 text-cyan-500 shadow-[0_0_15px_rgba(6,182,212,0.2)]";
+            statusEl.className = "w-full py-3 rounded-lg text-center font-bold tracking-widest text-sm mb-6 bg-primary/20 border border-primary/50 text-primary shadow-[0_0_15px_rgba(var(--color-primary),0.2)]";
         } else {
             statusEl.innerText = "OFFLINE";
-            statusEl.className = "w-full py-3 rounded-lg text-center font-bold tracking-widest text-sm mb-6 bg-black border border-zinc-900 text-pink-500 border-pink-900/30";
+            statusEl.className = "w-full py-3 rounded-lg text-center font-bold tracking-widest text-sm mb-6 bg-black border border-zinc-900 text-zinc-500 border-zinc-900";
         }
 
         data.peers.forEach(p => {
@@ -351,7 +351,7 @@ async function sendCoin() {
 
         if (res.ok) {
             resDiv.innerText = `SENT! TxID: ${data.txid.substring(0, 16)}...`;
-            resDiv.className = "mt-3 text-center text-xs font-mono text-cyan-400";
+            resDiv.className = "mt-3 text-center text-xs font-mono text-primary";
             loadWallets(); // Refresh balance
         } else {
             resDiv.innerText = "FAILED: " + data.error;
@@ -744,4 +744,45 @@ async function logout() {
     } catch (e) {
         console.error("Logout failed", e);
     }
+}
+
+// --- Theme Functions ---
+function openThemeModal() {
+    const modal = document.getElementById('themeModal');
+    const content = document.getElementById('themeModalContent');
+    modal.classList.remove('hidden');
+    // Small timeout to allow display:block to apply before opacity transition
+    setTimeout(() => {
+        modal.classList.remove('opacity-0');
+        content.classList.remove('scale-95');
+        content.classList.add('scale-100');
+    }, 10);
+}
+
+function closeThemeModal() {
+    const modal = document.getElementById('themeModal');
+    const content = document.getElementById('themeModalContent');
+    modal.classList.add('opacity-0');
+    content.classList.remove('scale-100');
+    content.classList.add('scale-95');
+    setTimeout(() => {
+        modal.classList.add('hidden');
+    }, 300);
+}
+
+function setTheme(colorValue) {
+    // Update CSS Variable
+    document.documentElement.style.setProperty('--color-primary', colorValue);
+    // Save to LocalStorage
+    localStorage.setItem('theme-color', colorValue);
+}
+
+// Close modal on outside click
+const themeModal = document.getElementById('themeModal');
+if (themeModal) {
+    themeModal.addEventListener('click', (e) => {
+        if (e.target === themeModal) {
+            closeThemeModal();
+        }
+    });
 }

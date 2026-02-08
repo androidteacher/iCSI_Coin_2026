@@ -109,6 +109,7 @@ class WebServer:
         self.app.router.add_get('/api/explorer/blocks', self.handle_api_explorer_blocks)
         self.app.router.add_get('/api/explorer/block/{block_hash}', self.handle_api_explorer_block_detail)
         self.app.router.add_get('/api/explorer/balance/{address}', self.handle_api_explorer_balance)
+        self.app.router.add_get('/api-docs', self.handle_api_docs_page)
 
         self.runner = None
         self.site = None
@@ -193,13 +194,20 @@ class WebServer:
 
     @web.middleware
     async def auth_middleware(self, request, handler):
-        # Public Routes
-        public_routes = [
-            '/setup', '/login', '/static', '/api/auth/setup', '/api/auth/login'
+        # Public Routes (No Auth Required)
+        public_prefixes = [
+            '/setup', '/login', '/static', 
+            '/api/auth/setup', '/api/auth/login',
+            '/api/stats', 
+            '/api/peers', 
+            '/api/explorer', 
+            '/explorer',
+            '/api/miner/download',
+            '/api-docs'
         ]
         
-        # Check if path starts with any public route (basic check)
-        for r in public_routes:
+        # Check if path starts with any public route
+        for r in public_prefixes:
             if request.path.startswith(r):
                 return await handler(request)
         
@@ -210,6 +218,9 @@ class WebServer:
         # Check Session
         session = await get_session(request)
         if 'user' not in session:
+            # If API request (JSON), return 401 instead of redirect
+            if request.path.startswith('/api/'):
+                return web.json_response({'error': 'Unauthorized'}, status=401)
             return web.HTTPFound('/login')
             
         return await handler(request)
@@ -279,6 +290,9 @@ class WebServer:
 
     async def handle_explorer_page(self, request):
         return await self.render_template('explorer.html')
+
+    async def handle_api_docs_page(self, request):
+        return await self.render_template('api_docs.html')
 
     async def handle_explorer_detail_page(self, request):
         block_hash = request.match_info['block_hash']

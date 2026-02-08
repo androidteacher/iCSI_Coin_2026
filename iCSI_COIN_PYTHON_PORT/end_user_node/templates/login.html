@@ -23,7 +23,7 @@
                         background: '#000000',
                         surface: '#09090b', // Zinc 950
                         border: '#27272a',   // Zinc 800
-                        primary: '#a855f7',  // Purple 500
+                        primary: 'rgb(var(--color-primary) / <alpha-value>)',  // Dynamic Primary
                         secondary: '#06b6d4', // Cyan
                         muted: '#a1a1aa',    // Zinc 400
                     },
@@ -36,6 +36,37 @@
             }
         }
     </script>
+    <style>
+        :root {
+            /* Default Purple */
+            --color-primary: 168 85 247;
+        }
+
+        /* Custom Scrollbar to match Dark Theme */
+        ::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: #27272a;
+            border-radius: 3px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: #3f3f46;
+        }
+    </style>
+    <script>
+        // Apply theme immediately
+        const savedTheme = localStorage.getItem('theme-color');
+        if (savedTheme) {
+            document.documentElement.style.setProperty('--color-primary', savedTheme);
+        }
+    </script>
 </head>
 
 <body
@@ -44,8 +75,8 @@
     <div class="w-full max-w-md">
         <!-- Logo / Header -->
         <div class="text-center mb-8">
-            <div class="inline-flex items-center gap-3 mb-2">
-                <span class="w-4 h-4 rounded-full bg-primary shadow-[0_0_12px_#a855f7]"></span>
+            <div class="flex items-center gap-3 mb-8">
+                <span class="w-4 h-4 rounded-full bg-primary shadow-[0_0_12px_rgb(var(--color-primary))]"></span>
                 <span class="font-heading font-bold text-3xl uppercase tracking-widest text-white">iCSI Coin</span>
             </div>
             <p class="text-muted text-sm font-mono">Node Authentication</p>

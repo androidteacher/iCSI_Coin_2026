@@ -23,7 +23,7 @@
                         background: '#000000',
                         surface: '#09090b', // Zinc 950
                         border: '#27272a',   // Zinc 800
-                        primary: '#a855f7',  // Purple 500
+                        primary: 'rgb(var(--color-primary) / <alpha-value>)',  // Dynamic Primary
                         secondary: '#06b6d4', // Cyan
                         muted: '#a1a1aa',    // Zinc 400
                     },
@@ -37,6 +37,11 @@
         }
     </script>
     <style>
+        :root {
+            /* Default Purple */
+            --color-primary: 168 85 247;
+        }
+
         /* Custom Scrollbar to match Dark Theme */
         ::-webkit-scrollbar {
             width: 6px;
@@ -62,6 +67,13 @@
             margin: 0;
         }
     </style>
+    <script>
+        // Apply theme immediately to prevent flash
+        const savedTheme = localStorage.getItem('theme-color');
+        if (savedTheme) {
+            document.documentElement.style.setProperty('--color-primary', savedTheme);
+        }
+    </script>
 </head>
 
 <body class="bg-background text-white font-sans min-h-screen antialiased selection:bg-primary selection:text-black">
@@ -70,34 +82,42 @@
     <nav class="max-w-[1400px] mx-auto px-6 pt-6 pb-2">
         <div class="bg-surface border border-border rounded-xl px-6 py-3 flex items-center justify-between shadow-lg">
             <div class="flex items-center gap-3">
-                <span class="w-3 h-3 rounded-full bg-primary shadow-[0_0_12px_#a855f7]"></span>
+                <span class="w-3 h-3 rounded-full bg-primary shadow-[0_0_12px_rgb(var(--color-primary))]"></span>
                 <span class="font-heading font-bold text-lg uppercase tracking-widest text-white">iCSI Coin</span>
                 <span class="text-zinc-600 text-xs font-mono ml-2">Node Dashboard</span>
             </div>
             <div class="flex items-center gap-2">
                 <button onclick="openBeggarModal()"
-                    class="px-4 py-2 rounded-lg bg-purple-600/10 border border-purple-800/40 text-purple-400 font-bold text-xs uppercase tracking-wider hover:bg-purple-600/20 hover:border-purple-600/60 transition-all flex items-center gap-2">
+                    class="px-4 py-2 rounded-lg bg-primary/10 border border-primary/40 text-primary font-bold text-xs uppercase tracking-wider hover:bg-primary/20 hover:border-primary/60 transition-all flex items-center gap-2">
                     💰 Beggars List
                     <span id="begMenuDot" class="hidden w-2 h-2 rounded-full bg-yellow-400 animate-pulse"></span>
                 </button>
                 <button onclick="openDownloadMinerModal()"
-                    class="px-4 py-2 rounded-lg bg-purple-600/10 border border-purple-800/40 text-purple-400 font-bold text-xs uppercase tracking-wider hover:bg-purple-600/20 hover:border-purple-600/60 transition-all flex items-center gap-2">
+                    class="px-4 py-2 rounded-lg bg-primary/10 border border-primary/40 text-primary font-bold text-xs uppercase tracking-wider hover:bg-primary/20 hover:border-primary/60 transition-all flex items-center gap-2">
                     ⛏ Download Miner
                 </button>
                 <button onclick="openDataModal()"
-                    class="px-4 py-2 rounded-lg bg-purple-600/10 border border-purple-800/40 text-purple-400 font-bold text-xs uppercase tracking-wider hover:bg-purple-600/20 hover:border-purple-600/60 transition-all flex items-center gap-2">
+                    class="px-4 py-2 rounded-lg bg-primary/10 border border-primary/40 text-primary font-bold text-xs uppercase tracking-wider hover:bg-primary/20 hover:border-primary/60 transition-all flex items-center gap-2">
                     💾 Node Data
                 </button>
                 <button onclick="window.location.href='/explorer'"
-                    class="px-4 py-2 rounded-lg bg-purple-600/10 border border-purple-800/40 text-purple-400 font-bold text-xs uppercase tracking-wider hover:bg-purple-600/20 hover:border-purple-600/60 transition-all flex items-center gap-2">
+                    class="px-4 py-2 rounded-lg bg-primary/10 border border-primary/40 text-primary font-bold text-xs uppercase tracking-wider hover:bg-primary/20 hover:border-primary/60 transition-all flex items-center gap-2">
                     📦 Explorer
                 </button>
                 <button onclick="openRpcConfigModal()"
-                    class="px-4 py-2 rounded-lg bg-purple-600/10 border border-purple-800/40 text-purple-400 font-bold text-xs uppercase tracking-wider hover:bg-purple-600/20 hover:border-purple-600/60 transition-all flex items-center gap-2">
+                    class="px-4 py-2 rounded-lg bg-primary/10 border border-primary/40 text-primary font-bold text-xs uppercase tracking-wider hover:bg-primary/20 hover:border-primary/60 transition-all flex items-center gap-2">
                     🔒 RPC Auth
                 </button>
+                <button onclick="openThemeModal()"
+                    class="px-4 py-2 rounded-lg bg-primary/10 border border-primary/40 text-primary font-bold text-xs uppercase tracking-wider hover:bg-primary/20 hover:border-primary/60 transition-all flex items-center gap-2">
+                    🎨 Theme
+                </button>
+                <a href="/api-docs" target="_blank"
+                    class="px-4 py-2 rounded-lg bg-primary/10 border border-primary/40 text-primary font-bold text-xs uppercase tracking-wider hover:bg-primary/20 hover:border-primary/60 transition-all ml-2 flex items-center gap-2">
+                    📚 API
+                </a>
                 <button onclick="logout()"
-                    class="px-4 py-2 rounded-lg bg-purple-600/10 border border-purple-800/40 text-purple-400 font-bold text-xs uppercase tracking-wider hover:bg-purple-600/20 hover:border-purple-600/60 transition-all ml-2">
+                    class="px-4 py-2 rounded-lg bg-red-900/10 border border-red-900/40 text-red-500 font-bold text-xs uppercase tracking-wider hover:bg-red-900/20 hover:border-red-900/60 transition-all ml-2">
                     Logout
                 </button>
             </div>
@@ -119,7 +139,7 @@
                 </h2>
 
                 <div id="uplinkStatus"
-                    class="w-full py-3 rounded-lg text-center font-bold tracking-widest text-sm mb-6 bg-black border border-zinc-900 text-pink-500 border-pink-900/30">
+                    class="w-full py-3 rounded-lg text-center font-bold tracking-widest text-sm mb-6 bg-black border border-zinc-900 text-zinc-500 border-zinc-900">
                     OFFLINE
                 </div>
 
@@ -154,6 +174,12 @@
                             class="w-full py-2 rounded-full border border-border text-muted font-bold text-xs uppercase hover:text-white hover:bg-zinc-900 transition-colors">
                             Test NAT Discovery
                         </button>
+                        <p class="text-[10px] italic text-zinc-600 mt-2 leading-relaxed">
+                            Placing this node on the public internet unleashes its peer-to-peer nature, potentially
+                            causing your blockchain to take on a life of its own. Once public, you will own the chain as
+                            much as Satoshi Nakamoto owns Bitcoin—which is to say, not at all. (Just don't point it at
+                            or host it directly on a 'public' IP and you'll be fine.)
+                        </p>
                         <div id="natResult" class="mt-2 text-xs font-mono text-zinc-500 break-all"></div>
                     </div>
                 </form>
@@ -284,7 +310,8 @@
             <div class="bg-surface border border-border rounded-xl p-6 shadow-sm">
                 <h2
                     class="font-heading font-bold text-lg uppercase tracking-wider flex items-center gap-2 mb-6 text-white">
-                    <span class="w-2 h-2 rounded-full bg-purple-500 shadow-[0_0_10px_#a855f7]"></span> Mining
+                    <span class="w-2 h-2 rounded-full bg-primary shadow-[0_0_10px_rgb(var(--color-primary))]"></span>
+                    Mining
                     Operations
                 </h2>
 
@@ -295,9 +322,9 @@
                     </select>
                     <div class="flex gap-2">
                         <button id="startMineBtn" onclick="startMining()"
-                            class="px-6 py-2 bg-cyan-500 hover:bg-cyan-400 text-black font-bold uppercase text-xs rounded-full transition-colors disabled:opacity-50 disabled:cursor-not-allowed shadow-[0_0_15px_rgba(6,182,212,0.3)]">Start</button>
+                            class="px-6 py-2 bg-primary hover:bg-primary/80 text-black font-bold uppercase text-xs rounded-full transition-colors disabled:opacity-50 disabled:cursor-not-allowed shadow-[0_0_15px_rgba(var(--color-primary),0.3)]">Start</button>
                         <button id="stopMineBtn" onclick="stopMining()" disabled
-                            class="px-6 py-2 bg-pink-500 hover:bg-pink-400 text-white font-bold uppercase text-xs rounded-full transition-colors disabled:opacity-50 disabled:cursor-not-allowed shadow-[0_0_15px_rgba(236,72,153,0.3)] ">Stop</button>
+                            class="px-6 py-2 bg-red-500/10 border border-red-500/50 text-red-500 hover:bg-red-500/20 font-bold uppercase text-xs rounded-full transition-colors disabled:opacity-50 disabled:cursor-not-allowed">Stop</button>
                     </div>
                 </div>
                 <div class="mb-4 text-right">
@@ -652,6 +679,120 @@ pip install -r requirements.txt</code></pre>
     </div>
 
     <script src="/static/js/main.js?v=8"></script>
+    <!-- Theme Selection Modal -->
+    <div id="themeModal"
+        class="fixed inset-0 bg-black/80 backdrop-blur-sm hidden flex items-center justify-center z-50 opacity-0 transition-opacity duration-300">
+        <div class="bg-surface border border-border p-8 rounded-2xl shadow-2xl max-w-2xl w-full transform scale-95 transition-transform duration-300"
+            id="themeModalContent">
+            <h2 class="text-2xl font-bold font-heading mb-2 text-white text-center">Select Theme</h2>
+            <p class="text-muted text-sm mb-6 text-center">Choose a color palette for the dashboard.</p>
+
+            <div class="grid grid-cols-5 gap-4 mb-6 max-h-[60vh] overflow-y-auto p-1">
+                <!-- Purple (Default) -->
+                <button onclick="setTheme('168 85 247')"
+                    class="group relative w-full aspect-square rounded-xl bg-purple-500 hover:scale-105 transition-all border-2 border-transparent hover:border-white focus:outline-none ring-offset-2 ring-offset-surface focus:ring-2 focus:ring-purple-500">
+                    <span class="sr-only">Purple</span>
+                    <span
+                        class="absolute inset-0 flex items-center justify-center opacity-0 group-[.active]:opacity-100">
+                        <svg class="w-6 h-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7">
+                            </path>
+                        </svg>
+                    </span>
+                </button>
+                <!-- Indigo -->
+                <button onclick="setTheme('99 102 241')"
+                    class="group relative w-full aspect-square rounded-xl bg-indigo-500 hover:scale-105 transition-all border-2 border-transparent hover:border-white focus:outline-none ring-offset-2 ring-offset-surface focus:ring-2 focus:ring-indigo-500">
+                    <span class="sr-only">Indigo</span>
+                </button>
+                <!-- Blue -->
+                <button onclick="setTheme('59 130 246')"
+                    class="group relative w-full aspect-square rounded-xl bg-blue-500 hover:scale-105 transition-all border-2 border-transparent hover:border-white focus:outline-none ring-offset-2 ring-offset-surface focus:ring-2 focus:ring-blue-500">
+                    <span class="sr-only">Blue</span>
+                </button>
+                <!-- Sky -->
+                <button onclick="setTheme('14 165 233')"
+                    class="group relative w-full aspect-square rounded-xl bg-sky-500 hover:scale-105 transition-all border-2 border-transparent hover:border-white focus:outline-none ring-offset-2 ring-offset-surface focus:ring-2 focus:ring-sky-500">
+                    <span class="sr-only">Sky</span>
+                </button>
+                <!-- Cyan -->
+                <button onclick="setTheme('6 182 212')"
+                    class="group relative w-full aspect-square rounded-xl bg-cyan-500 hover:scale-105 transition-all border-2 border-transparent hover:border-white focus:outline-none ring-offset-2 ring-offset-surface focus:ring-2 focus:ring-cyan-500">
+                    <span class="sr-only">Cyan</span>
+                </button>
+
+                <!-- Teal -->
+                <button onclick="setTheme('20 184 166')"
+                    class="group relative w-full aspect-square rounded-xl bg-teal-500 hover:scale-105 transition-all border-2 border-transparent hover:border-white focus:outline-none ring-offset-2 ring-offset-surface focus:ring-2 focus:ring-teal-500">
+                    <span class="sr-only">Teal</span>
+                </button>
+                <!-- Emerald -->
+                <button onclick="setTheme('16 185 129')"
+                    class="group relative w-full aspect-square rounded-xl bg-emerald-500 hover:scale-105 transition-all border-2 border-transparent hover:border-white focus:outline-none ring-offset-2 ring-offset-surface focus:ring-2 focus:ring-emerald-500">
+                    <span class="sr-only">Emerald</span>
+                </button>
+                <!-- Green -->
+                <button onclick="setTheme('34 197 94')"
+                    class="group relative w-full aspect-square rounded-xl bg-green-500 hover:scale-105 transition-all border-2 border-transparent hover:border-white focus:outline-none ring-offset-2 ring-offset-surface focus:ring-2 focus:ring-green-500">
+                    <span class="sr-only">Green</span>
+                </button>
+                <!-- Lime -->
+                <button onclick="setTheme('132 204 22')"
+                    class="group relative w-full aspect-square rounded-xl bg-lime-500 hover:scale-105 transition-all border-2 border-transparent hover:border-white focus:outline-none ring-offset-2 ring-offset-surface focus:ring-2 focus:ring-lime-500">
+                    <span class="sr-only">Lime</span>
+                </button>
+                <!-- Yellow -->
+                <button onclick="setTheme('234 179 8')"
+                    class="group relative w-full aspect-square rounded-xl bg-yellow-500 hover:scale-105 transition-all border-2 border-transparent hover:border-white focus:outline-none ring-offset-2 ring-offset-surface focus:ring-2 focus:ring-yellow-500">
+                    <span class="sr-only">Yellow</span>
+                </button>
+
+                <!-- Amber -->
+                <button onclick="setTheme('245 158 11')"
+                    class="group relative w-full aspect-square rounded-xl bg-amber-500 hover:scale-105 transition-all border-2 border-transparent hover:border-white focus:outline-none ring-offset-2 ring-offset-surface focus:ring-2 focus:ring-amber-500">
+                    <span class="sr-only">Amber</span>
+                </button>
+                <!-- Orange -->
+                <button onclick="setTheme('249 115 22')"
+                    class="group relative w-full aspect-square rounded-xl bg-orange-500 hover:scale-105 transition-all border-2 border-transparent hover:border-white focus:outline-none ring-offset-2 ring-offset-surface focus:ring-2 focus:ring-orange-500">
+                    <span class="sr-only">Orange</span>
+                </button>
+                <!-- Red -->
+                <button onclick="setTheme('239 68 68')"
+                    class="group relative w-full aspect-square rounded-xl bg-red-500 hover:scale-105 transition-all border-2 border-transparent hover:border-white focus:outline-none ring-offset-2 ring-offset-surface focus:ring-2 focus:ring-red-500">
+                    <span class="sr-only">Red</span>
+                </button>
+                <!-- Rose -->
+                <button onclick="setTheme('244 63 94')"
+                    class="group relative w-full aspect-square rounded-xl bg-rose-500 hover:scale-105 transition-all border-2 border-transparent hover:border-white focus:outline-none ring-offset-2 ring-offset-surface focus:ring-2 focus:ring-rose-500">
+                    <span class="sr-only">Rose</span>
+                </button>
+                <!-- Pink -->
+                <button onclick="setTheme('236 72 153')"
+                    class="group relative w-full aspect-square rounded-xl bg-pink-500 hover:scale-105 transition-all border-2 border-transparent hover:border-white focus:outline-none ring-offset-2 ring-offset-surface focus:ring-2 focus:ring-pink-500">
+                    <span class="sr-only">Pink</span>
+                </button>
+
+                <!-- Fuchsia -->
+                <button onclick="setTheme('217 70 239')"
+                    class="group relative w-full aspect-square rounded-xl bg-fuchsia-500 hover:scale-105 transition-all border-2 border-transparent hover:border-white focus:outline-none ring-offset-2 ring-offset-surface focus:ring-2 focus:ring-fuchsia-500">
+                    <span class="sr-only">Fuchsia</span>
+                </button>
+                <!-- Slate (Monochrome) -->
+                <button onclick="setTheme('148 163 184')"
+                    class="group relative w-full aspect-square rounded-xl bg-slate-400 hover:scale-105 transition-all border-2 border-transparent hover:border-white focus:outline-none ring-offset-2 ring-offset-surface focus:ring-2 focus:ring-slate-400">
+                    <span class="sr-only">Slate</span>
+                </button>
+            </div>
+
+            <div class="flex justify-end">
+                <button onclick="closeThemeModal()"
+                    class="px-6 py-2 rounded-lg bg-zinc-800 text-white font-bold hover:bg-zinc-700 transition-all">
+                    Close
+                </button>
+            </div>
+        </div>
+    </div>
 </body>
 
 </html>
