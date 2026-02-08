@@ -479,36 +479,39 @@ class WebServer:
              
         chain = self.network_manager.chain_manager
         
-        # 1. Block Height (Integer)
+        # 1. Address Search (Heuristic: 25-50 chars, Alphanumeric)
+        # iCSI addresses are hex (40 chars) or potentially Base58 in future?
+        # Let's assume anything looking like an address is one.
+        # But wait, a block hash is also hex.
+        # Address is usually shorter than 64 chars block hash.
+        # 40 chars -> Likely Address (RIPEMD160 hex)
+        # > 50 chars -> Likely Block Hash (SHA256 hex is 64)
+        if 20 <= len(query) <= 50 and all(c in '0123456789abcdefABCDEF' for c in query):
+             return web.json_response({'redirect': f'/explorer/address/{query}'})
+
+        # 2. Block Height Search (Primary Interpretation for Integers)
         if query.isdigit():
             height = int(query)
+            # Verify if this height exists
             block_hash = chain.get_block_hash(height)
             if block_hash:
                  return web.json_response({'redirect': f'/explorer/block/{block_hash}'})
-            else:
-                 return web.json_response({'error': f'Block at height {height} not found'})
-                 
-        # 2. Block Hash (Hex 64 chars)
-        if len(query) == 64 and all(c in '0123456789abcdefABCDEF' for c in query):
-             # Check if exists
-             if chain.block_index.get_block_info(query):
-                  return web.json_response({'redirect': f'/explorer/block/{query}'})
-             # Fallback: TxID check (if we had index)
-             # For now, assume it's a block or fail?
-             # Or we can check if it's a known TXID by scanning mempool?
-             # Let's check mempool first?
-             # if self.network_manager.mempool.get_transaction(query):
-             #      return web.json_response({'redirect': f'/explorer/tx/{query}'}) # We don't have tx page
+            # If not found at height, fallthrough to check if it's a hash starting with numbers
+            
+        # 3. Block Hash / Partial Hash Search
+        # Search DB for hashes starting with query
+        matches = chain.block_index.search_block_hashes(query)
         
-             return web.json_response({'error': 'Block/Tx not found'})
-
-        # 3. Address (Hex 40 chars or Base58 ~34 chars)
-        # iCSI uses Hex addresses (40 chars usually? RIPEMD160 is 20 bytes = 40 hex chars)
-        # Let's be lenient.
-        if len(query) == 40 and all(c in '0123456789abcdefABCDEF' for c in query):
-             return web.json_response({'redirect': f'/explorer/address/{query}'})
-             
-        return web.json_response({'error': 'Invalid search query'})
+        if len(matches) == 1:
+            # Exact or single partial match
+            return web.json_response({'redirect': f'/explorer/block/{matches[0]}'})
+        elif len(matches) > 1:
+            # Ambiguous
+            # Return error with suggestions? Or just first one?
+            # For now, let's return error with cached list
+            return web.json_response({'error': f'Ambiguous query. Found {len(matches)} blocks starting with {query}. Try more characters.'})
+            
+        return web.json_response({'error': f'No results found for {query}'})
 
     async def handle_index(self, request):
         template = self.jinja_env.get_template('dashboard.html')

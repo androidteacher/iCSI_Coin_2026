@@ -81,6 +81,14 @@ class BlockIndexDB:
                 return row[0]
             return None
 
+    def search_block_hashes(self, query_fragment):
+        """Find block hashes starting with the query fragment."""
+        with sqlite3.connect(self.db_path) as conn:
+            # Limit to 5 results for now
+            cursor = conn.execute("SELECT block_hash FROM block_index WHERE block_hash LIKE ? LIMIT 5", (query_fragment + '%',))
+            rows = cursor.fetchall()
+            return [r[0] for r in rows]
+
 class ChainStateDB:
     def __init__(self, data_dir):
         self.db_path = os.path.join(data_dir, 'chainstate.sqlite')

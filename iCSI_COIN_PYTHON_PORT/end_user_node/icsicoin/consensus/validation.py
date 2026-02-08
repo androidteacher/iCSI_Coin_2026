@@ -118,6 +118,10 @@ def calculate_next_bits(chain_manager, height):
     
     return target_to_bits(new_target)
 
+import logging
+
+logger = logging.getLogger("Validation")
+
 def validate_block(block, utxo_set):
     """
     Validate a full block.
@@ -125,14 +129,28 @@ def validate_block(block, utxo_set):
     # 1. Check Merkle Root
     calculated_root = get_merkle_root(block.vtx)
     if calculated_root != block.header.merkle_root:
+        logger.error(f"Block validation failed: Merkle Root mismatch. Header: {block.header.merkle_root.hex()}, Calc: {calculated_root.hex()}")
         return False
+
+    # Track spent outputs in this block to prevent double-spending within the block
+    spent_in_block = set()
 
     # 2. Validate Transactions
     for i, tx in enumerate(block.vtx):
         # Coinbase (first tx) is special
         is_coinbase = (i == 0)
+        
         if not validate_transaction(tx, utxo_set, is_coinbase):
-            return False
+             logger.error(f"Block validation failed: Invalid transaction {tx.get_hash().hex()} at index {i}")
+             return False
+
+        if not is_coinbase:
+            for vin in tx.vin:
+                prev_out = (vin.prev_hash, vin.prev_index)
+                if prev_out in spent_in_block:
+                    logger.error(f"Block validation failed: Intra-block double spend. Input {vin.prev_hash.hex()}:{vin.prev_index} used twice.")
+                    return False # Double spend within block
+                spent_in_block.add(prev_out)
             
     return True
 
@@ -141,23 +159,39 @@ def validate_transaction(tx, utxo_set, is_coinbase=False):
     Validate a single transaction.
     """
     # Basic Checks
-    if not tx.vin and not is_coinbase: return False
-    if not tx.vout: return False
+    if not tx.vin and not is_coinbase: 
+        logger.error("Tx validation failed: No inputs and not coinbase")
+        return False
+    if not tx.vout: 
+        logger.error("Tx validation failed: No outputs")
+        return False
 
     if is_coinbase:
         # Check coinbase maturity, etc (deferred)
         return True
 
     # Check Inputs
+    if utxo_set is None:
+        # Context-free check only (structure)
+        return True
+
     total_in = 0
     for i, txin in enumerate(tx.vin):
         # Look up UTXO
-        # UTXO set would need a method to find (prev_hash, prev_index)
-        # For this function signature, we assume 'utxo_set' provides a lookup interface
-        # or we pass in a ChainStateDB instance.
+        prev_hash_hex = txin.prev_hash.hex()
+        utxo = utxo_set.get_utxo(prev_hash_hex, txin.prev_index)
         
-        # This is strictly a wrapper for Phase 3 logic structure.
-        # Real implementation connects to DB.
-        pass
+        if not utxo:
+            # Input does not exist or is already spent
+            logger.error(f"Tx validation failed: Input {prev_hash_hex}:{txin.prev_index} not found in UTXO set.")
+            return False
+            
+        total_in += utxo['amount']
+
+    # Check Amounts (Input >= Output)
+    total_out = sum(out.amount for out in tx.vout)
+    if total_out > total_in:
+        logger.error(f"Tx validation failed: Output total {total_out} exceeds input {total_in}")
+        return False
 
     return True
