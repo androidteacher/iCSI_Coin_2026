@@ -101,6 +101,24 @@
     <div class="max-w-5xl mx-auto p-6 md:p-12">
 
         <header class="mb-12 text-center">
+            <div
+                class="bg-red-900/10 border border-red-900/30 rounded-lg p-4 mb-8 inline-block max-w-2xl mx-auto text-left">
+                <div class="flex items-start gap-3">
+                    <span class="text-xl">🔒</span>
+                    <div>
+                        <h3 class="font-bold text-red-400 text-sm uppercase tracking-wider mb-1">Strict Authentication
+                            Required</h3>
+                        <p class="text-xs text-red-200/70 leading-relaxed">
+                            Every API request must include <code>username</code> and <code>password</code> in the JSON
+                            body.
+                            Consequently, most endpoints require <strong>POST</strong> even if retrieving data.
+                            <br /><span class="opacity-50 italic">(Alternatively, a valid session cookie is accepted if
+                                available.)</span>
+                        </p>
+                    </div>
+                </div>
+            </div>
+
             <h1 class="text-4xl md:text-5xl font-heading font-bold text-white mb-4">API Documentation</h1>
             <p class="text-muted text-lg max-w-2xl mx-auto">
                 Complete reference for interacting with the iCSI Coin node programmatically.
@@ -142,33 +160,21 @@
                         <div class="bg-surface border border-border rounded-xl overflow-hidden">
                             <div class="p-6 border-b border-border bg-black/20">
                                 <div class="flex items-center justify-between mb-2">
-                                    <h3 class="font-bold text-lg text-white">Login</h3>
+                                    <h3 class="font-bold text-lg text-white">Login (Cookie Method)</h3>
                                     <span
                                         class="px-2 py-1 bg-green-900/30 text-green-400 text-xs font-mono font-bold rounded">POST</span>
                                 </div>
                                 <code class="text-sm font-mono text-muted">/api/auth/login</code>
-                                <p class="mt-2 text-sm text-zinc-400">Authenticates a session and returns a cookie.</p>
+                                <p class="mt-2 text-sm text-zinc-400">Authenticates a session and returns a cookie
+                                    (Optional alternative to explicit body auth).</p>
                             </div>
                             <div class="p-0 bg-black">
                                 <pre class="p-6 overflow-x-auto text-xs font-mono text-blue-300 leading-relaxed">
 <span class="text-zinc-500"># Login and save cookie</span>
-curl -c cookies.txt -X POST http://localhost:5000/api/auth/login \
+curl -c cookies.txt -X POST http://localhost:8080/api/auth/login \
      -H "Content-Type: application/json" \
      -d '{"username": "admin", "password": "securepassword"}'
 </pre>
-                            </div>
-                        </div>
-
-                        <!-- Setup -->
-                        <div class="bg-surface border border-border rounded-xl overflow-hidden">
-                            <div class="p-6 border-b border-border bg-black/20">
-                                <div class="flex items-center justify-between mb-2">
-                                    <h3 class="font-bold text-lg text-white">Setup</h3>
-                                    <span
-                                        class="px-2 py-1 bg-green-900/30 text-green-400 text-xs font-mono font-bold rounded">POST</span>
-                                </div>
-                                <code class="text-sm font-mono text-muted">/api/auth/setup</code>
-                                <p class="mt-2 text-sm text-zinc-400">Sets admin credentials (first run only).</p>
                             </div>
                         </div>
                     </div>
@@ -191,7 +197,7 @@ curl -c cookies.txt -X POST http://localhost:5000/api/auth/login \
                                         <span
                                             class="px-1.5 py-0.5 rounded text-[10px] font-bold bg-purple-900/30 text-purple-400 border border-purple-900/50">AUTH</span>
                                         <span
-                                            class="px-2 py-1 bg-blue-900/30 text-blue-400 text-xs font-mono font-bold rounded">GET</span>
+                                            class="px-2 py-1 bg-green-900/30 text-green-400 text-xs font-mono font-bold rounded">POST</span>
                                     </div>
                                 </div>
                                 <code class="text-sm font-mono text-muted">/api/wallet/list</code>
@@ -199,7 +205,9 @@ curl -c cookies.txt -X POST http://localhost:5000/api/auth/login \
                             </div>
                             <div class="p-0 bg-black">
                                 <pre class="p-6 overflow-x-auto text-xs font-mono text-blue-300 leading-relaxed">
-curl -b cookies.txt http://localhost:5000/api/wallet/list
+curl -X POST http://localhost:8080/api/wallet/list \
+     -H "Content-Type: application/json" \
+     -d '{"username": "admin", "password": "securepassword"}'
 </pre>
                             </div>
                         </div>
@@ -220,9 +228,12 @@ curl -b cookies.txt http://localhost:5000/api/wallet/list
                             </div>
                             <div class="p-0 bg-black">
                                 <pre class="p-6 overflow-x-auto text-xs font-mono text-blue-300 leading-relaxed">
-curl -b cookies.txt -X POST http://localhost:5000/api/wallet/create \
+curl -X POST http://localhost:8080/api/wallet/create \
      -H "Content-Type: application/json" \
-     -d '{"name": "Savings"}'
+     -d '{
+           "username": "admin", "password": "securepassword",
+           "name": "Savings"
+         }'
 </pre>
                             </div>
                         </div>
@@ -243,9 +254,10 @@ curl -b cookies.txt -X POST http://localhost:5000/api/wallet/create \
                             </div>
                             <div class="p-0 bg-black">
                                 <pre class="p-6 overflow-x-auto text-xs font-mono text-blue-300 leading-relaxed">
-curl -b cookies.txt -X POST http://localhost:5000/api/wallet/send \
+curl -X POST http://localhost:8080/api/wallet/send \
      -H "Content-Type: application/json" \
      -d '{
+           "username": "admin", "password": "securepassword",
            "from": "1SourceAddr...",
            "to": "1DestAddr...", 
            "amount": 50
@@ -276,10 +288,9 @@ curl -b cookies.txt -X POST http://localhost:5000/api/wallet/send \
                             <code class="text-sm font-mono text-muted mb-4 block">/api/miner/start</code>
                             <pre
                                 class="p-3 bg-black rounded text-[10px] font-mono text-blue-300 leading-relaxed overflow-x-auto">
-curl -b cookies.txt -X POST \
-http://localhost:5000/api/miner/start \
+curl -X POST http://localhost:8080/api/miner/start \
 -H "Content-Type: application/json" \
--d '{"target_address": "..."}'
+-d '{"username": "admin", "password": "...", "target_address": "..."}'
 </pre>
                         </div>
                         <div class="bg-surface border border-border rounded-xl p-6">
@@ -293,6 +304,12 @@ http://localhost:5000/api/miner/start \
                                 </div>
                             </div>
                             <code class="text-sm font-mono text-muted mb-4 block">/api/miner/stop</code>
+                            <pre
+                                class="p-3 bg-black rounded text-[10px] font-mono text-blue-300 leading-relaxed overflow-x-auto">
+curl -X POST http://localhost:8080/api/miner/stop \
+-H "Content-Type: application/json" \
+-d '{"username": "admin", "password": "..."}'
+</pre>
                         </div>
                     </div>
                 </section>
@@ -304,23 +321,42 @@ http://localhost:5000/api/miner/start \
                         Network
                     </h2>
                     <div class="space-y-4">
-                        <div class="bg-surface border border-border rounded-xl p-4 flex items-center justify-between">
-                            <div>
-                                <h3 class="font-bold text-white">List Peers</h3>
-                                <code class="text-xs font-mono text-muted">GET /api/peers</code>
+                        <div class="bg-surface border border-border rounded-xl p-6">
+                            <div class="flex items-center justify-between mb-2">
+                                <h3 class="font-bold text-lg text-white">List Peers</h3>
+                                <div class="flex gap-2">
+                                    <span
+                                        class="px-1.5 py-0.5 rounded text-[10px] font-bold bg-purple-900/30 text-purple-400 border border-purple-900/50">AUTH</span>
+                                    <span
+                                        class="px-2 py-1 bg-green-900/30 text-green-400 text-xs font-mono font-bold rounded">POST</span>
+                                </div>
                             </div>
+                            <code class="text-sm font-mono text-muted block mb-4">/api/peers</code>
+                            <pre
+                                class="p-3 bg-black rounded text-[10px] font-mono text-blue-300 leading-relaxed overflow-x-auto">
+curl -X POST http://localhost:8080/api/peers \
+     -H "Content-Type: application/json" \
+     -d '{"username": "admin", "password": "..."}'
+</pre>
                         </div>
-                        <div class="bg-surface border border-border rounded-xl p-4 flex items-center justify-between">
-                            <div>
-                                <h3 class="font-bold text-white">Connect to Peer</h3>
-                                <code class="text-xs font-mono text-muted">POST /api/connect</code>
+
+                        <div class="bg-surface border border-border rounded-xl p-6">
+                            <div class="flex items-center justify-between mb-2">
+                                <h3 class="font-bold text-lg text-white">Network Stats</h3>
+                                <div class="flex gap-2">
+                                    <span
+                                        class="px-1.5 py-0.5 rounded text-[10px] font-bold bg-purple-900/30 text-purple-400 border border-purple-900/50">AUTH</span>
+                                    <span
+                                        class="px-2 py-1 bg-green-900/30 text-green-400 text-xs font-mono font-bold rounded">POST</span>
+                                </div>
                             </div>
-                        </div>
-                        <div class="bg-surface border border-border rounded-xl p-4 flex items-center justify-between">
-                            <div>
-                                <h3 class="font-bold text-white">Network Stats</h3>
-                                <code class="text-xs font-mono text-muted">GET /api/stats</code>
-                            </div>
+                            <code class="text-sm font-mono text-muted block mb-4">/api/stats</code>
+                            <pre
+                                class="p-3 bg-black rounded text-[10px] font-mono text-blue-300 leading-relaxed overflow-x-auto">
+curl -X POST http://localhost:8080/api/stats \
+     -H "Content-Type: application/json" \
+     -d '{"username": "admin", "password": "..."}'
+</pre>
                         </div>
                     </div>
                 </section>
@@ -335,14 +371,20 @@ http://localhost:5000/api/miner/start \
                         <div class="p-6 border-b border-border bg-black/20">
                             <div class="flex items-center justify-between mb-2">
                                 <h3 class="font-bold text-lg text-white">Address Balance</h3>
-                                <span
-                                    class="px-2 py-1 bg-blue-900/30 text-blue-400 text-xs font-mono font-bold rounded">GET</span>
+                                <div class="flex gap-2">
+                                    <span
+                                        class="px-1.5 py-0.5 rounded text-[10px] font-bold bg-purple-900/30 text-purple-400 border border-purple-900/50">AUTH</span>
+                                    <span
+                                        class="px-2 py-1 bg-green-900/30 text-green-400 text-xs font-mono font-bold rounded">POST</span>
+                                </div>
                             </div>
                             <code class="text-sm font-mono text-muted">/api/explorer/balance/{address}</code>
                         </div>
                         <div class="p-0 bg-black">
                             <pre class="p-6 overflow-x-auto text-xs font-mono text-blue-300 leading-relaxed">
-curl http://localhost:5000/api/explorer/balance/1CheckingBalanceAddress...
+curl -X POST http://localhost:8080/api/explorer/balance/1CheckingBalanceAddress... \
+     -H "Content-Type: application/json" \
+     -d '{"username": "admin", "password": "..."}'
 </pre>
                         </div>
                     </div>
@@ -355,24 +397,21 @@ curl http://localhost:5000/api/explorer/balance/1CheckingBalanceAddress...
                         Utilities
                     </h2>
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <a href="/api/miner/download"
+                        <div
                             class="bg-surface border border-border hover:border-primary/50 group rounded-xl p-6 transition-all">
                             <div class="flex justify-between items-start mb-1">
                                 <h3 class="font-bold text-white group-hover:text-primary mb-1">Download Miner</h3>
-                                <span
-                                    class="px-1.5 py-0.5 rounded text-[10px] font-bold bg-green-900/30 text-green-400 border border-green-900/50">PUBLIC</span>
+                                <div class="flex gap-2">
+                                    <span
+                                        class="px-1.5 py-0.5 rounded text-[10px] font-bold bg-purple-900/30 text-purple-400 border border-purple-900/50">AUTH</span>
+                                    <span
+                                        class="px-2 py-1 bg-green-900/30 text-green-400 text-xs font-mono font-bold rounded">POST</span>
+                                </div>
                             </div>
-                            <code class="text-xs font-mono text-muted">GET /api/miner/download</code>
-                        </a>
-                        <a href="/api/data/download"
-                            class="bg-surface border border-border hover:border-primary/50 group rounded-xl p-6 transition-all">
-                            <div class="flex justify-between items-start mb-1">
-                                <h3 class="font-bold text-white group-hover:text-primary mb-1">Download Backup</h3>
-                                <span
-                                    class="px-1.5 py-0.5 rounded text-[10px] font-bold bg-purple-900/30 text-purple-400 border border-purple-900/50">AUTH</span>
-                            </div>
-                            <code class="text-xs font-mono text-muted">GET /api/data/download</code>
-                        </a>
+                            <code class="text-xs font-mono text-muted">/api/miner/download</code>
+                            <p class="text-xs text-muted mt-2">Requires POST request with body. If using browser, use
+                                Session Cookie.</p>
+                        </div>
                     </div>
                 </section>
 

@@ -58,57 +58,60 @@ class WebServer:
         self.app.router.add_static('/static', os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), 'static'))
         
         # API - Network
-        self.app.router.add_post('/api/connect', self.handle_connect)
-        self.app.router.add_get('/api/peers', self.handle_peers)
-        self.app.router.add_post('/api/peers/delete', self.handle_delete_peer)
-        self.app.router.add_post('/api/reset', self.handle_reset)
-        self.app.router.add_get('/api/logs', self.handle_get_logs)
-        self.app.router.add_post('/api/test/send', self.handle_send_test)
-        self.app.router.add_get('/api/stats', self.handle_get_stats)
-        self.app.router.add_post('/api/stun/test', self.handle_test_stun)
-        self.app.router.add_get('/api/discovery/status', self.handle_discovery_status)
+        self.app.router.add_route('*', '/api/connect', self.handle_connect)
+        self.app.router.add_route('*', '/api/peers', self.handle_peers)
+        self.app.router.add_route('*', '/api/peers/delete', self.handle_delete_peer)
+        self.app.router.add_route('*', '/api/reset', self.handle_reset)
+        self.app.router.add_route('*', '/api/logs', self.handle_get_logs)
+        self.app.router.add_route('*', '/api/test/send', self.handle_send_test)
+        self.app.router.add_route('*', '/api/stats', self.handle_get_stats)
+        self.app.router.add_route('*', '/api/stun/test', self.handle_test_stun)
+        self.app.router.add_route('*', '/api/discovery/status', self.handle_discovery_status)
         
         # API - RPC Config
+        # API - RPC Config
+        # handle_rpc_config_post will handle both updates and reads (if body has only auth)
         self.app.router.add_get('/api/rpc/config', self.handle_rpc_config_get)
         self.app.router.add_post('/api/rpc/config', self.handle_rpc_config_post)
         
         # Miner Download
-        self.app.router.add_get('/api/miner/download', self.handle_miner_download)
+        self.app.router.add_route('*', '/api/miner/download', self.handle_miner_download)
         
         # Your Data Download
-        self.app.router.add_get('/api/data/download', self.handle_data_download)
+        self.app.router.add_route('*', '/api/data/download', self.handle_data_download)
 
         # Web Auth Routes
         self.app.router.add_get('/setup', self.handle_setup_page)
         self.app.router.add_get('/login', self.handle_login_page)
-        self.app.router.add_post('/api/auth/setup', self.handle_api_setup)
-        self.app.router.add_post('/api/auth/login', self.handle_api_login)
-        self.app.router.add_post('/api/auth/logout', self.handle_api_logout)
+        self.app.router.add_route('*', '/api/auth/setup', self.handle_api_setup)
+        self.app.router.add_route('*', '/api/auth/login', self.handle_api_login)
+        self.app.router.add_route('*', '/api/auth/logout', self.handle_api_logout)
 
         # API - Wallet
-        self.app.router.add_get('/api/wallet/list', self.handle_wallet_list)
-        self.app.router.add_post('/api/wallet/create', self.handle_wallet_create)
-        self.app.router.add_post('/api/wallet/delete', self.handle_wallet_delete)
-        self.app.router.add_post('/api/wallet/send', self.handle_wallet_send)
-        self.app.router.add_get('/api/wallet/export', self.handle_wallet_export)
-        self.app.router.add_post('/api/wallet/import', self.handle_wallet_import)
-        self.app.router.add_post('/api/wallet/rename', self.handle_wallet_rename)
+        self.app.router.add_route('*', '/api/wallet/list', self.handle_wallet_list)
+        self.app.router.add_route('*', '/api/wallet/create', self.handle_wallet_create)
+        self.app.router.add_route('*', '/api/wallet/delete', self.handle_wallet_delete)
+        self.app.router.add_route('*', '/api/wallet/send', self.handle_wallet_send)
+        self.app.router.add_route('*', '/api/wallet/export', self.handle_wallet_export)
+        self.app.router.add_route('*', '/api/wallet/import', self.handle_wallet_import)
+        self.app.router.add_route('*', '/api/wallet/rename', self.handle_wallet_rename)
         
         # API - Miner
-        self.app.router.add_get('/api/miner/status', self.handle_miner_status)
-        self.app.router.add_post('/api/miner/start', self.handle_miner_start)
-        self.app.router.add_post('/api/miner/stop', self.handle_miner_stop)
+        self.app.router.add_route('*', '/api/miner/status', self.handle_miner_status)
+        self.app.router.add_route('*', '/api/miner/start', self.handle_miner_start)
+        self.app.router.add_route('*', '/api/miner/stop', self.handle_miner_stop)
 
         # API - Beggar
-        self.app.router.add_post('/api/beggar/start', self.handle_beggar_start)
-        self.app.router.add_post('/api/beggar/stop', self.handle_beggar_stop)
-        self.app.router.add_get('/api/beggar/list', self.handle_beggar_list)
+        self.app.router.add_route('*', '/api/beggar/start', self.handle_beggar_start)
+        self.app.router.add_route('*', '/api/beggar/stop', self.handle_beggar_stop)
+        self.app.router.add_route('*', '/api/beggar/list', self.handle_beggar_list)
+        
         # Explorer Routes
         self.app.router.add_get('/explorer', self.handle_explorer_page)
         self.app.router.add_get('/explorer/block/{block_hash}', self.handle_explorer_detail_page)
-        self.app.router.add_get('/api/explorer/blocks', self.handle_api_explorer_blocks)
-        self.app.router.add_get('/api/explorer/block/{block_hash}', self.handle_api_explorer_block_detail)
-        self.app.router.add_get('/api/explorer/balance/{address}', self.handle_api_explorer_balance)
+        self.app.router.add_route('*', '/api/explorer/blocks', self.handle_api_explorer_blocks)
+        self.app.router.add_route('*', '/api/explorer/block/{block_hash}', self.handle_api_explorer_block_detail)
+        self.app.router.add_route('*', '/api/explorer/balance/{address}', self.handle_api_explorer_balance)
         self.app.router.add_get('/api-docs', self.handle_api_docs_page)
 
         self.runner = None
@@ -197,13 +200,7 @@ class WebServer:
         # Public Routes (No Auth Required)
         public_prefixes = [
             '/setup', '/login', '/static', 
-            '/api/auth/setup', '/api/auth/login',
-            '/api/stats', 
-            '/api/peers', 
-            '/api/explorer', 
-            '/explorer',
-            '/api/miner/download',
-            '/api-docs'
+            '/api/auth/setup', '/api/auth/login'
         ]
         
         # Check if path starts with any public route
@@ -217,13 +214,40 @@ class WebServer:
             
         # Check Session
         session = await get_session(request)
-        if 'user' not in session:
+        authenticated = 'user' in session
+
+        # If not authenticated, check POST params (Dual Auth)
+        if not authenticated and request.method == 'POST' and request.path.startswith('/api/'):
+            try:
+                # Read body and store for handlers
+                # We use request.json() here which consumes the stream
+                data = await request.json()
+                request['json_body'] = data 
+                
+                u = data.get('username')
+                p = data.get('password')
+                
+                if u and p and u == self.web_auth_config.get('username'):
+                     saved_hash = self.web_auth_config.get('password_hash')
+                     input_hash = hashlib.sha256(p.encode()).hexdigest()
+                     if input_hash == saved_hash:
+                         authenticated = True
+            except Exception:
+                pass
+
+        if not authenticated:
             # If API request (JSON), return 401 instead of redirect
             if request.path.startswith('/api/'):
                 return web.json_response({'error': 'Unauthorized'}, status=401)
             return web.HTTPFound('/login')
             
         return await handler(request)
+
+    async def _get_json(self, request):
+        """Helper to get JSON from request, checking middleware cache first."""
+        if 'json_body' in request:
+            return request['json_body']
+        return await request.json()
 
     async def handle_setup_page(self, request):
         if 'username' in self.web_auth_config:
@@ -239,7 +263,7 @@ class WebServer:
         if 'username' in self.web_auth_config:
              return web.json_response({'error': 'Already setup'}, status=400)
              
-        data = await request.json()
+        data = await self._get_json(request)
         username = data.get('username')
         password = data.get('password')
         
@@ -261,7 +285,7 @@ class WebServer:
         return web.json_response({'status': 'ok'})
 
     async def handle_api_login(self, request):
-        data = await request.json()
+        data = await self._get_json(request)
         username = data.get('username')
         password = data.get('password')
         
@@ -460,7 +484,7 @@ class WebServer:
     # --- NETWORK HANDLERS ---
     
     async def handle_connect(self, request):
-        data = await request.json()
+        data = await self._get_json(request)
         seed_ip = data.get('seed_ip', '').strip()
         
         # If no IP given, use discovered seed or own IP
@@ -568,7 +592,7 @@ class WebServer:
         return web.json_response({'peers': peers_list, 'height': height})
         
     async def handle_delete_peer(self, request):
-        data = await request.json()
+        data = await self._get_json(request)
         self.network_manager.remove_failed_peer(data.get('ip'), data.get('port'))
         return web.json_response({'status': 'deleted'})
 
@@ -594,7 +618,7 @@ class WebServer:
         return web.json_response({'logs': merged_logs})
 
     async def handle_send_test(self, request):
-        data = await request.json()
+        data = await self._get_json(request)
         await self.network_manager.send_test_message(data.get('ip'), data.get('port'), "TEST_PACKET")
         return web.json_response({'status': 'sent'})
         
@@ -628,7 +652,7 @@ class WebServer:
     async def handle_test_stun(self, request):
         # Accept IP from frontend, fall back to manager's STUN config
         try:
-            data = await request.json()
+            data = await self._get_json(request)
             stun_ip = data.get('stun_ip', '').strip() or self.network_manager.stun_ip
         except Exception:
             stun_ip = self.network_manager.stun_ip
@@ -687,7 +711,7 @@ class WebServer:
         return web.json_response({'wallets': wallets})
 
     async def handle_wallet_create(self, request):
-        data = await request.json()
+        data = await self._get_json(request)
         name = data.get('name', 'My Wallet')
         wallet = self.network_manager.wallet
         addr = wallet.get_new_address()
@@ -701,7 +725,7 @@ class WebServer:
         # We need a delete method on wallet
         # wallet.keys.remove(...)
         # For now, just remove from memory and save
-        data = await request.json()
+        data = await self._get_json(request)
         addr = data.get('address')
         wallet = self.network_manager.wallet
         wallet.keys = [k for k in wallet.keys if k['addr'] != addr]
@@ -709,7 +733,7 @@ class WebServer:
         return web.json_response({'status': 'deleted'})
 
     async def handle_wallet_rename(self, request):
-        data = await request.json()
+        data = await self._get_json(request)
         addr = data.get('address')
         new_name = data.get('name', '').strip()
         if not addr or not new_name:
@@ -723,7 +747,7 @@ class WebServer:
         return web.json_response({'error': 'Wallet not found'}, status=404)
 
     async def handle_wallet_send(self, request):
-        data = await request.json()
+        data = await self._get_json(request)
         to_addr = data.get('to')
         amount = float(data.get('amount'))
         
@@ -776,7 +800,7 @@ class WebServer:
 
     async def handle_wallet_import(self, request):
         try:
-            data = await request.json()
+            data = await self._get_json(request)
             if isinstance(data, list):
                 self.network_manager.wallet.keys.extend(data)
                 self.network_manager.wallet.save()
@@ -791,7 +815,7 @@ class WebServer:
         return web.json_response(self.miner_controller.get_status())
 
     async def handle_miner_start(self, request):
-        data = await request.json()
+        data = await self._get_json(request)
         target = data.get('target_address') # Not used yet but passed
         success, msg = self.miner_controller.start_mining(target)
         return web.json_response({'success': success, 'message': msg})
@@ -803,7 +827,7 @@ class WebServer:
     # --- BEGGAR HANDLERS ---
 
     async def handle_beggar_start(self, request):
-        data = await request.json()
+        data = await self._get_json(request)
         address = data.get('address', '').strip()
         if not address:
             return web.json_response({'error': 'No wallet address provided'}, status=400)
@@ -839,8 +863,22 @@ class WebServer:
     async def handle_rpc_config_post(self, request):
         url = f"http://127.0.0.1:{self.rpc_port}/api/rpc/config"
         try:
-            data = await request.json()
+            data = await self._get_json(request)
             
+            # Check if this is a "Read" request disguised as a POST (only auth params)
+            # Keys other than username/password imply an update
+            update_keys = [k for k in data.keys() if k not in ['username', 'password']]
+            
+            if not update_keys:
+                # Treat as GET
+                 async with aiohttp.ClientSession() as session:
+                    async with session.get(url) as resp:
+                        if resp.status == 200:
+                            return web.json_response(await resp.json())
+                        else:
+                            return web.json_response({'error': f'RPC Server returned {resp.status}'}, status=502)
+
+            # Otherwise, proceed with update
             # Update miner controller if Present
             if self.miner_controller:
                 u = data.get('user', self.user)
