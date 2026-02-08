@@ -1,7 +1,8 @@
 #!/bin/bash
 
-# Define Project Roots
-PROJECT_ROOT="/home/josh/Antigrav_projects/iCSI_Coin/iCSI_COIN_PYTHON_PORT"
+# Define Project Roots (Relative to script location)
+SCRIPT_DIR="$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )"
+PROJECT_ROOT="$SCRIPT_DIR/.."
 USER_NODE_ROOT="$PROJECT_ROOT/end_user_node"
 
 echo "=================================================="
