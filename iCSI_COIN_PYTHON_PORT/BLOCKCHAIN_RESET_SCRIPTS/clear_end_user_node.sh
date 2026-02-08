@@ -31,7 +31,7 @@
 set -e
 
 # Auto-detect project root (directory this script lives in)
-PROJECT_ROOT="$(cd "$(dirname "$0")" && pwd)"
+PROJECT_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 DATA_DIR="$PROJECT_ROOT/end_user_node/wallet_data"
 
 # Use remote compose if it exists, otherwise fall back to default

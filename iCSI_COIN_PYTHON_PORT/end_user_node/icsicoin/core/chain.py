@@ -70,6 +70,10 @@ class ChainManager:
         block_hash = self.block_index.get_block_hash_by_height(height)
         if not block_hash:
             return None
+        return self.get_block_by_hash(block_hash)
+
+    def get_block_by_hash(self, block_hash):
+        """Return a deserialized Block for the given hash, or None."""
         block_info = self.block_index.get_block_info(block_hash)
         if not block_info:
             return None
@@ -83,7 +87,7 @@ class ChainManager:
             if raw:
                 return Block.deserialize(io.BytesIO(raw))
         except Exception as e:
-            logger.error(f"Error reading block at height {height}: {e}")
+            logger.error(f"Error reading block {block_hash}: {e}")
         return None
 
     def process_block(self, block: Block):

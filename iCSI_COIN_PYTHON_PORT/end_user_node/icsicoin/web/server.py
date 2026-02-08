@@ -81,6 +81,11 @@ class WebServer:
         self.app.router.add_post('/api/beggar/start', self.handle_beggar_start)
         self.app.router.add_post('/api/beggar/stop', self.handle_beggar_stop)
         self.app.router.add_get('/api/beggar/list', self.handle_beggar_list)
+        # Explorer Routes
+        self.app.router.add_get('/explorer', self.handle_explorer_page)
+        self.app.router.add_get('/explorer/block/{block_hash}', self.handle_explorer_detail_page)
+        self.app.router.add_get('/api/explorer/blocks', self.handle_api_explorer_blocks)
+        self.app.router.add_get('/api/explorer/block/{block_hash}', self.handle_api_explorer_block_detail)
 
         self.runner = None
         self.site = None
@@ -96,6 +101,116 @@ class WebServer:
         self.miner_controller.stop_mining()
         if self.runner:
             await self.runner.cleanup()
+
+    async def handle_explorer_page(self, request):
+        return await self.render_template('explorer.html')
+
+    async def handle_explorer_detail_page(self, request):
+        block_hash = request.match_info['block_hash']
+        return await self.render_template('block_detail.html', block_hash=block_hash)
+
+    async def handle_api_explorer_blocks(self, request):
+        # Pagination
+        try:
+            page = int(request.query.get('page', 1))
+            limit = int(request.query.get('limit', 20))
+        except ValueError:
+            page = 1
+            limit = 20
+
+        chain = self.network_manager.chain_manager
+        best_block = chain.block_index.get_best_block()
+        
+        if not best_block:
+            return web.json_response({'blocks': [], 'total_pages': 0, 'current_page': page})
+
+        best_height = best_block['height']
+        total_blocks = best_height + 1
+        total_pages = (total_blocks + limit - 1) // limit
+
+        start_height = best_height - ((page - 1) * limit)
+        end_height = start_height - limit + 1
+        
+        if start_height < 0:
+             return web.json_response({'blocks': [], 'total_pages': total_pages, 'current_page': page})
+
+        end_height = max(0, end_height)
+        
+        blocks_data = []
+        for h in range(start_height, end_height - 1, -1):
+            # We need timestamp, so we must load the block header
+            # Optimization: chain.get_block_by_height loads full block (txs included). 
+            # For just header info, we might want a lighter method, but for now this is fine.
+            block = chain.get_block_by_height(h)
+            if block:
+                blocks_data.append({
+                    'height': h,
+                    'hash': block.get_hash().hex(),
+                    'timestamp': block.header.timestamp,
+                    'tx_count': len(block.vtx),
+                    'size': len(block.serialize())
+                })
+        
+        return web.json_response({
+            'blocks': blocks_data,
+            'total_pages': total_pages,
+            'current_page': page
+        })
+
+    async def handle_api_explorer_block_detail(self, request):
+        block_hash = request.match_info['block_hash']
+        chain = self.network_manager.chain_manager
+        
+        # Try to find by hash
+        # We need validation logic to distinguish standard hash or maybe height?
+        # User requirement says "click on block number (row)". 
+        # So we might want to support height lookup here too?
+        # For now, let's stick to hash as the primary ID, and the frontend links to /block/<hash>
+        
+        block = chain.get_block_by_hash(block_hash)
+        if not block:
+            return web.json_response({'error': 'Block not found'}, status=404)
+            
+        # Get Next Hash (if exists) -> Requires looking up by height + 1
+        # Get Height first
+        # We don't have height in the Block object instantly, we have to look it up in index?
+        # chain.get_block_by_hash returns deserialized block, but we lose the 'height' context unless we look it up again.
+        # Actually BlockIndex has it.
+        
+        block_info = chain.block_index.get_block_info(block_hash)
+        height = block_info['height'] if block_info else -1
+        
+        next_hash = None
+        if height != -1:
+            next_hash = chain.get_block_hash(height + 1)
+
+        # Transactions
+        txs = []
+        for tx in block.vtx:
+            txs.append({
+                'txid': tx.get_hash().hex(),
+                'version': tx.version,
+                'locktime': tx.locktime,
+                'vin_count': len(tx.vin),
+                'vout_count': len(tx.vout),
+                'is_coinbase': tx.is_coinbase()
+            })
+
+        return web.json_response({
+            'header': {
+                'hash': block_hash,
+                'version': block.header.version,
+                'prev_block': block.header.prev_block.hex(),
+                'merkle_root': block.header.merkle_root.hex(),
+                'timestamp': block.header.timestamp,
+                'bits': block.header.bits,
+                'nonce': block.header.nonce,
+                'height': height,
+                'next_block': next_hash
+            },
+            'transactions': txs,
+            'size': len(block.serialize())
+        })
 
     async def handle_index(self, request):
         template = self.jinja_env.get_template('dashboard.html')

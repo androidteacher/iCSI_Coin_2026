@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>iCSI Coin - Blockchain Explorer</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&family=Rajdhani:wght@500;600;700&display=swap"
+        rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        background: '#000000',
+                        surface: '#09090b',
+                        border: '#27272a',
+                        primary: '#a855f7',
+                        secondary: '#06b6d4',
+                        muted: '#a1a1aa',
+                    },
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                        mono: ['JetBrains Mono', 'monospace'],
+                        heading: ['Rajdhani', 'sans-serif'],
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        ::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: #27272a;
+            border-radius: 3px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: #3f3f46;
+        }
+    </style>
+</head>
+
+<body class="bg-background text-white font-sans min-h-screen antialiased selection:bg-primary selection:text-black">
+
+    <!-- Top Navigation Bar -->
+    <nav class="max-w-[1400px] mx-auto px-6 pt-6 pb-2">
+        <div class="bg-surface border border-border rounded-xl px-6 py-3 flex items-center justify-between shadow-lg">
+            <div class="flex items-center gap-3">
+                <span class="w-3 h-3 rounded-full bg-secondary shadow-[0_0_12px_#06b6d4]"></span>
+                <span class="font-heading font-bold text-lg uppercase tracking-widest text-white">iCSI Coin</span>
+                <span class="text-zinc-600 text-xs font-mono ml-2">Blockchain Explorer</span>
+            </div>
+            <div class="flex items-center gap-2">
+                <a href="/"
+                    class="px-4 py-2 rounded-lg bg-zinc-800 border border-zinc-700 text-zinc-300 font-bold text-xs uppercase tracking-wider hover:bg-zinc-700 hover:text-white transition-all">
+                    ← Back to Dashboard
+                </a>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <div class="max-w-[1400px] mx-auto p-6">
+
+        <div class="bg-surface border border-border rounded-xl p-6 shadow-sm">
+            <div class="flex justify-between items-center mb-6">
+                <h2 class="font-heading font-bold text-xl uppercase tracking-wider flex items-center gap-2 text-white">
+                    <span class="text-secondary">📦</span> Latest Blocks
+                </h2>
+                <div class="flex gap-2">
+                    <button id="prevBtn" onclick="changePage(-1)" disabled
+                        class="px-3 py-1 text-xs font-bold rounded bg-zinc-800 text-zinc-500 disabled:opacity-50">PREV</button>
+                    <span id="pageIndicator" class="px-3 py-1 text-xs font-mono text-zinc-400 self-center">Page 1</span>
+                    <button id="nextBtn" onclick="changePage(1)" disabled
+                        class="px-3 py-1 text-xs font-bold rounded bg-zinc-800 text-white hover:bg-zinc-700">NEXT</button>
+                </div>
+            </div>
+
+            <div class="overflow-x-auto">
+                <table class="w-full text-left border-collapse">
+                    <thead>
+                        <tr class="border-b border-zinc-800 text-xs text-muted uppercase tracking-wider font-heading">
+                            <th class="p-3">Height</th>
+                            <th class="p-3">Hash</th>
+                            <th class="p-3">Time</th>
+                            <th class="p-3">Txs</th>
+                            <th class="p-3">Size (B)</th>
+                        </tr>
+                    </thead>
+                    <tbody id="blocksTable" class="text-sm font-mono divide-y divide-zinc-800/50">
+                        <!-- Rows injected by JS -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+        let currentPage = 1;
+
+        async function loadBlocks(page) {
+            try {
+                const response = await fetch(`/api/explorer/blocks?page=${page}&limit=20`);
+                const data = await response.json();
+
+                const tbody = document.getElementById('blocksTable');
+                tbody.innerHTML = '';
+
+                data.blocks.forEach(block => {
+                    const row = document.createElement('tr');
+                    row.className = 'hover:bg-zinc-900/50 transition-colors cursor-pointer group';
+                    row.onclick = () => window.location.href = `/explorer/block/${block.hash}`;
+
+                    const date = new Date(block.timestamp * 1000).toLocaleString();
+                    const shortHash = block.hash.substring(0, 8) + '...' + block.hash.substring(block.hash.length - 8);
+
+                    row.innerHTML = `
+                        <td class="p-3 text-secondary font-bold">${block.height}</td>
+                        <td class="p-3 text-zinc-400 group-hover:text-white transition-colors">
+                            <span class="hidden md:inline">${block.hash}</span>
+                            <span class="md:hidden">${shortHash}</span>
+                        </td>
+                        <td class="p-3 text-zinc-500">${date}</td>
+                        <td class="p-3 text-zinc-300">${block.tx_count}</td>
+                        <td class="p-3 text-zinc-500">${block.size}</td>
+                    `;
+                    tbody.appendChild(row);
+                });
+
+                // Update Controls
+                currentPage = data.current_page;
+                document.getElementById('pageIndicator').innerText = `Page ${currentPage} of ${data.total_pages}`;
+                document.getElementById('prevBtn').disabled = currentPage <= 1;
+                document.getElementById('prevBtn').className = currentPage <= 1
+                    ? "px-3 py-1 text-xs font-bold rounded bg-zinc-800 text-zinc-600 cursor-not-allowed"
+                    : "px-3 py-1 text-xs font-bold rounded bg-zinc-800 text-white hover:bg-zinc-700";
+
+                document.getElementById('nextBtn').disabled = currentPage >= data.total_pages;
+                document.getElementById('nextBtn').className = currentPage >= data.total_pages
+                    ? "px-3 py-1 text-xs font-bold rounded bg-zinc-800 text-zinc-600 cursor-not-allowed"
+                    : "px-3 py-1 text-xs font-bold rounded bg-zinc-800 text-white hover:bg-zinc-700";
+
+            } catch (e) {
+                console.error("Failed to load blocks", e);
+            }
+        }
+
+        function changePage(delta) {
+            loadBlocks(currentPage + delta);
+        }
+
+        // Initial Load
+        loadBlocks(1);
+
+        // Auto-refresh every 10s
+        setInterval(() => loadBlocks(currentPage), 10000);
+    </script>
+</body>
+
+</html>

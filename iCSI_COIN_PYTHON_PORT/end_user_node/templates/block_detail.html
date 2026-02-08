@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Block Details - iCSI Coin</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&family=Rajdhani:wght@500;600;700&display=swap"
+        rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        background: '#000000',
+                        surface: '#09090b',
+                        border: '#27272a',
+                        primary: '#a855f7',
+                        secondary: '#06b6d4',
+                        muted: '#a1a1aa',
+                    },
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                        mono: ['JetBrains Mono', 'monospace'],
+                        heading: ['Rajdhani', 'sans-serif'],
+                    }
+                }
+            }
+        }
+    </script>
+</head>
+
+<body class="bg-background text-white font-sans min-h-screen antialiased selection:bg-primary selection:text-black">
+
+    <!-- Top Navigation Bar -->
+    <nav class="max-w-[1400px] mx-auto px-6 pt-6 pb-2">
+        <div class="bg-surface border border-border rounded-xl px-6 py-3 flex items-center justify-between shadow-lg">
+            <div class="flex items-center gap-3">
+                <span class="w-3 h-3 rounded-full bg-secondary shadow-[0_0_12px_#06b6d4]"></span>
+                <span class="font-heading font-bold text-lg uppercase tracking-widest text-white">iCSI Coin</span>
+                <span class="text-zinc-600 text-xs font-mono ml-2">Block Details</span>
+            </div>
+            <div class="flex items-center gap-2">
+                <a href="/explorer"
+                    class="px-4 py-2 rounded-lg bg-zinc-800 border border-zinc-700 text-zinc-300 font-bold text-xs uppercase tracking-wider hover:bg-zinc-700 hover:text-white transition-all">
+                    ← Back to Explorer
+                </a>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <div class="max-w-[1400px] mx-auto p-6" id="loading">
+        <div class="text-center text-zinc-500 animate-pulse font-mono">Loading Block Data...</div>
+    </div>
+
+    <div class="max-w-[1400px] mx-auto p-6 hidden space-y-6" id="content">
+
+        <!-- Header Info -->
+        <div class="bg-surface border border-border rounded-xl p-6 shadow-sm">
+            <h2 class="font-heading font-bold text-xl uppercase tracking-wider flex items-center gap-2 text-white mb-6">
+                <span class="text-secondary">📦</span> Block #<span id="blockHeight"></span>
+            </h2>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div class="space-y-4">
+                    <div>
+                        <div class="text-xs uppercase text-zinc-500 font-bold tracking-wider mb-1">Block Hash</div>
+                        <div class="font-mono text-sm text-secondary break-all" id="blockHash"></div>
+                    </div>
+                    <div>
+                        <div class="text-xs uppercase text-zinc-500 font-bold tracking-wider mb-1">Previous Block</div>
+                        <a id="prevLink" href="#"
+                            class="font-mono text-sm text-zinc-400 hover:text-white underline break-all"></a>
+                    </div>
+                </div>
+                <div class="space-y-4">
+                    <div>
+                        <div class="text-xs uppercase text-zinc-500 font-bold tracking-wider mb-1">Timestamp</div>
+                        <div class="font-mono text-sm text-white" id="blockTime"></div>
+                    </div>
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <div class="text-xs uppercase text-zinc-500 font-bold tracking-wider mb-1">Merkle Root</div>
+                            <div class="font-mono text-xs text-zinc-400 truncate" id="merkleRoot"></div>
+                        </div>
+                        <div>
+                            <div class="text-xs uppercase text-zinc-500 font-bold tracking-wider mb-1">Nonce</div>
+                            <div class="font-mono text-xs text-zinc-400" id="nonce"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <!-- Next Block Link (Optional) -->
+            <div class="mt-4 pt-4 border-t border-zinc-800 text-right" id="nextBlockContainer">
+                <a id="nextLink" href="#" class="text-xs font-bold uppercase text-secondary hover:text-white">Next Block
+                    →</a>
+            </div>
+        </div>
+
+        <!-- Transactions -->
+        <div class="bg-surface border border-border rounded-xl p-6 shadow-sm">
+            <h3 class="font-heading font-bold text-lg uppercase tracking-wider text-white mb-4">Transactions</h3>
+            <div class="overflow-x-auto">
+                <table class="w-full text-left">
+                    <thead>
+                        <tr class="border-b border-zinc-800 text-xs text-muted uppercase tracking-wider font-heading">
+                            <th class="p-3">TXID</th>
+                            <th class="p-3">Type</th>
+                            <th class="p-3 text-right">Inputs / Outputs</th>
+                        </tr>
+                    </thead>
+                    <tbody id="txTable" class="text-sm font-mono divide-y divide-zinc-800/50">
+                        <!-- Rows injected -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+        // The server renders this template with block_hash variable if needed, 
+        // but since we are doing API fetch, we can just grab it from URL or pass it.
+        // Actually, logic: server passes block_hash in template rendering? 
+        // Yes: return await self.render_template('block_detail.html', block_hash=block_hash)
+        // But Jinja2 var needs to be accessible in JS.
+
+        const blockHash = "{{ block_hash }}";
+
+        async function loadBlockDetails() {
+            try {
+                const response = await fetch(`/api/explorer/block/${blockHash}`);
+                if (!response.ok) throw new Error("Block not found");
+
+                const data = await response.json();
+                const h = data.header;
+
+                document.getElementById('blockHeight').innerText = h.height !== -1 ? h.height : 'Unknown';
+                document.getElementById('blockHash').innerText = h.hash;
+                document.getElementById('prevLink').innerText = h.prev_block;
+                document.getElementById('prevLink').href = `/explorer/block/${h.prev_block}`;
+
+                const date = new Date(h.timestamp * 1000).toLocaleString();
+                document.getElementById('blockTime').innerText = date;
+
+                document.getElementById('merkleRoot').innerText = h.merkle_root;
+                document.getElementById('nonce').innerText = h.nonce;
+
+                if (h.next_block) {
+                    document.getElementById('nextLink').href = `/explorer/block/${h.next_block}`;
+                    document.getElementById('nextBlockContainer').classList.remove('hidden');
+                } else {
+                    document.getElementById('nextBlockContainer').classList.add('hidden');
+                }
+
+                // Txs
+                const txTable = document.getElementById('txTable');
+                txTable.innerHTML = '';
+                data.transactions.forEach(tx => {
+                    const row = document.createElement('tr');
+                    const type = tx.is_coinbase ? '<span class="text-yellow-500 font-bold text-xs px-2 py-1 bg-yellow-900/20 rounded">COINBASE</span>' : '<span class="text-zinc-500 text-xs">STANDARD</span>';
+
+                    row.innerHTML = `
+                        <td class="p-3 text-secondary truncate max-w-[200px]">${tx.txid}</td>
+                        <td class="p-3">${type}</td>
+                        <td class="p-3 text-right text-zinc-400">${tx.vin_count} In / ${tx.vout_count} Out</td>
+                    `;
+                    txTable.appendChild(row);
+                });
+
+                document.getElementById('loading').classList.add('hidden');
+                document.getElementById('content').classList.remove('hidden');
+
+            } catch (e) {
+                document.getElementById('loading').innerHTML = `<span class="text-red-500">Error loading block: ${e.message}</span>`;
+            }
+        }
+
+        loadBlockDetails();
+    </script>
+</body>
+
+</html>

@@ -29,7 +29,7 @@
 set -e
 
 # Auto-detect project root (directory this script lives in)
-PROJECT_ROOT="$(cd "$(dirname "$0")" && pwd)"
+PROJECT_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 
 echo ""
 echo "================================================================"
