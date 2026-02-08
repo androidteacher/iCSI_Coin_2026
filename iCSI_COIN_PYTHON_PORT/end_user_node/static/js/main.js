@@ -734,3 +734,14 @@ async function saveRpcConfig() {
         alert("Failed to save RPC config");
     }
 }
+
+// --- Web Auth ---
+
+async function logout() {
+    try {
+        await fetch('/api/auth/logout', { method: 'POST' });
+        window.location.reload();
+    } catch (e) {
+        console.error("Logout failed", e);
+    }
+}

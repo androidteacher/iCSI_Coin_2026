@@ -10,6 +10,11 @@ import socket as socket_mod
 from icsicoin.core.primitives import Block
 from icsicoin.mining.controller import MinerController
 import jinja2
+import base64
+from cryptography import fernet
+from aiohttp_session import setup as setup_session, get_session, session_middleware
+from aiohttp_session.cookie_storage import EncryptedCookieStorage
+import hashlib
 
 logger = logging.getLogger("WebServer")
 
@@ -22,6 +27,16 @@ class WebServer:
         self.user = 'user'
         self.password = 'pass'
         self.enforce_auth = False # Default: permissive
+        
+        # Web Auth Config
+        self.data_dir = self.network_manager.data_dir
+        self.config_file = os.path.join(self.data_dir, 'node_config.json')
+        self.web_auth_config = self._load_web_auth_config()
+        
+        # Setup Session Middleware
+        # Use a fixed key if present in config, else generate one (invalidates sessions on restart if not saved)
+        # For persistence, we should save the key.
+        self.secret_key = self._get_or_create_secret_key()
         
         # Setup Jinja2
         template_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), 'templates')
@@ -63,6 +78,13 @@ class WebServer:
         # Your Data Download
         self.app.router.add_get('/api/data/download', self.handle_data_download)
 
+        # Web Auth Routes
+        self.app.router.add_get('/setup', self.handle_setup_page)
+        self.app.router.add_get('/login', self.handle_login_page)
+        self.app.router.add_post('/api/auth/setup', self.handle_api_setup)
+        self.app.router.add_post('/api/auth/login', self.handle_api_login)
+        self.app.router.add_post('/api/auth/logout', self.handle_api_logout)
+
         # API - Wallet
         self.app.router.add_get('/api/wallet/list', self.handle_wallet_list)
         self.app.router.add_post('/api/wallet/create', self.handle_wallet_create)
@@ -92,6 +114,12 @@ class WebServer:
         self.site = None
 
     async def start(self):
+        # Setup Session Middleware
+        setup_session(self.app, EncryptedCookieStorage(self.secret_key))
+        
+        # Add Auth Middleware
+        self.app.middlewares.append(self.auth_middleware)
+        
         self.runner = web.AppRunner(self.app)
         await self.runner.setup()
         self.site = web.TCPSite(self.runner, '0.0.0.0', self.port)
@@ -108,6 +136,123 @@ class WebServer:
         template = self.jinja_env.get_template(template_name)
         content = template.render(context)
         return web.Response(text=content, content_type='text/html')
+
+    # --- AUTHENTICATION ---
+
+    def _load_web_auth_config(self):
+        if os.path.exists(self.config_file):
+            try:
+                with open(self.config_file, 'r') as f:
+                    return json.load(f)
+            except Exception as e:
+                logger.error(f"Failed to load config: {e}")
+        return {}
+
+    def _save_web_auth_config(self):
+        try:
+            with open(self.config_file, 'w') as f:
+                json.dump(self.web_auth_config, f, indent=4)
+        except Exception as e:
+            logger.error(f"Failed to save config: {e}")
+
+    def _get_or_create_secret_key(self):
+        # Check if we have a stored key
+        if 'secret_key' in self.web_auth_config:
+            try:
+                return base64.urlsafe_b64decode(self.web_auth_config['secret_key'])
+            except: pass
+        
+        # Generate new
+        key = fernet.Fernet.generate_key()
+        self.web_auth_config['secret_key'] = base64.urlsafe_b64encode(key).decode()
+        self._save_web_auth_config()
+        return key
+
+    @web.middleware
+    async def auth_middleware(self, request, handler):
+        # Public Routes
+        public_routes = [
+            '/setup', '/login', '/static', '/api/auth/setup', '/api/auth/login'
+        ]
+        
+        # Check if path starts with any public route (basic check)
+        for r in public_routes:
+            if request.path.startswith(r):
+                return await handler(request)
+        
+        # Check Config Existence
+        if 'username' not in self.web_auth_config or 'password_hash' not in self.web_auth_config:
+            return web.HTTPFound('/setup')
+            
+        # Check Session
+        session = await get_session(request)
+        if 'user' not in session:
+            return web.HTTPFound('/login')
+            
+        return await handler(request)
+
+    async def handle_setup_page(self, request):
+        if 'username' in self.web_auth_config:
+             return web.HTTPFound('/login')
+        return await self.render_template('setup.html')
+
+    async def handle_login_page(self, request):
+        if 'username' not in self.web_auth_config:
+             return web.HTTPFound('/setup')
+        return await self.render_template('login.html')
+
+    async def handle_api_setup(self, request):
+        if 'username' in self.web_auth_config:
+             return web.json_response({'error': 'Already setup'}, status=400)
+             
+        data = await request.json()
+        username = data.get('username')
+        password = data.get('password')
+        
+        if not username or not password:
+            return web.json_response({'error': 'Missing fields'}, status=400)
+            
+        # Hash password
+        # Simple SHA256 for this context
+        hashed = hashlib.sha256(password.encode()).hexdigest()
+        
+        self.web_auth_config['username'] = username
+        self.web_auth_config['password_hash'] = hashed
+        self._save_web_auth_config()
+        
+        # Auto login
+        session = await get_session(request)
+        session['user'] = username
+        
+        return web.json_response({'status': 'ok'})
+
+    async def handle_api_login(self, request):
+        data = await request.json()
+        username = data.get('username')
+        password = data.get('password')
+        
+        saved_user = self.web_auth_config.get('username')
+        saved_hash = self.web_auth_config.get('password_hash')
+        
+        if not saved_user or not saved_hash:
+             return web.json_response({'error': 'Not setup'}, status=400)
+             
+        if username != saved_user:
+            return web.json_response({'error': 'Invalid credentials'}, status=401)
+            
+        input_hash = hashlib.sha256(password.encode()).hexdigest()
+        if input_hash != saved_hash:
+             return web.json_response({'error': 'Invalid credentials'}, status=401)
+             
+        session = await get_session(request)
+        session['user'] = username
+        
+        return web.json_response({'status': 'ok'})
+
+    async def handle_api_logout(self, request):
+        session = await get_session(request)
+        session.clear()
+        return web.json_response({'status': 'ok'})
 
     async def handle_explorer_page(self, request):
         return await self.render_template('explorer.html')
