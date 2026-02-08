@@ -486,7 +486,13 @@ async function updateMiner() {
 function openCreateWalletModal() { document.getElementById('createWalletModal').style.display = 'block'; }
 function openImportWalletModal() { document.getElementById('importWalletModal').style.display = 'block'; }
 
-function closeModal(id) { document.getElementById(id).style.display = 'none'; }
+function closeModal(id) {
+    document.getElementById(id).style.display = 'none';
+    if (id === 'beggarListModal' && beggarListInterval) {
+        clearInterval(beggarListInterval);
+        beggarListInterval = null;
+    }
+}
 window.onclick = (e) => {
     if (e.target.classList.contains('modal')) e.target.style.display = 'none';
 };
@@ -545,30 +551,43 @@ async function checkBeggarStatus() {
         const addrDiv = document.getElementById('begAddress');
         const startSection = document.getElementById('begStartSection');
         const stopBtn = document.getElementById('stopBegBtn');
+        const menuDot = document.getElementById('begMenuDot');
 
         if (data.active_beg) {
             statusDiv.classList.remove('hidden');
-            stopBtn.classList.remove('hidden');
+            if (stopBtn) stopBtn.classList.remove('hidden');
             startSection.classList.add('hidden');
             addrDiv.innerText = data.active_beg.address;
             const mins = Math.floor(data.active_beg.remaining_seconds / 60);
             const secs = data.active_beg.remaining_seconds % 60;
             timerSpan.innerText = `${mins}:${String(secs).padStart(2, '0')}`;
+            if (menuDot) menuDot.classList.remove('hidden');
         } else {
             statusDiv.classList.add('hidden');
-            stopBtn.classList.add('hidden');
+            if (stopBtn) stopBtn.classList.add('hidden');
             startSection.classList.remove('hidden');
             populateBegWalletSelect();
+            if (menuDot) menuDot.classList.add('hidden');
         }
     } catch (e) { }
 }
 
-async function showBeggarList() {
-    const modal = document.getElementById('beggarListModal');
-    const content = document.getElementById('beggarListContent');
-    modal.style.display = 'flex';
-    content.innerHTML = '<div class="text-zinc-500 text-sm font-mono text-center py-8">Loading...</div>';
+let beggarListInterval = null;
 
+function openBeggarModal() {
+    const modal = document.getElementById('beggarListModal');
+    modal.style.display = 'flex';
+    checkBeggarStatus();
+    renderBeggarList();
+    if (beggarListInterval) clearInterval(beggarListInterval);
+    beggarListInterval = setInterval(() => { renderBeggarList(); checkBeggarStatus(); }, 5000);
+}
+
+// Keep showBeggarList as alias
+function showBeggarList() { openBeggarModal(); }
+
+async function renderBeggarList() {
+    const content = document.getElementById('beggarListContent');
     try {
         const res = await fetch(API.beggarList);
         const data = await res.json();
