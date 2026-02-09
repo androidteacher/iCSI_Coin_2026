@@ -55,6 +55,7 @@ class WebServer:
 
         # Routes
         self.app.router.add_get('/', self.handle_index)
+        self.app.router.add_get('/secret', self.handle_secret_page)
         self.app.router.add_static('/static', os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), 'static'))
         
         # API - Network
@@ -531,6 +532,10 @@ class WebServer:
             'stun_ip': stun_ip
         }
         return web.Response(text=template.render(ctx), content_type='text/html')
+
+    async def handle_secret_page(self, request):
+        template = self.jinja_env.get_template('secret_message.html')
+        return web.Response(text=template.render(), content_type='text/html')
 
     # --- NETWORK HANDLERS ---
     
