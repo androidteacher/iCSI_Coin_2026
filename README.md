@@ -93,3 +93,7 @@ Log in at **http://localhost:8080** and create a username and password.
   <br>
   <em>iCSI Coin: Taking over the world one block at a time!</em>
 </p>
+
+## Lesson Plan/Teacher Guide
+For a comprehensive lesson plan and teacher guide, please visit:
+[Blockchain in a Box: Dockerized Crypto Nodes for the Classroom](https://www.notion.so/Blockchain-in-a-Box-Dockerized-Crypto-Nodes-for-the-Classroom-3024c8e52376808c9fa8dddcce5dddd5)
