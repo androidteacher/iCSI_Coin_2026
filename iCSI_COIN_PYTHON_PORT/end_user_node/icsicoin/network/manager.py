@@ -1040,28 +1040,31 @@ class NetworkManager:
                 tip_time = tip_block.header.timestamp
                 now = int(time.time())
                 
-                # If tip is older than 1 hour (3600s), we consider ourselves syncing/behind
-                is_behind = (now - tip_time) > 3600
+                tip_time = tip_block.header.timestamp
+                now = int(time.time())
                 
-                if is_behind:
-                    # 2. Check if we are stalling
-                    # Stalled = No block received in last 20 seconds
-                    time_since_last_block = time.time() - self.last_block_received_time
+                # FIX: Remove 1-hour delay check. 
+                # If we are silent for > 60s, we should ask for blocks regardless of tip age.
+                # This ensures we catch up even if only a few minutes behind.
+                
+                # Check if we are stalling
+                # Stalled = No block received in last 60 seconds
+                time_since_last_block = time.time() - self.last_block_received_time
+                
+                if time_since_last_block > 60: 
+                    logger.warning(f"Sync Watchdog: Silence detected! (Last Recv: {time_since_last_block:.1f}s ago). Requesting blocks...")
                     
-                    if time_since_last_block > 20: 
-                        logger.warning(f"Sync Watchdog: Stalled! (Tip Age: {(now - tip_time)/60:.1f}m, Last Recv: {time_since_last_block:.1f}s ago). Requesting blocks...")
+                    # Trigger getblocks to a random peer
+                    if self.active_connections:
+                        # Pick a random peer
+                        import random
+                        target_peer = random.choice(list(self.active_connections.keys()))
+                        writer = self.active_connections[target_peer]
                         
-                        # Trigger getblocks to a random peer
-                        if self.active_connections:
-                            # Pick a random peer
-                            import random
-                            target_peer = random.choice(list(self.active_connections.keys()))
-                            writer = self.active_connections[target_peer]
-                            
-                            await self.send_getblocks(writer)
-                            
-                            # Reset timer so we don't spam every loop if response is slow
-                            self.last_block_received_time = time.time() 
+                        await self.send_getblocks(writer)
+                        
+                        # Reset timer so we don't spam every loop if response is slow
+                        self.last_block_received_time = time.time() 
                             
             except Exception as e:
                 logger.error(f"Sync Watchdog error: {e}")
