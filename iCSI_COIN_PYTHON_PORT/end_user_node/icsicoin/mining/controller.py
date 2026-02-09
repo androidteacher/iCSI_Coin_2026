@@ -139,6 +139,11 @@ class MinerController:
                 
                 now = time.time()
                 
+                # GIL YIELD: Sleep 0 every slice to let Asyncio network thread run
+                # 10k hashes is a reasonable chunk size.
+                if hashes % 10000 == 0:
+                     time.sleep(0) 
+                
                 # Report hash rate every 10 seconds
                 if now - last_report_time >= 10:
                     elapsed = now - start_time

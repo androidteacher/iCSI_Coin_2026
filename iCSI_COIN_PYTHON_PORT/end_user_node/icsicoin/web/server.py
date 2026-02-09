@@ -550,15 +550,27 @@ class WebServer:
                 or getattr(self.network_manager, 'local_ip', '127.0.0.1')
             )
              
-        # 1. Configure STUN
-        # Enforce 3478 as per requirement
-        self.network_manager.configure_stun(seed_ip, 3478)
+        # 1. Parse Input
+        stun_host = seed_ip
+        targets = []
         
-        # 2. Connect to Seeds
-        ports = [9333, 9334, 9335]
+        if ':' in seed_ip:
+            # User provided specific port (e.g. 1.2.3.4:9333)
+            parts = seed_ip.split(':')
+            stun_host = parts[0]
+            targets = [seed_ip]
+        else:
+            # User provided IP only, try default ports
+            stun_host = seed_ip
+            targets = [f"{seed_ip}:{p}" for p in [9333, 9334, 9335]]
+
+        # 2. Configure STUN
+        # Enforce 3478 as per requirement
+        self.network_manager.configure_stun(stun_host, 3478)
+        
+        # 3. Connect to Seeds
         connected = 0
-        for p in ports:
-            target = f"{seed_ip}:{p}"
+        for target in targets:
             asyncio.create_task(self.network_manager.connect_to_peer(target))
             connected += 1
             

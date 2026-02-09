@@ -122,6 +122,16 @@ def mine(url, user, password, address=None, threads=1):
             hashes += 1
             if hashes % 100000 == 0:
                  print(f"Hashrate: {hashes / (time.time() - start_time):.2f} H/s", end='\r')
+                 # Check for stale tip every 100k hashes (approx few seconds)
+                 try:
+                     # Use the same session, check current tip
+                     tip_resp = rpc_call(url, "getbestblockhash", session=session)
+                     if tip_resp and tip_resp.get('result') != template['previousblockhash']:
+                         logger.info(f"\n[!] New block detected on network! detected at nonce {nonce}. Restarting loop.")
+                         found = False
+                         break # Break inner loop to refresh template
+                 except Exception as e:
+                     logger.debug(f"Stale check failed: {e}")
                  
         if found:
             # 3. Submit
