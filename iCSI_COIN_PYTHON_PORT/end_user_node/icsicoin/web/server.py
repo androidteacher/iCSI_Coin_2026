@@ -596,7 +596,9 @@ class WebServer:
                 peers_by_ip[ip] = {
                     'ip': ip, 'port': port, 'status': status, 
                     'can_delete': can_delete, 
-                    'priority': priority
+                    'priority': priority,
+                    'height': self.network_manager.peer_stats.get((ip, port), {}).get('height', 0),
+                    'user_agent': self.network_manager.peer_stats.get((ip, port), {}).get('user_agent', '')
                 }
             else:
                 # Existing entry, check priority
@@ -606,7 +608,9 @@ class WebServer:
                      peers_by_ip[ip] = {
                         'ip': ip, 'port': port, 'status': status, 
                         'can_delete': can_delete, 
-                        'priority': priority
+                        'priority': priority,
+                        'height': self.network_manager.peer_stats.get((ip, port), {}).get('height', 0),
+                        'user_agent': self.network_manager.peer_stats.get((ip, port), {}).get('user_agent', '')
                     }
                 # If same priority, maybe prefer standard ports if current isn't?
                 # or just stick with first found.

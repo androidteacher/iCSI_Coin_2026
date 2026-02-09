@@ -156,6 +156,11 @@ class ChainManager:
         if not parent_info:
              logger.warning(f"Orphan block detected: {block_hash} (Parent {prev_hash} unknown)")
              self.orphan_blocks[block_hash] = block
+             
+             if prev_hash not in self.orphan_dep:
+                 self.orphan_dep[prev_hash] = []
+             self.orphan_dep[prev_hash].append(block)
+             
              return False, "Orphan block"
 
         # 3. Connect to Chain (State Updates)
@@ -180,6 +185,9 @@ class ChainManager:
                     if new_height > current_height:
                         logger.info(f"Longer chain found! Current: {current_height}, New: {new_height}. Triggering Reorg.")
                         self._handle_reorg(block, new_height, best_block)
+                        
+                        # Process orphans for the NEW tip (which is now best)
+                        self._process_orphans(block_hash)
                         return True, "Reorg Success"
                     else:
                         logger.info(f"Fork detected but shorter/equal ({new_height} vs {current_height}). Ignoring for now.")
@@ -191,6 +199,9 @@ class ChainManager:
                         # Also index transactions!
                         for tx in block.vtx:
                             self.block_index.add_transaction(tx.get_hash().hex(), block_hash)
+
+                        # Check if any orphans were waiting for this side-chain block
+                        self._process_orphans(block_hash)
 
                         return True, "Fork Stored"
                 else:
@@ -213,6 +224,10 @@ class ChainManager:
             
             self.block_index.add_block(block_hash, file_num, offset, len(data), block.header.prev_block.hex(), height, status=3)
             logger.info(f"Block {block_hash} connected at height {height}")
+            
+            # Check for orphans waiting for this block
+            self._process_orphans(block_hash)
+            
             return True, "Accepted"
             
         return False, f"Connect failed: {reason}"

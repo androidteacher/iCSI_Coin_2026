@@ -770,11 +770,21 @@ class NetworkManager:
                 try:
                     version_msg = VersionMessage.parse(payload)
                     remote_listening_port = version_msg.addr_from[2]
-                    logger.info(f"Peer {addr[0]} reports listening on port {remote_listening_port}")
+                    remote_height = version_msg.start_height
+                    remote_agent = version_msg.user_agent
+                    
+                    if remote_height == 0:
+                        logger.warning(f"Peer {addr[0]} has Height 0.")
+                    
+                    logger.info(f"Peer {addr[0]} reports listening on port {remote_listening_port}, Height: {remote_height}")
                 except Exception as e:
                     logger.error(f"Failed to parse Version message: {e}")
                 
-                self.log_peer_event(addr, "RECV", "VERSION", f"Handshake initiated (Port {remote_listening_port})")
+                self.log_peer_event(addr, "RECV", "VERSION", f"Handshake initiated (Port {remote_listening_port}, Height {remote_height})")
+                
+                if addr in self.peer_stats:
+                    self.peer_stats[addr]['height'] = remote_height
+                    self.peer_stats[addr]['user_agent'] = remote_agent
                 
                 # 2. Send Version
                 my_version = VersionMessage()
@@ -816,7 +826,14 @@ class NetworkManager:
             # If changed, ensure stats/logs container exists for canonical key
             if canonical_addr != addr:
                  if canonical_addr not in self.peer_stats:
-                      self.peer_stats[canonical_addr] = {'connected_at': int(time.time()), 'last_seen': int(time.time())}
+                      # Copy stats from original addr if available
+                      raw_stats = self.peer_stats.get(addr, {})
+                      self.peer_stats[canonical_addr] = {
+                          'connected_at': raw_stats.get('connected_at', int(time.time())), 
+                          'last_seen': int(time.time()),
+                          'height': raw_stats.get('height', 0),
+                          'user_agent': raw_stats.get('user_agent', '')
+                      }
 
             await self.process_message_loop(reader, writer, canonical_addr)
         except Exception as e:
@@ -1239,6 +1256,29 @@ class NetworkManager:
             if command == 'version':
                 payload = await reader.read(length)
                 logger.info(f"Received VERSION from {addr}")
+                
+                 # Parse Version
+                try:
+                    version_msg = VersionMessage.parse(payload)
+                    remote_height = version_msg.start_height
+                    remote_agent = version_msg.user_agent
+                    
+                    if remote_height == 0:
+                        logger.warning(f"Connected to Peer {addr} (Height: 0). WARNING: Peer has no blocks.")
+                    else:
+                        logger.info(f"Connected to Peer {addr} (Height: {remote_height}, Agent: {remote_agent})")
+                        
+                    # Update stats
+                    self.peer_stats[addr] = {
+                        'connected_at': int(time.time()), 
+                        'last_seen': int(time.time()),
+                        'height': remote_height,
+                        'user_agent': remote_agent
+                    }
+
+                except Exception as e:
+                    logger.error(f"Failed to parse Version from {addr}: {e}")
+
                 self.log_peer_event(addr, "RECV", "VERSION", "")
                 
                 # Send Verack
