@@ -50,7 +50,7 @@ class NetworkManager:
         self.chain_state = ChainStateDB(self.data_dir)
         
         # Brain
-        self.mempool = Mempool()
+        self.mempool = Mempool(self.data_dir)
         self.chain_manager = ChainManager(self.block_store, self.block_index, self.chain_state)
 
         
@@ -131,6 +131,11 @@ class NetworkManager:
         t2 = asyncio.create_task(self.discovery_worker())
         self.tasks.add(t2)
         t2.add_done_callback(self.tasks.discard)
+        
+        # Rebroadcast Loop
+        t3 = asyncio.create_task(self.rebroadcast_loop())
+        self.tasks.add(t3)
+        t3.add_done_callback(self.tasks.discard)
         
         # If -connect is specified, we ONLY connect to those nodes
         if self.connect_nodes:
@@ -971,6 +976,37 @@ class NetworkManager:
                 self.forget_peer(peer)
 
             await asyncio.sleep(5) # Poll faster for UI responsiveness
+
+    async def rebroadcast_loop(self):
+        """Periodically rebroadcast mempool transactions to ensure propagation."""
+        while self.running:
+            await asyncio.sleep(60) # Every 60 seconds
+            
+            txs = self.mempool.get_all_transactions()
+            if not txs:
+                continue
+                
+            logger.info(f"Rebroadcasting {len(txs)} transactions from mempool...")
+            
+            # Announce all TXs
+            for tx in txs:
+                inv_msg = {
+                    "type": "inv", 
+                    "inventory": [{"type": "tx", "hash": tx.get_hash().hex()}]
+                }
+                json_payload = json.dumps(inv_msg).encode('utf-8')
+                out_m = Message('inv', json_payload)
+                
+                # Send to all connected peers
+                count = 0
+                for peer_addr, peer_writer in list(self.active_connections.items()):
+                    try:
+                        peer_writer.write(out_m.serialize())
+                        await peer_writer.drain()
+                        count += 1
+                    except: pass
+            
+            logger.info(f"Rebroadcast completed to {count} peers")
 
     async def announce_self(self):
         """Broadcasts our own external IP to all connected peers"""
