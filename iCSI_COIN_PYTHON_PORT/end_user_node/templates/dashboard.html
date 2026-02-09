@@ -686,6 +686,25 @@ pip install -r requirements.txt</code></pre>
                 <div class="h-px bg-zinc-900 my-6"></div>
 
                 <div>
+                    <label class="block font-heading font-bold text-xs uppercase tracking-widest text-muted mb-2">
+                        STUN Server Configuration <span class="text-zinc-600">(Advanced)</span>
+                    </label>
+                    <div class="flex gap-2">
+                        <input type="text" id="stunIp" placeholder="STUN IP" value="{{ stun_ip }}"
+                            class="flex-1 bg-black border border-border rounded-lg px-4 py-3 text-sm focus:outline-none focus:border-primary transition-colors text-white placeholder-zinc-700">
+                        <input type="number" id="stunPort" placeholder="3478" value="3478"
+                            class="w-24 bg-black border border-border rounded-lg px-4 py-3 text-sm focus:outline-none focus:border-primary transition-colors text-white placeholder-zinc-700">
+                    </div>
+                    <button type="button" onclick="setStunServer()"
+                        class="w-full mt-2 py-2 rounded-full border border-zinc-700 text-zinc-400 hover:text-white hover:bg-zinc-800 font-bold text-xs uppercase tracking-wider transition-all">
+                        Set STUN Server
+                    </button>
+                    <div id="stunStatus" class="mt-2 text-[10px] font-mono text-center min-h-[1rem]"></div>
+                </div>
+
+                <div class="h-px bg-zinc-900 my-6"></div>
+
+                <div>
                     <label class="block font-heading font-bold text-xs uppercase tracking-widest text-muted mb-4">NAT
                         Diagnostics & Warning</label>
                     <button type="button" onclick="testNat()"

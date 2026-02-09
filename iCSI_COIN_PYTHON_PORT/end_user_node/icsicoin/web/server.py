@@ -95,9 +95,11 @@ class WebServer:
         self.app.router.add_route('*', '/api/wallet/send', self.handle_wallet_send)
         self.app.router.add_route('*', '/api/wallet/export', self.handle_wallet_export)
         self.app.router.add_route('*', '/api/wallet/import', self.handle_wallet_import)
-        self.app.router.add_route('*', '/api/wallet/rename', self.handle_wallet_rename)
+        self.app.router.add_post('/api/stun/test', self.handle_test_stun)
+        self.app.router.add_post('/api/stun/set', self.handle_set_stun)
         
         # API - Miner
+        self.app.router.add_route('*', '/api/wallet/rename', self.handle_wallet_rename)
         self.app.router.add_route('*', '/api/miner/status', self.handle_miner_status)
         self.app.router.add_route('*', '/api/miner/start', self.handle_miner_start)
         self.app.router.add_route('*', '/api/miner/stop', self.handle_miner_stop)
@@ -564,9 +566,12 @@ class WebServer:
             stun_host = seed_ip
             targets = [f"{seed_ip}:{p}" for p in [9333, 9334, 9335]]
 
-        # 2. Configure STUN
-        # Enforce 3478 as per requirement
-        self.network_manager.configure_stun(stun_host, 3478)
+        # 2. Configure STUN - REMOVED!
+        # Original code blindly reconfigured STUN to the new peer, breaking subnet/ICE.
+        # self.network_manager.configure_stun(stun_host, 3478)
+        # We should NOT change global STUN settings here. 
+        # The user just wants to add a peer connection.
+        pass
         
         # 3. Connect to Seeds
         connected = 0
@@ -575,6 +580,17 @@ class WebServer:
             connected += 1
             
         return web.json_response({'status': 'initiated', 'connected_count': connected, 'seed_ip': seed_ip})
+
+    async def handle_set_stun(self, request):
+        data = await self._get_json(request)
+        stun_ip = data.get('stun_ip', '').strip()
+        stun_port = int(data.get('stun_port', 3478))
+        
+        if not stun_ip:
+            return web.json_response({'error': 'STUN IP required'}, status=400)
+            
+        self.network_manager.configure_stun(stun_ip, stun_port)
+        return web.json_response({'status': 'configured', 'stun_ip': stun_ip, 'stun_port': stun_port})
 
     async def handle_peers(self, request):
         peers_list = []

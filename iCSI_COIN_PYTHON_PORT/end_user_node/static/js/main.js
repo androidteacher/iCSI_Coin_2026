@@ -5,6 +5,7 @@ const API = {
     peers: '/api/peers',
     logs: '/api/logs',
     testNat: '/api/stun/test',
+    stunSet: '/api/stun/set',
     reset: '/api/reset',
     stats: '/api/stats',
     discovery: '/api/discovery/status',
@@ -150,6 +151,36 @@ async function testNat() {
         }
     } catch (e) {
         resDiv.innerText = "Error: " + e;
+    }
+}
+
+async function setStunServer() {
+    const ip = document.getElementById('stunIp').value;
+    const port = document.getElementById('stunPort').value;
+    const statusDiv = document.getElementById('stunStatus');
+
+    statusDiv.innerText = "Saving...";
+    statusDiv.className = "mt-2 text-[10px] font-mono text-center text-zinc-500";
+
+    try {
+        const res = await fetch(API.stunSet, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ stun_ip: ip, stun_port: port })
+        });
+        const data = await res.json();
+
+        if (res.ok) {
+            statusDiv.innerText = "STUN Server Updated!";
+            statusDiv.className = "mt-2 text-[10px] font-mono text-center text-primary";
+            setTimeout(() => statusDiv.innerText = "", 3000);
+        } else {
+            statusDiv.innerText = "Error: " + data.error;
+            statusDiv.className = "mt-2 text-[10px] font-mono text-center text-pink-500";
+        }
+    } catch (e) {
+        statusDiv.innerText = "Error: " + e;
+        statusDiv.className = "mt-2 text-[10px] font-mono text-center text-pink-500";
     }
 }
 
