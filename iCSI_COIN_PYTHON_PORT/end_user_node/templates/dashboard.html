@@ -668,9 +668,13 @@ pip install -r requirements.txt</code></pre>
                     <label
                         class="block font-heading font-bold text-xs uppercase tracking-widest text-muted mb-2">Manually
                         Add Another Node <span class="text-zinc-600">(Optional)</span></label>
-                    <input type="text" id="seedIp" placeholder="Auto-detected" value="{{ seed_ip }}"
-                        class="w-full bg-black border border-border rounded-lg px-4 py-3 text-sm focus:outline-none focus:border-primary transition-colors placeholder-zinc-700 text-white">
-                    <p class="text-[10px] text-zinc-600 mt-2 font-mono">Auto-connects to Ports 9333-9335</p>
+                    <div class="flex gap-2">
+                        <input type="text" id="seedIp" placeholder="Node IP Address" value="{{ seed_ip }}"
+                            class="flex-1 bg-black border border-border rounded-lg px-4 py-3 text-sm focus:outline-none focus:border-primary transition-colors placeholder-zinc-700 text-white">
+                        <input type="number" id="seedPort" placeholder="9341" value="9341"
+                            class="w-24 bg-black border border-border rounded-lg px-4 py-3 text-sm focus:outline-none focus:border-primary transition-colors placeholder-zinc-700 text-white">
+                    </div>
+                    <p class="text-[10px] text-zinc-600 mt-2 font-mono">Default Port: 9341 (User Node)</p>
                     <div id="discoveryStatus" class="mt-2 flex items-center gap-2 text-[11px] font-mono text-zinc-500">
                         <span class="inline-block w-2 h-2 rounded-full bg-zinc-700 animate-pulse"
                             id="discoveryDot"></span>

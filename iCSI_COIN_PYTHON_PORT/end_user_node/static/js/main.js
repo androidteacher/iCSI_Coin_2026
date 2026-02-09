@@ -74,8 +74,13 @@ async function updateStats() {
 }
 
 async function connectToNetwork() {
-    const ip = document.getElementById('seedIp').value;
-    if (!ip) return alert("Enter Seed IP");
+    const ipInput = document.getElementById('seedIp').value.trim();
+    const portInput = document.getElementById('seedPort').value.trim() || '9341';
+
+    if (!ipInput) return alert("Enter Seed IP");
+
+    // Construct final address
+    const finalAddress = `${ipInput}:${portInput}`;
 
     const btn = document.getElementById('connectBtn');
     btn.innerText = "CONNECTING...";
@@ -84,7 +89,7 @@ async function connectToNetwork() {
         const res = await fetch(API.connect, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ seed_ip: ip })
+            body: JSON.stringify({ seed_ip: finalAddress })
         });
         const data = await res.json();
         if (res.ok) {
