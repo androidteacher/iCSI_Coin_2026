@@ -110,7 +110,8 @@ class MinerController:
             bits = template['bits']
             
             # 2. Parse Header
-            prev_hash = binascii.unhexlify(template['previousblockhash'])
+            current_prev_hash_hex = template['previousblockhash'] # Keep for stale check
+            prev_hash = binascii.unhexlify(current_prev_hash_hex)
             merkle_root = binascii.unhexlify(template['merkle_root'])
             timestamp = template['curtime']
             version = template['version']
@@ -121,10 +122,11 @@ class MinerController:
             
             start_time = time.time()
             last_report_time = start_time
+            last_check_time = start_time
             hashes = 0
-            found = False
             
-            # Nonce loop (chunked to allow checking stop_event)
+            # Nonce loop (chunked)
+            # We use a large range, but we break out if we find it OR if stale
             for nonce in range(0, 1000000):
                 if self.stop_event.is_set():
                     break
@@ -135,16 +137,26 @@ class MinerController:
                 pow_int = int.from_bytes(pow_hash, 'little')
                 hashes += 1
                 
-                # Report hash rate every 10 seconds
                 now = time.time()
+                
+                # Report hash rate every 10 seconds
                 if now - last_report_time >= 10:
                     elapsed = now - start_time
                     rate = hashes / elapsed if elapsed > 0 else 0
                     self._log(f"⛏ Hash Rate: {rate:.1f} H/s | {hashes} hashes in {elapsed:.0f}s")
                     last_report_time = now
-                
+                    
+                # STALE TIP CHECK: Every 2.0 seconds
+                if now - last_check_time >= 2.0:
+                    last_check_time = now
+                    best_resp = self._rpc_call("getbestblockhash")
+                    if best_resp and 'result' in best_resp:
+                        network_tip = best_resp['result']
+                        if network_tip != current_prev_hash_hex:
+                            self._log(f"<span class='yellow'>STALE TIP DETECTED! Restarting...</span>")
+                            break # Break nonce loop, get new template instantly
+
                 if pow_int <= target:
-                    found = True
                     self._log(f"<span class='green'>FOUND BLOCK! Nonce: {nonce}</span>")
                     
                     # Submit
@@ -166,10 +178,6 @@ class MinerController:
                     
                     break
                 
-                hashes += 1
-                if hashes % 5000 == 0:
-                    elapsed = time.time() - start_time
-                    if elapsed > 0:
-                        self.hashrate = hashes / elapsed
+                # No sleep here, we want max hashrate within the python limits
             
-            # If not found, loop continues for new template
+            # If loop finishes (not found) or we broke out (stale), we loop back to Get Work

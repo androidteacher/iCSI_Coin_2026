@@ -94,6 +94,10 @@ class RPCServer:
             best = self.chain_manager.block_index.get_best_block()
             result = best['height'] if best else 0
 
+        elif method == 'getbestblockhash':
+            best = self.chain_manager.block_index.get_best_block()
+            result = best['block_hash'] if best else self.chain_manager.genesis_block.get_hash().hex()
+
         elif method == 'getblocktemplate':
             # 1. Get Tip
             best = self.chain_manager.block_index.get_best_block()
