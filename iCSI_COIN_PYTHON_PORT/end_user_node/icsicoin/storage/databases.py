@@ -26,6 +26,12 @@ class BlockIndexDB:
                     value TEXT
                 )
             """)
+            conn.execute("""
+                CREATE TABLE IF NOT EXISTS tx_index (
+                    tx_hash TEXT PRIMARY KEY,
+                    block_hash TEXT
+                )
+            """)
             conn.execute("CREATE INDEX IF NOT EXISTS idx_height ON block_index (height)")
             conn.commit()
 
@@ -88,6 +94,21 @@ class BlockIndexDB:
             cursor = conn.execute("SELECT block_hash FROM block_index WHERE block_hash LIKE ? LIMIT 5", (query_fragment + '%',))
             rows = cursor.fetchall()
             return [r[0] for r in rows]
+
+    def add_transaction(self, tx_hash, block_hash):
+        """Map a transaction hash to the block hash that contains it."""
+        with sqlite3.connect(self.db_path) as conn:
+            conn.execute("INSERT OR REPLACE INTO tx_index (tx_hash, block_hash) VALUES (?, ?)", (tx_hash, block_hash))
+            conn.commit()
+
+    def get_transaction_block_hash(self, tx_hash):
+        """Get the block hash containing the given transaction."""
+        with sqlite3.connect(self.db_path) as conn:
+            cursor = conn.execute("SELECT block_hash FROM tx_index WHERE tx_hash = ?", (tx_hash,))
+            row = cursor.fetchone()
+            if row:
+                return row[0]
+            return None
 
 class ChainStateDB:
     def __init__(self, data_dir):

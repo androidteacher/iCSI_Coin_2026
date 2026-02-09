@@ -117,8 +117,9 @@ class ChainManager:
         parent_info = self.block_index.get_block_info(prev_hash)
         
         if not parent_info:
-             logger.info(f"Block {block_hash} already processing/processed.")
-             return True, "Already processed"
+             logger.warning(f"Orphan block detected: {block_hash} (Parent {prev_hash} unknown)")
+             self.orphan_blocks[block_hash] = block
+             return False, "Orphan block"
 
         # 3. Connect to Chain (State Updates)
         # We need to determine if this extends the longest chain.
@@ -128,16 +129,36 @@ class ChainManager:
         if best_block:
             prev_hash = block.header.prev_block.hex()
             if prev_hash != best_block['block_hash']:
-                # Orphan or Fork?
-                # If prev_hash exists in index but is not best, it's a fork.
-                # If prev_hash does not exist, it's an orphan.
-                if self.block_index.get_block_info(prev_hash):
-                     return False, f"Fork detected (prev={prev_hash[:8]}), Reorgs not fully supported yet"
+                # Fork detected
+                # Check if this fork is longer/has more work
+                # For Phase 5, just height.
                 
-                logger.warning(f"Orphan block: {block_hash}, Prev: {prev_hash}")
-                # Store as orphan? 
-                # For now, reject.
-                return False, f"Orphan block (prev={prev_hash[:8]} not found)"
+                # We need the height of this new block.
+                # Since we don't have it yet, we check the parent's height.
+                parent_info = self.block_index.get_block_info(prev_hash)
+                if parent_info:
+                    new_height = parent_info['height'] + 1
+                    current_height = best_block['height']
+                    
+                    if new_height > current_height:
+                        logger.info(f"Longer chain found! Current: {current_height}, New: {new_height}. Triggering Reorg.")
+                        self._handle_reorg(block, new_height, best_block)
+                        return True, "Reorg Success"
+                    else:
+                        logger.info(f"Fork detected but shorter/equal ({new_height} vs {current_height}). Ignoring for now.")
+                        # Special Path: Store Side Chain Block
+                        data = block.serialize()
+                        file_num, offset = self.block_store.write_block(data)
+                        self.block_index.add_block(block_hash, file_num, offset, len(data), block.header.prev_block.hex(), new_height, status=2) # Status 2 = Valid Data
+                        
+                        # Also index transactions!
+                        for tx in block.vtx:
+                            self.block_index.add_transaction(tx.get_hash().hex(), block_hash)
+
+                        return True, "Fork Stored"
+                else:
+                     # This should be caught by "Check Parent" above, but just in case
+                     return False, f"Orphan block (prev={prev_hash[:8]} not found)"
                 
         # 4. Connect
         # Determine height for the new block
@@ -193,68 +214,156 @@ class ChainManager:
         
         # New: Update status to 3 (Main Chain)
         self.block_index.update_block_status(block.get_hash().hex(), 3)
+        
+        # Populate Tx Index
+        block_hash = block.get_hash().hex()
+        for tx in block.vtx:
+            self.block_index.add_transaction(tx.get_hash().hex(), block_hash)
+            
         return True, "Connected"
 
     def _disconnect_block(self, block):
-        # Undo UTXO changes
-        # Inputs -> Add back
-        # Outputs -> Remove
         logger.info(f"Disconnecting block {block.get_hash().hex()}")
         
-        for tx in block.vtx:
-            # Restore Inputs
-            if not tx.is_coinbase():
-                for vin in tx.vin:
-                    # We need to look up the OLD txout to restore it. 
-                    # This implies we need a full tx index or we can't revert without data.
-                    # CRITICAL LIMITATION of simple UTXO set: undoing requires data we effectively deleted.
-                    # SOLUTION:
-                    # 1. Re-read the PREVIOUS block's tx to find the output? No, input refers to arbitrary past tx.
-                    # 2. We need to look up the transaction from DISK.
-                    # We don't have a TxIndex yet! (Phase 8).
-                    # Temp Workaround for Reorgs in Phase 5:
-                    # - Only support very simple reorgs or strict linear?
-                    # - OR: To undo, we assume we can fetch the prev tx. 
-                    # - BUT we need to find WHERE valid txs are.
-                    # For now, let's admit: REORG UNDO IS HARD without TxIndex.
-                    # We will log "Reorg not fully supported for State Revert" and just update Head pointer?
-                    # No, that corrupts UTXO.
-                    
-                    # Real Bitcoin uses "Undo Files" (rev*.dat) containing the spent outputs.
-                    # For this Python Port, let's implement a simplified "Undo" by just NOT deleting UTXOs permanently?
-                    # Or: We accept that reorgs deep ( > 0) are broken until Phase 8?
-                    # Let's try to just update the HEAD pointer, and accept UTXO inconsistencies for deep reorgs 
-                    # OR: Just implement TxIndex now? It's easy.
-                    pass
-            
+        # 1. Reverse Transactions (Right to Left)
+        for tx in reversed(block.vtx):
             tx_hash = tx.get_hash().hex()
+            
+            # A. Remove Outputs created by this block
             for i, _ in enumerate(tx.vout):
                 self.chain_state.remove_utxo(tx_hash, i)
-        
-        # Set new best to prev
+                
+            # B. Restore Inputs spent by this block
+            if not tx.is_coinbase():
+                for vin in tx.vin:
+                     prev_txid = vin.prev_hash.hex()
+                     prev_out_idx = vin.prev_index
+                     
+                     # Find which block contains this previous transaction
+                     source_block_hash = self.block_index.get_transaction_block_hash(prev_txid)
+                     
+                     if source_block_hash:
+                         source_block = self.get_block_by_hash(source_block_hash)
+                         if source_block:
+                             # Find the tx in that block
+                             original_tx = next((t for t in source_block.vtx if t.get_hash().hex() == prev_txid), None)
+                             if original_tx and prev_out_idx < len(original_tx.vout):
+                                 out = original_tx.vout[prev_out_idx]
+                                 # Restore UTXO
+                                 # We need the block height of the source block
+                                 source_info = self.block_index.get_block_info(source_block_hash)
+                                 height = source_info['height'] if source_info else 0
+                                 
+                                 self.chain_state.add_utxo(
+                                     prev_txid, 
+                                     prev_out_idx, 
+                                     out.amount, 
+                                     out.script_pubkey, 
+                                     height, 
+                                     original_tx.is_coinbase()
+                                 )
+                             else:
+                                 logger.error(f"Could not find tx {prev_txid} in block {source_block_hash} during rollback")
+                         else:
+                             logger.error(f"Could not load source block {source_block_hash} during rollback")
+                     else:
+                         # Fallback: Maybe it's in the mempool? No, blocks only spend confirmed (usually).
+                         # Or we just don't have the index for it yet (old block).
+                         logger.critical(f"CRITICAL: Could not find block for input {prev_txid} during rollback. UTXO Set may be corrupt.")
+                         
+        # Update Best Block to Parent
         prev = block.header.prev_block.hex()
         self.block_index.update_best_block(prev)
         
-        # New: Revert status to 2 (Valid Header/Data)
+        # Revert status to 2 (Valid Header/Data, but not active chain)
         self.block_index.update_block_status(block.get_hash().hex(), 2)
 
 
     def _handle_reorg(self, new_tip_block, new_height, old_tip_info):
         old_hash = old_tip_info['block_hash'] if old_tip_info else "None"
-        logger.warning(f"REORG DETECTED! Old Tip: {old_hash} -> New Tip: {new_tip_block.get_hash().hex()}")
-        # Find Fork Point
-        fork_block = self._find_fork(new_tip_block, old_tip_info)
+        new_hash = new_tip_block.get_hash().hex()
+        logger.warning(f"REORG START: {old_hash} -> {new_hash}")
         
-        # Disconnect Old -> Fork
-        # Connect Fork -> New
-        # (Simplified, implementation deferred to improve robustness later)
-        # For now, just connect the new one as if it were valid, 
-        # risking UTXO set if inputs conflict.
-        self._connect_block(new_tip_block, new_height)
+        # 1. Find Common Ancestor
+        fork_hash, path_to_new = self._find_fork(new_tip_block, old_tip_info)
+        
+        if not fork_hash:
+            logger.error("Reorg failed: Could not find common ancestor (Genesis mismatch?)")
+            return
+            
+        logger.info(f"Reorg Common Ancestor: {fork_hash}")
+        
+        # 2. Disconnect Old Chain (Old Tip -> Fork exclusive)
+        curr = old_hash
+        while curr != fork_hash:
+             block_to_disconnect = self.get_block_by_hash(curr)
+             if not block_to_disconnect:
+                 logger.critical(f"Could not load block {curr} during reorg disconnect!")
+                 break
+             
+             self._disconnect_block(block_to_disconnect)
+             # Move to parent
+             curr = block_to_disconnect.header.prev_block.hex()
 
-    def _find_fork(self, new_block, old_tip_info):
-        # Walk back headers
-        return None # TODO
+        # 3. Connect New Chain (Fork -> New Tip)
+        # path_to_new is [Fork+1, ..., NewTip]
+        for b in path_to_new:
+             b_hash = b.get_hash().hex()
+             parent_hash = b.header.prev_block.hex()
+             
+             # Get parent height to determine this block's height
+             parent_info = self.block_index.get_block_info(parent_hash)
+             h = (parent_info['height'] + 1) if parent_info else 0
+             
+             self._connect_block(b, h)
+             
+             if b == new_tip_block:
+                 # This is the new tip we haven't stored yet.
+                 data = b.serialize()
+                 file_num, offset = self.block_store.write_block(data)
+                 self.block_index.add_block(b_hash, file_num, offset, len(data), parent_hash, h, status=3)
+             else:
+                 # Intermediate block, should be on disk/index already?
+                 pass
+
+        logger.info("REORG COMPLETE")
+
+
+    def _find_fork(self, new_tip_block, old_tip_info):
+        """
+        Returns (fork_hash, [block_objects_from_fork_to_new])
+        """
+        # Load new chain path backwards
+        new_chain = []
+        curr_block = new_tip_block
+        
+        while True:
+             block_hash = curr_block.get_hash().hex()
+             
+             # Check if this block exists and is active?
+             info = self.block_index.get_block_info(block_hash)
+             if info and info['status'] == 3:
+                 return block_hash, list(reversed(new_chain))
+             
+             new_chain.append(curr_block)
+             
+             prev_hash = curr_block.header.prev_block.hex()
+             parent = self.get_block_by_hash(prev_hash)
+             
+             if not parent:
+                 # Check genesis in index
+                 p_info = self.block_index.get_block_info(prev_hash)
+                 if p_info and p_info['status'] == 3:
+                      return prev_hash, list(reversed(new_chain))
+                 
+                 # If we hit Genesis hash hardcoded
+                 if prev_hash == '00'*32: 
+                      # This shouldn't happen if genesis is indexed
+                      return None, None
+                 
+                 return None, None
+                 
+             curr_block = parent
 
     def _process_orphans(self, parent_hash):
         if parent_hash in self.orphan_dep:
