@@ -999,15 +999,8 @@ class NetworkManager:
     async def send_getblocks(self, peer_writer):
         """Sends getblocks message to peer with our chain tip locator"""
         try:
-            # Create locator: Current Tip + Genesis (to always find common ground)
-            best_info = self.block_index.get_best_block()
-            tip_hash = best_info['block_hash'] if best_info else self.chain_manager.genesis_block.get_hash().hex()
-            
-            genesis_hash = self.chain_manager.genesis_block.get_hash().hex()
-            
-            locator = [tip_hash]
-            if tip_hash != genesis_hash:
-                locator.append(genesis_hash)
+            # Create locator using dense-then-sparse strategy
+            locator = self.chain_manager.get_block_locator()
             
             msg = {
                 "type": "getblocks",

@@ -62,6 +62,43 @@ class ChainManager:
         self.block_index.update_best_block(block_hash)
         logger.info(f"Genesis Initialized: {block_hash}")
 
+    def get_block_locator(self):
+        """
+        Construct a block locator (list of hashes) to help a peer find the most recent common ancestor.
+        Strategy: Dense at first, then exponential back-off (1, 2, 4, 8...).
+        """
+        locator = []
+        best_block = self.block_index.get_best_block()
+        if not best_block:
+            return [self.genesis_block.get_hash().hex()]
+            
+        current_height = best_info = best_block['height']
+        step = 1
+        
+        while current_height > 0:
+            block_hash = self.get_block_hash(current_height)
+            if block_hash:
+                locator.append(block_hash)
+            
+            # Stop if we have enough or hit genesis (approx 32 items covers full history usually)
+            if len(locator) > 32:
+                break
+                
+            # Apply step (Exponential backoff)
+            # First 10 blocks are dense (step=1)
+            # Then double the step
+            if len(locator) > 10:
+                step *= 2
+                
+            current_height -= step
+            
+        # Always include Genesis as the final fallback
+        genesis_hash = self.genesis_block.get_hash().hex()
+        if not locator or locator[-1] != genesis_hash:
+            locator.append(genesis_hash)
+            
+        return locator
+
     def get_block_hash(self, height):
         return self.block_index.get_block_hash_by_height(height)
 
