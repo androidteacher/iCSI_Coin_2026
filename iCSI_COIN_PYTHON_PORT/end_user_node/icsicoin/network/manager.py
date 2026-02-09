@@ -519,7 +519,11 @@ class NetworkManager:
                             self.log_peer_event(addr, "RECV", "BLOCK", f"Hash {b_hash[:16]}...")
 
                             # Process via ChainManager
-                            if self.chain_manager.process_block(block):
+                            # Process via ChainManager
+                            # Fix: Unpack tuple (success, reason)
+                            success, reason = self.chain_manager.process_block(block)
+                            
+                            if success:
                                 # Remove received transactions from mempool
                                 for tx in block.vtx:
                                     self.mempool.remove_transaction(tx.get_hash().hex())
@@ -542,8 +546,14 @@ class NetworkManager:
                                         except: pass
                                 logger.info("Relayed BLOCK INV to peers")
                             else:
-                                self.log_peer_event(addr, "CONSENSUS", "IGNORED", f"Block {b_hash[:16]}... known or invalid")
-                                pass # Invalid or orphan (already logged by ChainManager)
+                                self.log_peer_event(addr, "CONSENSUS", "IGNORED", f"Block {b_hash[:16]}... {reason}")
+                                
+                                # ORPHAN HANDLING
+                                if "Orphan" in reason:
+                                    logger.info(f"Orphan block detected from {addr}. Requesting ancestry...")
+                                    await self.send_getblocks(writer)
+                                else:
+                                    pass # Invalid or known
                                 
                     except Exception as e:
                         logger.error(f"BLOCK error: {e}")
