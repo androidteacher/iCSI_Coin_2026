@@ -92,6 +92,7 @@ class NetworkManager:
         # Beggar system state
         self.beggar_list = {}  # {address: {first_seen, last_seen, source_ip}}
         self.active_beg = None  # {address, started_at, task} or None
+        self.last_block_received_time = 0 # Track last block time for sync watchdog
 
     def configure_stun(self, ip, port):
         self.stun_ip = ip
@@ -170,6 +171,11 @@ class NetworkManager:
         t6 = asyncio.create_task(self.multicast_beacon.start_listener())
         self.tasks.add(t6)
         t6.add_done_callback(self.tasks.discard)
+
+        # Sync Watchdog (New)
+        t7 = asyncio.create_task(self.sync_worker())
+        self.tasks.add(t7)
+        t7.add_done_callback(self.tasks.discard)
 
     async def _on_multicast_discover(self, ip, ports, p2p_port):
         """Called when a new peer is discovered via multicast."""
@@ -535,6 +541,8 @@ class NetworkManager:
 
                                 self.log_peer_event(addr, "CONSENSUS", "ACCEPTED", f"Block {b_hash[:16]}... added to chain")
                                 
+                                self.last_block_received_time = time.time() # Update watchdog timer
+
                                 # FIX: Trigger next batch download efficiently (Batched)
                                 # Only ask every 500 blocks to avoid network flooding
                                 best_info = self.block_index.get_best_block()
@@ -983,6 +991,63 @@ class NetworkManager:
                 self.forget_peer(peer)
 
             await asyncio.sleep(5) # Poll faster for UI responsiveness
+
+    async def sync_worker(self):
+        """
+        Background task to monitor synchronization progress.
+        If we are behind (based on time) and haven't received a block recently,
+        trigger a getblocks request to a random peer to restart the flow.
+        """
+        logger.info("Starting Sync Watchdog...")
+        while self.running:
+            await asyncio.sleep(10) # Check every 10 seconds
+
+            try:
+                # 1. Determine if we need to sync
+                # Check current tip timestamp
+                best_block = self.block_index.get_best_block()
+                if not best_block:
+                    continue
+                
+                # Get block timestamp (approximate from header if we had it, but we can infer from other sources?)
+                # We don't have timestamp in block_index directly unless we load the block or it's in metadata?
+                # Actually, wait. block_index info doesn't have timestamp. 
+                # We'll use system time vs. expected block time? 
+                # Better: load the block header.
+                
+                tip_hash = best_block['block_hash']
+                tip_block = self.chain_manager.get_block_by_hash(tip_hash)
+                if not tip_block:
+                    continue
+                    
+                tip_time = tip_block.header.timestamp
+                now = int(time.time())
+                
+                # If tip is older than 1 hour (3600s), we consider ourselves syncing/behind
+                is_behind = (now - tip_time) > 3600
+                
+                if is_behind:
+                    # 2. Check if we are stalling
+                    # Stalled = No block received in last 20 seconds
+                    time_since_last_block = time.time() - self.last_block_received_time
+                    
+                    if time_since_last_block > 20: 
+                        logger.warning(f"Sync Watchdog: Stalled! (Tip Age: {(now - tip_time)/60:.1f}m, Last Recv: {time_since_last_block:.1f}s ago). Requesting blocks...")
+                        
+                        # Trigger getblocks to a random peer
+                        if self.active_connections:
+                            # Pick a random peer
+                            import random
+                            target_peer = random.choice(list(self.active_connections.keys()))
+                            writer = self.active_connections[target_peer]
+                            
+                            await self.send_getblocks(writer)
+                            
+                            # Reset timer so we don't spam every loop if response is slow
+                            self.last_block_received_time = time.time() 
+                            
+            except Exception as e:
+                logger.error(f"Sync Watchdog error: {e}")
 
     async def rebroadcast_loop(self):
         """Periodically rebroadcast mempool transactions to ensure propagation."""
