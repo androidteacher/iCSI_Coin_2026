@@ -534,6 +534,11 @@ class NetworkManager:
                                     self.mempool.remove_transaction(tx.get_hash().hex())
 
                                 self.log_peer_event(addr, "CONSENSUS", "ACCEPTED", f"Block {b_hash[:16]}... added to chain")
+                                
+                                # FIX: Trigger next batch download
+                                # If this block is the new tip, ask the peer if they have more
+                                await self.send_getblocks(writer)
+
                                 # Relay logic (simple flood)
                                 inv_msg = {
                                     "type": "inv", 
