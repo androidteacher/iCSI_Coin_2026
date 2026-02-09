@@ -811,7 +811,8 @@ class WebServer:
             current_height = best['height'] if best else 0
 
             tx = self.network_manager.wallet.create_transaction(
-                to_addr, satoshi, self.network_manager.chain_manager.chain_state, current_height
+                to_addr, satoshi, self.network_manager.chain_manager.chain_state, current_height,
+                mempool=self.network_manager.mempool
             )
             
             # Broadcast

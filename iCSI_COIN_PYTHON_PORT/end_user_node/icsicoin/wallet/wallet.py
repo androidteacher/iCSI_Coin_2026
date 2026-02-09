@@ -93,7 +93,7 @@ class Wallet:
                 total += u['amount']
         return total
 
-    def create_transaction(self, to_addr, amount, chain_state, current_height, fee=1000):
+    def create_transaction(self, to_addr, amount, chain_state, current_height, fee=1000, mempool=None):
         """Create a signed transaction sending 'amount' to 'to_addr'."""
         # 1. Collect UTXOs
         from icsicoin.core.primitives import Transaction, TxIn, TxOut
@@ -114,13 +114,88 @@ class Wallet:
             script = b'\x76\xa9\x14' + pubkey_hash + b'\x88\xac'
             
             utxos = chain_state.get_utxos_by_script(script)
-            if not utxos:
+            
+            # --- MEMPOOL OUT-OF-BAND LOGIC ---
+            if mempool:
+                # 1. Filter out UTXOs that are already spent in mempool
+                # optimize: build set of spent (hash, index)
+                # This should be done once outside the loop for efficiency, but let's do it inline or prep.
+                pass 
+                
+        # Optimization: Pre-calculate mempool impacts
+        mempool_spent = set()
+        mempool_outputs = [] # List of (txid, vout, amount, script_pubkey)
+        
+        if mempool:
+             for tx in mempool.get_all_transactions():
+                 tx_hash = tx.get_hash().hex()
+                 # Inputs spent
+                 for vin in tx.vin:
+                     mempool_spent.add((vin.prev_hash.hex(), vin.prev_index))
+                     # Also handle byte/str discrepancy if prev_hash is bytes
+                     # vin.prev_hash is bytes usually
+                     
+                 # Outputs created
+                 for i, vout in enumerate(tx.vout):
+                     mempool_outputs.append({
+                         'txid': tx_hash,
+                         'vout': i,
+                         'amount': vout.amount,
+                         'script_pubkey': vout.script_pubkey,
+                         'is_coinbase': tx.is_coinbase(),
+                         'block_height': current_height + 1 # Unconfirmed
+                     })
+
+        for key in self.keys:
+            addr = key['addr']
+            pubkey_hash = binascii.unhexlify(addr)
+            script = b'\x76\xa9\x14' + pubkey_hash + b'\x88\xac'
+            
+            # Get Confirmed UTXOs
+            metrics_utxos = chain_state.get_utxos_by_script(script)
+            
+            # Mix in Mempool Outputs for THIS address
+            # (Zero-conf chaining)
+            for mout in mempool_outputs:
+                if mout['script_pubkey'] == script:
+                     # Add to candidate list
+                     # Format must match get_utxos_by_script result
+                     metrics_utxos.append(mout)
+            
+            if not metrics_utxos:
                 continue
                 
             if change_addr_str is None:
                 change_addr_str = addr # Send change back to first address with funds
                 
-            for u in utxos:
+            for u in metrics_utxos:
+                # CHECK IF SPENT IN MEMPOOL
+                # DEBUG
+                print(f"DEBUG: Checking UTXO: {u['txid']} type: {type(u['txid'])} vout: {u['vout']}", flush=True)
+                print(f"DEBUG: Mempool Spent: {mempool_spent}", flush=True)
+                
+                if (u['txid'], u['vout']) in mempool_spent:
+                     print("DEBUG: SKIPPING SPENT UTXO", flush=True)
+                     continue
+                     
+                # CHECK IF SPENT IN MEMPOOL (Bytes Key compatibility)
+                # u['txid'] from DB is hex string? check databases.py. Yes, hex string.
+                # our mempool_spent set has (hex_str, int).
+                if isinstance(u['txid'], bytes):
+                    print("DEBUG: Handling bytes txid", flush=True) 
+                    txid_str = u['txid'].decode('utf-8')
+                    if (txid_str, u['vout']) in mempool_spent:
+                         print("DEBUG: SKIPPING SPENT UTXO (Bytes decoded)", flush=True)
+                         continue
+                    # Also try hex conversion if it's raw bytes
+                    try:
+                        txid_hex = binascii.hexlify(u['txid']).decode('utf-8')
+                        if (txid_hex, u['vout']) in mempool_spent:
+                            print("DEBUG: SKIPPING SPENT UTXO (Hexified)", flush=True)
+                            continue
+                    except: pass
+                
+                # Check Coinbase Maturity (100 blocks)
                 # Coinbase Maturity Check (100 blocks)
                 if u.get('is_coinbase', False):
                     # Depth = current_height - block_height + 1? 
