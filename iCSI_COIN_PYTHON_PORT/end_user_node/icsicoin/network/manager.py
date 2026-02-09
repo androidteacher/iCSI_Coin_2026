@@ -535,9 +535,11 @@ class NetworkManager:
 
                                 self.log_peer_event(addr, "CONSENSUS", "ACCEPTED", f"Block {b_hash[:16]}... added to chain")
                                 
-                                # FIX: Trigger next batch download
-                                # If this block is the new tip, ask the peer if they have more
-                                await self.send_getblocks(writer)
+                                # FIX: Trigger next batch download efficiently (Batched)
+                                # Only ask every 500 blocks to avoid network flooding
+                                best_info = self.block_index.get_best_block()
+                                if best_info and (best_info['height'] % 500) == 0:
+                                     await self.send_getblocks(writer)
 
                                 # Relay logic (simple flood)
                                 inv_msg = {
