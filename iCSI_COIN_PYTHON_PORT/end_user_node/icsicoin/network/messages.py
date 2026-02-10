@@ -31,7 +31,11 @@ class Message:
         if len(data) < 24:
             return None
         magic, command, length, checksum = struct.unpack('<I12sI4s', data[:24])
-        command = command.rstrip(b'\x00').decode('ascii')
+        
+        # FIX: Split by null to ignore garbage after first null
+        # rstrip() is insufficient if buffer contains junk after the null terminator
+        command = command.split(b'\x00')[0].decode('ascii')
+        
         return magic, command, length, checksum
 
     @staticmethod
