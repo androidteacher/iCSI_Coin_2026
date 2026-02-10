@@ -884,7 +884,7 @@ class WebServer:
         halving_countdown = 210000 - (height % 210000)
         
         # Calculate Hashrate
-        network_hashrate = self.network_manager.chain_manager.get_network_hashrate()
+        network_hashrate = self.network_manager.chain_manager.get_network_hashrate(blocks=10)
         
         return web.json_response({
             'height': height,

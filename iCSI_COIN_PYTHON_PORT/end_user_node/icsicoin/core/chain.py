@@ -531,7 +531,7 @@ class ChainManager:
             logger.error(f"Integrity Check Error: {e}")
             return {'status': 'error', 'message': str(e), 'bad_block': None}
 
-    def get_network_hashrate(self, blocks=120):
+    def get_network_hashrate(self, blocks=10):
         """
         Calculates estimated network hashrate based on the last N blocks.
         Formula: (Sum(Difficulty) * 2^32) / (Time_Tip - Time_Tip_Minus_N)
@@ -540,45 +540,35 @@ class ChainManager:
         try:
             tip = self.block_index.get_best_block()
             if not tip or tip['height'] < blocks:
-                # Not enough blocks for a window, allow smaller window if > 10
-                if tip and tip['height'] > 10:
+                # Not enough blocks for a window, allow smaller window if > 1
+                if tip and tip['height'] > 1:
                     blocks = tip['height']
                 else:
                     return 0
             
             # Get Tip Info
             tip_height = tip['height']
-            tip_time = tip['timestamp'] # This might need fetching if not in index? 
-            # block_index entries usually don't have timestamp. 
-            # We need to fetch headers.
-            
-            # Let's check what get_best_block returns.
-            # If it's just index data, we might need to read the header from disk.
-            # OR use block_index if it caches timestamps.
-            # Looking at previous view_file of databases.py (lines 1-100), 
-            # the schema likely includes headers or we need to use get_block_header.
-            
-            # For efficiency, let's assume we need to fetch header objects.
             start_height = tip_height - blocks
             
-            # We need:
-            # 1. Sum of difficulties (Work)
-            # 2. Start and End Timestamp
-            
-            # Difficulty is in 'bits'. Converting bits to difficulty target.
-            # This is complex without helper functions.
-            # However, `get_block_header` should return an object that has `difficulty` property?
-            # Or we can just use the current difficulty * blocks if it hasn't changed much.
-            # But during retargets it changes.
-            
-            # Simplified approach for "Estimate":
-            # Use current difficulty (or average of window start/end)
-            # Measure time delta.
-            
-            # To be accurate:
+            # To be accurate and robust, we MUST fetch the headers.
+            # If they are not in the index cache, we read from disk.
             header_tip = self.get_block_header(tip_height)
+            if header_tip is None:
+                 # Fallback: Try to force read from storage if we have location info
+                 tip_idx = self.block_index.get_block(tip['block_hash'])
+                 if tip_idx:
+                     header_tip = self.block_store.read_block_header(tip_idx['file_num'], tip_idx['offset'])
+
             header_start = self.get_block_header(start_height)
-            
+            if header_start is None:
+                # Find the hash for start_height first (expensive sweep?)
+                # Actually get_block_header(height) should do this.
+                # If it failed, we might need to look up hash by height if supported, 
+                # but block_index usually supports get_block_by_height?
+                # Looking at source, get_block_header calls self.block_index.get_block_by_height(height)
+                # If it returns None, we are stuck.
+                pass
+
             if not header_tip or not header_start:
                 return 0
                 
@@ -587,22 +577,9 @@ class ChainManager:
             if time_delta <= 0:
                 return 0
                 
-            # Sum work? Or adjust current diff.
-            # Diff is ~constant for 2016 blocks. If window < 2016, we can use current diff.
-            # Window is 120. Retarget is 2016. Mostly constant.
-            # Hashrate = (Difficulty * 2^32) / (Time / Blocks)
-            #          = (Difficulty * 2^32 * Blocks) / Time
-            
-            # Difficulty Property: primitives.BlockHeader likely has it?
-            # If not, we need `bits_to_target` conversion.
-            # Let's rely on standard bitcoin formula using 'difficulty' value if available.
-            # If `header` object has `difficulty` property (float), we use that.
-            
             difficulty = header_tip.difficulty 
             
             # Formula: H/s = (Difficulty * 2^32) / (Average Block Time)
-            # Average Block Time = time_delta / blocks
-            
             avg_time = time_delta / blocks
             if avg_time == 0: return 0
             

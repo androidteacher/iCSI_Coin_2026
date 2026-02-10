@@ -45,7 +45,7 @@ function startPolling() {
     minerInterval = setInterval(updateMiner, 1000);
 
     updateStats();
-    statsInterval = setInterval(updateStats, 5000);
+    statsInterval = setInterval(updateStats, 2000);
 
     loadWallets(); // Initial load
     walletInterval = setInterval(loadWallets, 5000); // Poll every 5s
@@ -70,12 +70,15 @@ async function updateStats() {
         document.getElementById('netHalving').innerText = data.halving_countdown + " Blocks";
 
         if (data.network_hashrate !== undefined) {
-            const h = data.network_hashrate;
+            const h = parseFloat(data.network_hashrate);
             let hStr = "0 H/s";
-            if (h > 1000000000) hStr = (h / 1000000000).toFixed(2) + " GH/s";
-            else if (h > 1000000) hStr = (h / 1000000).toFixed(2) + " MH/s";
-            else if (h > 1000) hStr = (h / 1000).toFixed(2) + " KH/s";
-            else hStr = h.toFixed(2) + " H/s";
+
+            if (!isNaN(h)) {
+                if (h > 1000000000) hStr = (h / 1000000000).toFixed(2) + " GH/s";
+                else if (h > 1000000) hStr = (h / 1000000).toFixed(2) + " MH/s";
+                else if (h > 1000) hStr = (h / 1000).toFixed(2) + " KH/s";
+                else hStr = h.toFixed(2) + " H/s";
+            }
 
             const el = document.getElementById('netHashrate');
             if (el) el.innerText = hStr;
