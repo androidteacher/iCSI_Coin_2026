@@ -71,6 +71,7 @@ class WebServer:
         self.app.router.add_route('*', '/api/stats', self.handle_get_stats)
         self.app.router.add_route('*', '/api/stun/test', self.handle_test_stun)
         self.app.router.add_route('*', '/api/discovery/status', self.handle_discovery_status)
+        self.app.router.add_post('/api/integrity_check', self.handle_integrity_check)
         
         # API - RPC Config
         # API - RPC Config
@@ -797,6 +798,47 @@ class WebServer:
         self.network_manager.remove_failed_peer(data.get('ip'), data.get('port'))
         return web.json_response({'status': 'deleted'})
 
+    async def handle_integrity_check(self, request):
+        try:
+            # 1. Run Disk Integrity Check
+            result = self.network_manager.chain_manager.check_integrity()
+            
+            # 2. Run Network Sync Check
+            # Get max peer height
+            max_peer_height = 0
+            peer_count = 0
+            
+            # self.network_manager.peer_stats is a dict of {addr: {'height': ...}}
+            # But keys in peer_stats might be tuple or string depending on implementation.
+            # Let's inspect manager.py: peer_stats keys are addr (tuples) usually.
+            # However, looking at handle_get_peers, it iterates self.network_manager.peers (list of tuples)
+            # peer_stats is auxiliary.
+            # Let's use `peers` list and check `peer_stats` for each.
+            
+            for peer_addr in self.network_manager.peers:
+                # peer_addr is (host, port) tuple
+                stats = self.network_manager.peer_stats.get(peer_addr, {})
+                h = stats.get('height', 0)
+                if h > max_peer_height:
+                    max_peer_height = h
+                peer_count += 1
+            
+            local_height = self.network_manager.chain_manager.get_best_height()
+            
+            is_synced = local_height >= max_peer_height
+            
+            # 3. Combine Results
+            result['network'] = {
+                'synced': is_synced,
+                'local_height': local_height,
+                'peer_height': max_peer_height,
+                'peer_count': peer_count
+            }
+            
+            return web.json_response(result)
+        except Exception as e:
+            return web.json_response({'status': 'error', 'message': str(e)}, status=500)
+
     async def handle_reset(self, request):
         self.network_manager.reset_data()
         return web.json_response({'status': 'ok'})
@@ -841,13 +883,17 @@ class WebServer:
             
         halving_countdown = 210000 - (height % 210000)
         
+        # Calculate Hashrate
+        network_hashrate = self.network_manager.chain_manager.get_network_hashrate()
+        
         return web.json_response({
             'height': height,
             'difficulty': bits,
             'reward': reward,
             'halving_countdown': halving_countdown,
             'difficulty_countdown': DIFFICULTY_ADJUSTMENT_INTERVAL - (height % DIFFICULTY_ADJUSTMENT_INTERVAL),
-            'test_msg_received': self.network_manager.test_msg_count
+            'test_msg_received': self.network_manager.test_msg_count,
+            'network_hashrate': network_hashrate
         })
 
     async def handle_test_stun(self, request):

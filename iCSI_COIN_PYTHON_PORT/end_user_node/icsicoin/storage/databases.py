@@ -223,6 +223,17 @@ class BlockIndexDB:
             if row:
                 return row[0]
             return None
+    def get_all_block_locations(self):
+        """Returns generator of (block_hash, file_num, offset, height) for validity checking."""
+        with sqlite3.connect(self.db_path, timeout=30.0) as conn:
+            # Order by file_num, offset to minimize disk seeking
+            cursor = conn.execute("SELECT block_hash, file_num, offset, height FROM block_index ORDER BY file_num ASC, offset ASC")
+            while True:
+                rows = cursor.fetchmany(1000)
+                if not rows:
+                    break
+                for row in rows:
+                    yield row
 
 class ChainStateDB:
     def __init__(self, data_dir):

@@ -68,6 +68,18 @@ async function updateStats() {
         document.getElementById('netDiffCountdown').innerText = data.difficulty_countdown + " Blocks";
         document.getElementById('netReward').innerText = data.reward.toFixed(8) + " ICSI";
         document.getElementById('netHalving').innerText = data.halving_countdown + " Blocks";
+
+        if (data.network_hashrate !== undefined) {
+            const h = data.network_hashrate;
+            let hStr = "0 H/s";
+            if (h > 1000000000) hStr = (h / 1000000000).toFixed(2) + " GH/s";
+            else if (h > 1000000) hStr = (h / 1000000).toFixed(2) + " MH/s";
+            else if (h > 1000) hStr = (h / 1000).toFixed(2) + " KH/s";
+            else hStr = h.toFixed(2) + " H/s";
+
+            const el = document.getElementById('netHashrate');
+            if (el) el.innerText = hStr;
+        }
     } catch (e) {
         console.error("Stats Update Failed", e);
     }
@@ -831,10 +843,78 @@ function openNetworkUplinkModal() {
     }
 }
 
+
 function closeNetworkUplinkModal() {
     const modal = document.getElementById('networkUplinkModal');
     if (modal) {
         modal.classList.add('hidden');
         modal.classList.remove('flex');
+    }
+}
+
+async function checkIntegrity() {
+    const btn = document.getElementById('btnIntegrity');
+    const originalText = btn.innerHTML;
+
+    // Set Loading State
+    btn.disabled = true;
+    btn.innerHTML = `<span class="animate-spin">↻</span> Checking DB...`;
+    btn.classList.remove('bg-zinc-800', 'hover:bg-zinc-700');
+    btn.classList.add('bg-yellow-900/20', 'text-yellow-500');
+
+    try {
+        const res = await fetch('/api/integrity_check', {
+            method: 'POST'
+        });
+        const data = await res.json();
+
+        if (data.status === 'ok') {
+            let msg = `<span>✅ Integrity OK</span>`;
+
+            if (data.network) {
+                if (data.network.peer_count === 0) {
+                    msg = `<span>⚠️ Valid but Offline (0 Peers)</span>`;
+                    btn.classList.remove('bg-green-900/20', 'text-green-500');
+                    btn.classList.add('bg-orange-900/20', 'text-orange-500');
+                } else if (data.network.synced) {
+                    msg = `<span>✅ Everything is Cool! (Synced)</span>`;
+                    btn.classList.add('bg-green-900/20', 'text-green-500');
+                } else {
+                    const diff = data.network.peer_height - data.network.local_height;
+                    // If diff is huge, say "Syncing". If small, say "Lagging".
+                    // Let's just say "Syncing" to be safe/encouraging.
+                    msg = `<span>⏳ Syncing... (${diff} blocks behind)</span>`;
+                    // Use Blue for syncing? Or Orange? Orange is fine.
+                    btn.classList.remove('bg-green-900/20', 'text-green-500');
+                    btn.classList.add('bg-blue-900/20', 'text-blue-500');
+                }
+            } else {
+                btn.classList.add('bg-green-900/20', 'text-green-500');
+            }
+
+            btn.innerHTML = msg;
+            btn.classList.remove('bg-yellow-900/20', 'text-yellow-500');
+
+
+            // Revert after 5s
+            setTimeout(() => {
+                btn.innerHTML = originalText;
+                btn.className = "w-full py-1.5 rounded bg-zinc-800 hover:bg-zinc-700 text-xs text-zinc-400 hover:text-white transition-colors flex items-center justify-center gap-2";
+                btn.classList.remove('bg-green-900/20', 'text-green-500', 'bg-orange-900/20', 'text-orange-500', 'bg-blue-900/20', 'text-blue-500');
+                btn.disabled = false;
+            }, 5000);
+        } else {
+            // Corruption Found!
+            alert(`DATA CORRUPTION DETECTED!\n\n${data.message}\n\nBlock Height: ${data.bad_block}\n\nRecommendation: Go to NODE MANAGEMENT -> Terminal Scripts and use the Update/Reset script to fix this.`);
+            btn.innerHTML = `<span>❌ Corruption Found</span>`;
+            btn.classList.remove('bg-yellow-900/20', 'text-yellow-500');
+            btn.classList.add('bg-red-900/20', 'text-red-500');
+            btn.disabled = false;
+        }
+    } catch (e) {
+        alert("Check Failed: " + e);
+        btn.innerHTML = originalText;
+        btn.disabled = false;
+        btn.className = "w-full py-1.5 rounded bg-zinc-800 hover:bg-zinc-700 text-xs text-zinc-400 hover:text-white transition-colors flex items-center justify-center gap-2";
     }
 }
