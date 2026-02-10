@@ -144,9 +144,33 @@ class BlockIndexDB:
         with sqlite3.connect(self.db_path, timeout=30.0) as conn:
             cursor = conn.execute("SELECT value FROM chain_info WHERE key = 'best_block_hash'")
             row = cursor.fetchone()
+            
+            best_info = None
             if row:
-                return self.get_block_info(row[0])
-            return None
+                best_info = self.get_block_info(row[0])
+                
+            # LAZY INTEGRITY CHECK:
+            # If we seem to be at Genesis (or empty), check if we truly are.
+            if best_info is None or best_info['height'] == 0:
+                # Check actual max height
+                cursor.execute("SELECT MAX(height) FROM block_index")
+                r = cursor.fetchone()
+                max_h = r[0] if r and r[0] is not None else 0
+                
+                if max_h > 0:
+                    # Corruption detected! (Head=0, Max > 0)
+                    # Trigger immediate repair
+                    # We can't log here easily without importing logging properly or passing it in.
+                    # print(f"[LazyRepair] Detecting mismatch: Head=0, Max={max_h}")
+                    self.repair_chain_pointer()
+                    
+                    # Retry fetch
+                    cursor.execute("SELECT value FROM chain_info WHERE key = 'best_block_hash'")
+                    row = cursor.fetchone()
+                    if row:
+                        best_info = self.get_block_info(row[0])
+                        
+            return best_info
 
     def update_best_block(self, block_hash):
         with sqlite3.connect(self.db_path, timeout=30.0) as conn:
