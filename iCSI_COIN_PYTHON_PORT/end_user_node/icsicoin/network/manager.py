@@ -503,16 +503,8 @@ class NetworkManager:
                                      
                                      # Send getblocks with this hash as locator
                                      # This tells peer: "I have up to X, give me X+1..."
-                                     msg = {
-                                         "type": "getblocks",
-                                         "locator": [last_hash] 
-                                     }
-                                     json_payload = json.dumps(msg).encode('utf-8')
-                                     out_msg = Message('getblocks', json_payload)
-                                     
-                                     writer.write(out_msg.serialize())
-                                     await writer.drain()
-                                     self.last_getblocks_time = time.time()
+                                     # Use standard send_getblocks which generates a full locator
+                                     await self.send_getblocks(writer)
 
                     except Exception as e:
                         logger.error(f"INV error: {e}")
@@ -686,9 +678,8 @@ class NetworkManager:
                         start_info = None
                         for h in locator:
                             info = self.block_index.get_block_info(h)
-                            # FIX: Only accept common ancestor if it is on our MAIN CHAIN (status 3).
-                            # If we accept status 2 (side chain), we will send blocks that don't connect to it.
-                            if info and info['status'] == 3:
+                            # RELAXED CHECK: Accept Status 2 (Valid Fork) or 3 (Main Chain)
+                            if info and info['status'] >= 2:
                                 start_hash = h
                                 start_info = info
                                 break
