@@ -86,31 +86,6 @@
                     ⬅ Back to Dashboard
                 </a>
 
-                <!-- Node Management Dropdown -->
-                <div class="relative group ml-2">
-                    <button
-                        class="px-4 py-2 rounded-lg bg-zinc-800 border border-zinc-700 text-zinc-300 font-bold text-xs uppercase tracking-wider hover:bg-zinc-700 hover:text-white transition-all flex items-center gap-2">
-                        🛠 Node Management
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7">
-                            </path>
-                        </svg>
-                    </button>
-                    <!-- Dropdown Menu -->
-                    <div
-                        class="absolute right-0 mt-2 w-56 bg-surface border border-border rounded-xl shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50 transform origin-top-right">
-                        <div class="py-1">
-                            <a href="/management"
-                                class="block w-full text-left px-4 py-3 text-sm text-zinc-300 hover:bg-zinc-800 hover:text-white border-b border-zinc-800">
-                                🖥 Terminal Scripts
-                            </a>
-                            <a href="/db_query"
-                                class="block w-full text-left px-4 py-3 text-sm text-zinc-300 hover:bg-zinc-800 hover:text-white">
-                                🔍 Query Database
-                            </a>
-                        </div>
-                    </div>
-                </div>
             </div>
         </div>
     </nav>
@@ -283,6 +258,12 @@
                     class="px-4 py-2 bg-zinc-800 text-zinc-300 font-bold uppercase text-xs rounded hover:bg-zinc-700 transition-colors">
                     Run this Query!
                 </button>
+                <div class="mt-2 text-right">
+                    <a href="/explainer/forks"
+                        class="text-xs text-zinc-500 hover:text-blue-400 underline decoration-zinc-700 hover:decoration-blue-400 transition-all">
+                        What the heck does this mean?
+                    </a>
+                </div>
                 <div id="res_get_forks"
                     class="hidden mt-4 p-4 bg-black border border-zinc-800 rounded text-green-400 font-mono text-xs whitespace-pre-wrap">
                 </div>

@@ -122,6 +122,7 @@ class WebServer:
         
         self.app.router.add_get('/explorer/address/{address}', self.handle_explorer_address_page)
         self.app.router.add_get('/api-docs', self.handle_api_docs_page)
+        self.app.router.add_get('/explainer/forks', self.handle_forks_explainer)
 
         self.runner = None
         self.site = None
@@ -436,6 +437,9 @@ class WebServer:
 
     async def handle_api_docs_page(self, request):
         return await self.render_template('api_docs.html')
+
+    async def handle_forks_explainer(self, request):
+        return await self.render_template('forks_explainer.html')
 
     async def handle_explorer_detail_page(self, request):
         block_hash = request.match_info['block_hash']
