@@ -637,7 +637,9 @@ class ChainManager:
             
         # Always include genesis
         genesis = self.get_block_hash(0)
-        if genesis and locator[-1] != genesis:
-            locator.append(genesis)
+        if genesis:
+            if not locator or locator[-1] != genesis:
+                locator.append(genesis)
+
             
         return locator
