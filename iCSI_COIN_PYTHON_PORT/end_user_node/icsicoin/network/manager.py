@@ -54,7 +54,7 @@ class NetworkManager:
         self.chain_manager = ChainManager(self.block_store, self.block_index, self.chain_state)
 
         
-        self.add_nodes = add_nodes
+        self.add_nodes = add_nodes if add_nodes else []
         self.connect_nodes = connect_nodes
         self.peers = set() # (ip, port)
         self.known_peers = set() # Set of (ip, port)
@@ -1148,7 +1148,7 @@ class NetworkManager:
                 # Stalled = No block received in last 60 seconds
                 time_since_last_block = time.time() - self.last_block_received_time
                 
-                if time_since_last_block > 60: 
+                if time_since_last_block > 20: 
                     logger.warning(f"Sync Watchdog: Silence detected! (Last Recv: {time_since_last_block:.1f}s ago). Requesting blocks...")
                     
                     # Trigger getblocks to a random peer

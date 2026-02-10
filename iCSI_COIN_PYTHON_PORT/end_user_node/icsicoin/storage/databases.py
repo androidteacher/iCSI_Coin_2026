@@ -149,6 +149,14 @@ class BlockIndexDB:
                     'status': row[6]
                 }
             return None
+
+    def get_block_location(self, block_hash):
+        with sqlite3.connect(self.db_path, timeout=30.0) as conn:
+            cursor = conn.execute("SELECT file_num, offset, length FROM block_index WHERE block_hash = ?", (block_hash,))
+            row = cursor.fetchone()
+            if row:
+                return row # Returns (file_num, offset, length) tuple
+            return None
             
     def get_best_block(self):
         with sqlite3.connect(self.db_path, timeout=30.0) as conn:
