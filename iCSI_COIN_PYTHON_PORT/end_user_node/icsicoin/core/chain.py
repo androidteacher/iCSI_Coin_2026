@@ -608,3 +608,36 @@ class ChainManager:
             return BlockHeader.deserialize(io.BytesIO(data))
         except:
             return None
+
+    def get_block_locator(self):
+        """
+        Creates a block locator (list of hashes) starting from the tip,
+        going back densely then exponentially.
+        """
+        locator = []
+        best = self.block_index.get_best_block()
+        if not best:
+            # Genesis fallback
+            return [self.get_block_hash(0)]
+            
+        current_height = best['height']
+        step = 1
+        h = current_height
+        
+        while h > 0:
+            b_hash = self.get_block_hash(h)
+            if b_hash:
+                locator.append(b_hash)
+            
+            # Dense for first 10, then exponential
+            if len(locator) > 10:
+                step *= 2
+            
+            h -= step
+            
+        # Always include genesis
+        genesis = self.get_block_hash(0)
+        if genesis and locator[-1] != genesis:
+            locator.append(genesis)
+            
+        return locator
