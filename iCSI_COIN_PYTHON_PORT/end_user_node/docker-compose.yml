@@ -19,6 +19,10 @@ services:
         max-size: "10m"
         max-file: "3"
     command: [ "--port", "9341", "--bind", "0.0.0.0", "--web-port", "8080", "--rpcport", "9342", "--addnode", "127.0.0.1:9333", "--datadir", "/app/wallet_data" ]
+    ulimits:
+      nofile:
+        soft: 65535
+        hard: 65535
 
   explorer:
     image: icsi-node:latest # Reuse the image built by user-node context above

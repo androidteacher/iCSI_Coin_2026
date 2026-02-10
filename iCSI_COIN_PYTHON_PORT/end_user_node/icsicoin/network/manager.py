@@ -1242,8 +1242,12 @@ class NetworkManager:
         logger.info(f"Attempting to connect to peer: {host}:{port}")
         self.log_peer_event(target, "OUT", "CONNECT", "Attempting connection...")
         
+        reader = None
+        writer = None
         try:
-            reader, writer = await asyncio.open_connection(host, port)
+            # Add timeout to initial connection
+            reader, writer = await asyncio.wait_for(asyncio.open_connection(host, port), timeout=10)
+            
             addr = writer.get_extra_info('peername')
             logger.info(f"TCP Connected to {addr}")
             self.log_peer_event(addr, "OUT", "CONNECT", "TCP Connection Established")
@@ -1261,13 +1265,13 @@ class NetworkManager:
             logger.info(f"Sent VERSION to {addr}")
             self.log_peer_event(addr, "SENT", "VERSION", "Handshake initiated")
             
-            # Recv Version
-            header_data = await reader.read(24)
+            # Recv Version with Timeout
+            header_data = await asyncio.wait_for(reader.read(24), timeout=10)
             if len(header_data) < 24: return 
             
             magic, command, length, checksum = Message.parse_header(header_data)
             if command == 'version':
-                payload = await reader.read(length)
+                payload = await asyncio.wait_for(reader.read(length), timeout=10)
                 logger.info(f"Received VERSION from {addr}")
                 
                  # Parse Version
@@ -1300,8 +1304,8 @@ class NetworkManager:
                 logger.info(f"Sent VERACK to {addr}")
                 self.log_peer_event(addr, "SENT", "VERACK", "")
             
-            # Recv Verack
-            header_data = await reader.read(24)
+            # Recv Verack with Timeout
+            header_data = await asyncio.wait_for(reader.read(24), timeout=10)
             if len(header_data) < 24: return
             
             magic, command, length, checksum = Message.parse_header(header_data)
@@ -1329,15 +1333,16 @@ class NetworkManager:
             await self.process_message_loop(reader, writer, target)
 
         except Exception as e:
-            # Immediate Cleanup on Connection Reset (Errno 104)
-            # This prevents infinite loops of retries or ICE attempts for dead nodes that actively reject us
-            if isinstance(e, ConnectionResetError) or (isinstance(e, OSError) and e.errno == 104):
-                 logger.warning(f"Connection RESET by {host}:{port} - Forgetting peer immediately.")
-                 self.forget_peer(target)
-                 return
-
-            logger.warning(f"Failed to connect to {host}:{port}: {e}")
+            # Immediate failure (timeout, connection refused, etc)
+            logger.error(f"Failed to connect to peer {target}: {e}")
+            self.log_peer_event(target, "ERR", "CONNECT_FAIL", str(e))
             
+            if writer:
+                 try:
+                     writer.close()
+                     await writer.wait_closed()
+                 except: pass
+
             # Try ICE P2P if TCP failed (NAT traversal attempt)
             if Connection and self.active_connections:
                 logger.info(f"Attempting ICE P2P to {host}:{port} via {len(self.active_connections)} relays")
