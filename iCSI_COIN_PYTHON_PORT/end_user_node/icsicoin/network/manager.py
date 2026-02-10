@@ -1027,6 +1027,43 @@ class NetworkManager:
             await asyncio.sleep(10) # Check every 10 seconds
 
             try:
+                # 0. SMART RECONNECT: If we have no peers, try to reconnect to known good ones
+                if not self.active_connections and self.peer_stats:
+                    logger.warning("Sync Watchdog: No active connections! Attempting Smart Reconnect...")
+                    
+                    # Sort peers by last_seen (most recent first)
+                    # peer_stats = {addr: {'last_seen': ts, ...}}
+                    # Filter out purely local IPs if we know better? No, trust peer_stats for now.
+                    candidates = sorted(
+                        self.peer_stats.keys(), 
+                        key=lambda p: self.peer_stats[p].get('last_seen', 0), 
+                        reverse=True
+                    )
+                    
+                    reconnected_count = 0
+                    for peer in candidates[:5]: # Try top 5 recent peers
+                        host = peer[0]
+                        port = peer[1]
+                        
+                        # Quick check
+                        # Use a shorter timeout for reconnection checks
+                        if await self.quick_connect_check(host, port, timeout=1.0):
+                            logger.info(f"Smart Reconnect: {host}:{port} is ALIVE. Reconnecting...")
+                            target_str = f"{host}:{port}"
+                            # Spawn connection task
+                            t = asyncio.create_task(self.connect_to_peer(target_str))
+                            self.tasks.add(t)
+                            t.add_done_callback(self.tasks.discard)
+                            
+                            reconnected_count += 1
+                            if reconnected_count >= 1: 
+                                break # Found a lifeline, let discovery handle the rest
+                    
+                    if reconnected_count > 0:
+                        # Give it a moment to connect before checking sync status
+                        await asyncio.sleep(2)
+                        continue
+
                 # 1. Determine if we need to sync
                 # Check current tip timestamp
                 best_block = self.block_index.get_best_block()
@@ -1211,6 +1248,26 @@ class NetworkManager:
                 
             await asyncio.sleep(retry_delay)
 
+    async def quick_connect_check(self, host, port, timeout=2.0):
+        """
+        Attempts a raw TCP connection with a short timeout to fail fast on dead peers.
+        Returns True if reachable, False otherwise.
+        """
+        try:
+            # We use open_connection with a short timeout just to check reachability
+            # This avoids the overhead of the full handshake logic if the host is down
+            conn = asyncio.open_connection(host, port)
+            reader, writer = await asyncio.wait_for(conn, timeout=timeout)
+            writer.close()
+            await writer.wait_closed()
+            return True
+        except (asyncio.TimeoutError, ConnectionRefusedError, OSError) as e:
+            # logger.debug(f"Fast-Fail: {host}:{port} unreachable ({e})")
+            return False
+        except Exception as e:
+            logger.debug(f"Fast-Fail: {host}:{port} error ({e})")
+            return False
+
     async def connect_to_peer(self, node_address):
         host = node_address
         port = 9333 # Default port
@@ -1234,6 +1291,15 @@ class NetworkManager:
         # Also check if we are connected to this host on any port? 
         # No, because host might have multiple nodes? Unlikely for P2P but ok.
 
+        # --- FAST FAIL CHECK ---
+        # Before we commit to the pending set and full log noise, check if it's even there.
+        # This prevents the "Stall" where we wait 10s for 20 dead nodes.
+        if not await self.quick_connect_check(host, port, timeout=1.5):
+             # logger.info(f"Fast-Fail: Skipping dead peer {host}:{port}")
+             # Mark as failed so we don't retry immediately
+             self.failed_peers[target] = {'timestamp': int(time.time()), 'error': 'Fast-Fail Timeout'}
+             return
+
         self.pending_peers.add(target)
         # Clear previous failure if any
         if target in self.failed_peers:
@@ -1246,6 +1312,8 @@ class NetworkManager:
         writer = None
         try:
             # Add timeout to initial connection
+            # We already did a quick check, but a race condition or firewall could still block it,
+            # so we keep the timeout but maybe shorten it or keep it 10s for safety.
             reader, writer = await asyncio.wait_for(asyncio.open_connection(host, port), timeout=10)
             
             addr = writer.get_extra_info('peername')
@@ -1369,52 +1437,60 @@ class NetworkManager:
         
         logger.info(f"Using STUN Server: {stun_ip}:{stun_port}") 
         
-        connection = Connection(ice_controlling=True, components=1, stun_server=stun_server)
-        
-        # Handle local candidates
-        async def on_candidate(c):
-            logger.info(f"Gathered local candidate: {c}")
-            # Send to peer via Relay (we need a path)
-            # We use the 'remote_via_tcp' (the seed node we are connected to) to relay to target
-            if remote_via_tcp and remote_via_tcp in self.active_connections:
-                writer = self.active_connections[remote_via_tcp]
-                # Wrap candidate in SignalMessage
-                c_str = c.to_sdp()
-                signal = SignalMessage(target_ip=target_ip, target_port=target_port, candidate=c_str)
-                # Wrap in RelayMessage
-                relay = RelayMessage(target_ip=target_ip, target_port=target_port, inner_payload=signal.serialize())
-                writer.write(relay.serialize())
-                await writer.drain()
-        
-        connection.on_candidate = on_candidate
-        
-        await connection.gather_candidates()
-        
-        # Send Offer
-#         sdp = connection.local_sdp
-#         if remote_via_tcp and remote_via_tcp in self.active_connections:
-#                 writer = self.active_connections[remote_via_tcp]
-#                 signal = SignalMessage(target_ip=target_ip, target_port=target_port, sdp=sdp)
-#                 relay = RelayMessage(target_ip=target_ip, target_port=target_port, inner_payload=signal.serialize())
-#                 writer.write(relay.serialize())
-#                 await writer.drain()
-#                 logger.info("Sent ICE w/ Offer via Relay")
-        logger.warning("ICE Offer disabled: aioice Connection object missing local_sdp attribute. Update required for full ICE support.")
+        connection = None
+        try:
+            connection = Connection(ice_controlling=True, components=1, stun_server=stun_server)
+            
+            # Handle local candidates
+            async def on_candidate(c):
+                logger.info(f"Gathered local candidate: {c}")
+                # Send to peer via Relay (we need a path)
+                # We use the 'remote_via_tcp' (the seed node we are connected to) to relay to target
+                if remote_via_tcp and remote_via_tcp in self.active_connections:
+                    writer = self.active_connections[remote_via_tcp]
+                    # Wrap candidate in SignalMessage
+                    c_str = c.to_sdp()
+                    signal = SignalMessage(target_ip=target_ip, target_port=target_port, candidate=c_str)
+                    # Wrap in RelayMessage
+                    relay = RelayMessage(target_ip=target_ip, target_port=target_port, inner_payload=signal.serialize())
+                    writer.write(relay.serialize())
+                    await writer.drain()
+            
+            connection.on_candidate = on_candidate
+            
+            await connection.gather_candidates()
+            
+            # Send Offer
+    #         sdp = connection.local_sdp
+    #         if remote_via_tcp and remote_via_tcp in self.active_connections:
+    #                 writer = self.active_connections[remote_via_tcp]
+    #                 signal = SignalMessage(target_ip=target_ip, target_port=target_port, sdp=sdp)
+    #                 relay = RelayMessage(target_ip=target_ip, target_port=target_port, inner_payload=signal.serialize())
+    #                 writer.write(relay.serialize())
+    #                 await writer.drain()
+    #                 logger.info("Sent ICE w/ Offer via Relay")
+            logger.warning("ICE Offer disabled: aioice Connection object missing local_sdp attribute. Update required for full ICE support.")
 
-        # Wait for connection
-        # Store this connection somewhere to handle incoming answers?
-        key = (target_ip, target_port)
-        self.ice_connections[key] = connection 
-        self.log_peer_event(key, "ICE", "INIT", "ICE Connection Initiated")
+            # Wait for connection
+            # Store this connection somewhere to handle incoming answers?
+            key = (target_ip, target_port)
+            self.ice_connections[key] = connection 
+            self.log_peer_event(key, "ICE", "INIT", "ICE Connection Initiated")
 
-        # Cleanup callback
-        async def remove_ice():
-             if key in self.ice_connections:
-                 del self.ice_connections[key]
-                 
-        # For this PoC, we rely on the loop handling signals to update this connection
-        # But we need a reference.
-        return connection
+            # Cleanup callback
+            async def remove_ice():
+                 if key in self.ice_connections:
+                     del self.ice_connections[key]
+                     
+            # For this PoC, we rely on the loop handling signals to update this connection
+            # But we need a reference.
+            return connection
+
+        except Exception as e:
+            logger.error(f"Failed to initiate ICE connection check to {target_ip}:{target_port}: {e}")
+            if connection:
+                await connection.close()
+            raise e
 
     async def send_test_message(self, target_ip, target_port, content="Ping!"):
         logger.info(f"Sending Test Message to {target_ip}:{target_port}")
@@ -1452,6 +1528,7 @@ class NetworkManager:
         """Tests connectivity to a STUN server by attempting to gather candidates."""
         from aioice import Connection
         logger.info(f"Testing STUN Connection to {stun_ip}:{stun_port}")
+        c = None
         try:
              # Create a temporary connection just for gathering
              stun_server = (stun_ip, int(stun_port))
@@ -1476,8 +1553,6 @@ class NetworkManager:
                      public_ip = cand.host
                      break
             
-             await c.close()
-             
              if found_srflx:
                  self.external_ip = public_ip
                  logger.info(f"STUN Test Success. Public IP: {public_ip}")
@@ -1491,3 +1566,6 @@ class NetworkManager:
         except Exception as e:
             logger.error(f"STUN Test Exception: {e}")
             return False, str(e)
+        finally:
+            if c:
+                await c.close()
