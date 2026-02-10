@@ -222,7 +222,8 @@ class ChainManager:
             # 6. Index It
             # Height is Best + 1
             
-            self.block_index.add_block(block_hash, file_num, offset, len(data), block.header.prev_block.hex(), height, status=3)
+            # ATOMIC UPDATE: Index + Head Pointer
+            self.block_index.add_block_atomic(block_hash, file_num, offset, len(data), block.header.prev_block.hex(), height, status=3, is_best=True)
             logger.info(f"Block {block_hash} connected at height {height}")
             
             # Check for orphans waiting for this block
@@ -261,11 +262,11 @@ class ChainManager:
                  # add_utxo(tx_hash, index, amount, script_pubkey, block_height, is_coinbase)
                  self.chain_state.add_utxo(tx_hash, i, vout.amount, vout.script_pubkey, height, is_coinbase)
                  
-        # Update Best Block in Index
-        self.block_index.update_best_block(block.get_hash().hex())
+        # Update Best Block in Index - REMOVED (Moved to atomic add_block in process_block)
+        # self.block_index.update_best_block(block.get_hash().hex())
         
-        # New: Update status to 3 (Main Chain)
-        self.block_index.update_block_status(block.get_hash().hex(), 3)
+        # New: Update status to 3 (Main Chain) - REMOVED (Moved to atomic add_block)
+        # self.block_index.update_block_status(block.get_hash().hex(), 3)
         
         # Populate Tx Index
         block_hash = block.get_hash().hex()

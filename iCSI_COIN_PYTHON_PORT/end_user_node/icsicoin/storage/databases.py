@@ -95,6 +95,30 @@ class BlockIndexDB:
                 VALUES (?, ?, ?, ?, ?, ?, ?)
             """, (block_hash, file_num, offset, length, prev_hash, height, status))
             conn.commit()
+            
+    def add_block_atomic(self, block_hash, file_num, offset, length, prev_hash, height=0, status=1, is_best=False):
+        """
+        Add block AND update head pointer atomically.
+        Prevents corruption where block is added but pointer isn't updated.
+        """
+        with sqlite3.connect(self.db_path, timeout=30.0) as conn:
+            # 1. Add Block
+            conn.execute("""
+                INSERT OR REPLACE INTO block_index 
+                (block_hash, file_num, offset, length, prev_hash, height, status)
+                VALUES (?, ?, ?, ?, ?, ?, ?)
+            """, (block_hash, file_num, offset, length, prev_hash, height, status))
+            
+            # 2. Update Head Pointer (if applicable)
+            if is_best:
+                 conn.execute("INSERT OR REPLACE INTO chain_info (key, value) VALUES ('best_block_hash', ?)", (block_hash,))
+            
+            # Commit happens automatically at end of 'with' block contextmanager? 
+            # No, usually need explicit commit() or use isolation context.
+            # But the 'conn' object context manager in python sqlite3 DOES NOT auto-commit unless used as a transaction manager?
+            # Actually standard practice is calling commit().
+            conn.commit()
+
     def update_block_status(self, block_hash, status):
         with sqlite3.connect(self.db_path, timeout=30.0) as conn:
             conn.execute("UPDATE block_index SET status = ? WHERE block_hash = ?", (status, block_hash))
