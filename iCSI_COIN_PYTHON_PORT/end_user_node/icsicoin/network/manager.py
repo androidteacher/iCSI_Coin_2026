@@ -93,6 +93,7 @@ class NetworkManager:
         self.beggar_list = {}  # {address: {first_seen, last_seen, source_ip}}
         self.active_beg = None  # {address, started_at, task} or None
         self.last_block_received_time = 0 # Track last block time for sync watchdog
+        self.last_getblocks_time = 0
 
     def configure_stun(self, ip, port):
         self.stun_ip = ip
@@ -543,10 +544,13 @@ class NetworkManager:
                                 
                                 self.last_block_received_time = time.time() # Update watchdog timer
 
-                                # FIX: Trigger next batch download efficiently (Batched)
-                                # Only ask every 500 blocks to avoid network flooding
+                                # LOW_DELAY SYNC FIX:
+                                # We request more blocks if:
+                                # 1. We completed a mini-batch (50 blocks) to keep pipeline full.
+                                # 2. It's been >10s since we last asked (handles "tail" of chain or stalls).
+                                # The old % 500 check caused stalls if batch wasn't aligned.
                                 best_info = self.block_index.get_best_block()
-                                if best_info and (best_info['height'] % 500) == 0:
+                                if best_info and ((best_info['height'] % 50) == 0 or (time.time() - self.last_getblocks_time > 10)):
                                      await self.send_getblocks(writer)
 
                                 # Relay logic (simple flood)
@@ -625,7 +629,9 @@ class NetworkManager:
                         start_info = None
                         for h in locator:
                             info = self.block_index.get_block_info(h)
-                            if info:
+                            # FIX: Only accept common ancestor if it is on our MAIN CHAIN (status 3).
+                            # If we accept status 2 (side chain), we will send blocks that don't connect to it.
+                            if info and info['status'] == 3:
                                 start_hash = h
                                 start_info = info
                                 break
@@ -1139,6 +1145,7 @@ class NetworkManager:
             
             peer_writer.write(out_msg.serialize())
             await peer_writer.drain()
+            self.last_getblocks_time = time.time()
             logger.info(f"Sent GETBLOCKS (Locator: {locator}) to peer")
         except Exception as e:
             logger.error(f"Error sending getblocks: {e}")

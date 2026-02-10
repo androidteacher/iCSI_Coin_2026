@@ -98,6 +98,7 @@ def mine(url, user, password, address=None, threads=1):
         # Mining Loop
         logger.info(f"Mining Block {height} with difficulty {bits}...")
         start_time = time.time()
+        last_rpc_check = time.time()
         hashes = 0
         
         found = False
@@ -120,9 +121,15 @@ def mine(url, user, password, address=None, threads=1):
                 break
                 
             hashes += 1
+            # Check for stale tip every 2 seconds
+            # Original code checked every 100k hashes, which is too frequent on fast CPUs (>10 checks/sec)
+            # causing RPC spam and CPU spikes on the node.
+            # We still print hashrate every 100k hashes for user feedback.
             if hashes % 100000 == 0:
                  print(f"Hashrate: {hashes / (time.time() - start_time):.2f} H/s", end='\r')
-                 # Check for stale tip every 100k hashes (approx few seconds)
+                 
+            if time.time() - last_rpc_check > 2.0:
+                 last_rpc_check = time.time()
                  try:
                      # Use the same session, check current tip
                      tip_resp = rpc_call(url, "getbestblockhash", session=session)
