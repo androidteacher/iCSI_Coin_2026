@@ -8,7 +8,9 @@ class BlockIndexDB:
         self._init_db()
 
     def _init_db(self):
-        with sqlite3.connect(self.db_path) as conn:
+        with sqlite3.connect(self.db_path, timeout=30.0) as conn:
+            conn.execute("PRAGMA journal_mode=WAL;")
+            conn.execute("PRAGMA synchronous=NORMAL;")
             conn.execute("""
                 CREATE TABLE IF NOT EXISTS block_index (
                     block_hash TEXT PRIMARY KEY,
@@ -37,7 +39,7 @@ class BlockIndexDB:
 
     def add_block(self, block_hash, file_num, offset, length, prev_hash, height=0, status=1):
         """Add or update a block entry."""
-        with sqlite3.connect(self.db_path) as conn:
+        with sqlite3.connect(self.db_path, timeout=30.0) as conn:
             conn.execute("""
                 INSERT OR REPLACE INTO block_index 
                 (block_hash, file_num, offset, length, prev_hash, height, status)
@@ -45,12 +47,12 @@ class BlockIndexDB:
             """, (block_hash, file_num, offset, length, prev_hash, height, status))
             conn.commit()
     def update_block_status(self, block_hash, status):
-        with sqlite3.connect(self.db_path) as conn:
+        with sqlite3.connect(self.db_path, timeout=30.0) as conn:
             conn.execute("UPDATE block_index SET status = ? WHERE block_hash = ?", (status, block_hash))
             conn.commit()
 
     def get_block_info(self, block_hash):
-        with sqlite3.connect(self.db_path) as conn:
+        with sqlite3.connect(self.db_path, timeout=30.0) as conn:
             cursor = conn.execute("SELECT * FROM block_index WHERE block_hash = ?", (block_hash,))
             row = cursor.fetchone()
             if row:
@@ -66,7 +68,7 @@ class BlockIndexDB:
             return None
             
     def get_best_block(self):
-        with sqlite3.connect(self.db_path) as conn:
+        with sqlite3.connect(self.db_path, timeout=30.0) as conn:
             cursor = conn.execute("SELECT value FROM chain_info WHERE key = 'best_block_hash'")
             row = cursor.fetchone()
             if row:
@@ -74,12 +76,12 @@ class BlockIndexDB:
             return None
 
     def update_best_block(self, block_hash):
-        with sqlite3.connect(self.db_path) as conn:
+        with sqlite3.connect(self.db_path, timeout=30.0) as conn:
             conn.execute("INSERT OR REPLACE INTO chain_info (key, value) VALUES ('best_block_hash', ?)", (block_hash,))
             conn.commit()
 
     def get_block_hash_by_height(self, height):
-        with sqlite3.connect(self.db_path) as conn:
+        with sqlite3.connect(self.db_path, timeout=30.0) as conn:
             # Assumes status=3 means Main Chain
             cursor = conn.execute("SELECT block_hash FROM block_index WHERE height = ? AND status = 3", (height,))
             row = cursor.fetchone()
@@ -89,7 +91,7 @@ class BlockIndexDB:
 
     def search_block_hashes(self, query_fragment):
         """Find block hashes starting with the query fragment."""
-        with sqlite3.connect(self.db_path) as conn:
+        with sqlite3.connect(self.db_path, timeout=30.0) as conn:
             # Limit to 5 results for now
             cursor = conn.execute("SELECT block_hash FROM block_index WHERE block_hash LIKE ? LIMIT 5", (query_fragment + '%',))
             rows = cursor.fetchall()
@@ -97,13 +99,13 @@ class BlockIndexDB:
 
     def add_transaction(self, tx_hash, block_hash):
         """Map a transaction hash to the block hash that contains it."""
-        with sqlite3.connect(self.db_path) as conn:
+        with sqlite3.connect(self.db_path, timeout=30.0) as conn:
             conn.execute("INSERT OR REPLACE INTO tx_index (tx_hash, block_hash) VALUES (?, ?)", (tx_hash, block_hash))
             conn.commit()
 
     def get_transaction_block_hash(self, tx_hash):
         """Get the block hash containing the given transaction."""
-        with sqlite3.connect(self.db_path) as conn:
+        with sqlite3.connect(self.db_path, timeout=30.0) as conn:
             cursor = conn.execute("SELECT block_hash FROM tx_index WHERE tx_hash = ?", (tx_hash,))
             row = cursor.fetchone()
             if row:
@@ -116,7 +118,9 @@ class ChainStateDB:
         self._init_db()
 
     def _init_db(self):
-        with sqlite3.connect(self.db_path) as conn:
+        with sqlite3.connect(self.db_path, timeout=30.0) as conn:
+            conn.execute("PRAGMA journal_mode=WAL;")
+            conn.execute("PRAGMA synchronous=NORMAL;")
             conn.execute("""
                 CREATE TABLE IF NOT EXISTS utxo (
                     txid TEXT,
@@ -139,7 +143,7 @@ class ChainStateDB:
             conn.commit()
 
     def add_utxo(self, txid, vout_index, amount, script_pubkey, block_height, is_coinbase):
-        with sqlite3.connect(self.db_path) as conn:
+        with sqlite3.connect(self.db_path, timeout=30.0) as conn:
             conn.execute("""
                 INSERT OR REPLACE INTO utxo (txid, vout_index, amount, script_pubkey, block_height, is_coinbase)
                 VALUES (?, ?, ?, ?, ?, ?)
@@ -147,12 +151,12 @@ class ChainStateDB:
             conn.commit()
 
     def remove_utxo(self, txid, vout_index):
-        with sqlite3.connect(self.db_path) as conn:
+        with sqlite3.connect(self.db_path, timeout=30.0) as conn:
             conn.execute("DELETE FROM utxo WHERE txid = ? AND vout_index = ?", (txid, vout_index))
             conn.commit()
 
     def get_utxo(self, txid, vout_index):
-        with sqlite3.connect(self.db_path) as conn:
+        with sqlite3.connect(self.db_path, timeout=30.0) as conn:
             cursor = conn.execute("SELECT amount, script_pubkey, block_height, is_coinbase FROM utxo WHERE txid = ? AND vout_index = ?", (txid, vout_index))
             row = cursor.fetchone()
             if row:
@@ -162,7 +166,7 @@ class ChainStateDB:
     def get_utxos_by_script(self, script_pubkey):
         """Find all UTXOs paying to a specific script (address)."""
         # Note: script_pubkey should be bytes
-        with sqlite3.connect(self.db_path) as conn:
+        with sqlite3.connect(self.db_path, timeout=30.0) as conn:
             cursor = conn.execute("SELECT txid, vout_index, amount, block_height, is_coinbase FROM utxo WHERE script_pubkey = ?", (script_pubkey,))
             rows = cursor.fetchall()
             return [{'txid': r[0], 'vout': r[1], 'amount': r[2], 'block_height': r[3], 'is_coinbase': bool(r[4])} for r in rows]
