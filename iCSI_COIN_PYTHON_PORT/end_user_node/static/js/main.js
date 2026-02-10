@@ -822,3 +822,19 @@ if (themeModal) {
         }
     });
 }
+
+function openNetworkUplinkModal() {
+    const modal = document.getElementById('networkUplinkModal');
+    if (modal) {
+        modal.classList.remove('hidden');
+        modal.classList.add('flex');
+    }
+}
+
+function closeNetworkUplinkModal() {
+    const modal = document.getElementById('networkUplinkModal');
+    if (modal) {
+        modal.classList.add('hidden');
+        modal.classList.remove('flex');
+    }
+}
