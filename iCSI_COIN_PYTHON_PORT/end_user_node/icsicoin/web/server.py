@@ -993,51 +993,62 @@ class WebServer:
                 return web.json_response({'status': 'renamed', 'name': new_name})
         return web.json_response({'error': 'Wallet not found'}, status=404)
 
-    async def handle_wallet_send(self, request):
-        data = await self._get_json(request)
-        to_addr = data.get('to')
-        amount = float(data.get('amount'))
+    async def _broadcast_tx_task(self, tx):
+        import json as json_mod
+        from icsicoin.network.messages import Message
         
-        try:
-            # Convert to satoshi
-            satoshi = int(amount * 100000000)
-            
-            # Get current height for maturity check
-            best = self.network_manager.chain_manager.block_index.get_best_block()
-            current_height = best['height'] if best else 0
+        tx_hash_hex = tx.get_hash().hex()
+        inv_msg = {
+            "type": "inv",
+            "inventory": [{"type": "tx", "hash": tx_hash_hex}]
+        }
+        json_payload = json_mod.dumps(inv_msg).encode('utf-8')
+        out_m = Message('inv', json_payload)
+        
+        # Best effort broadcast
+        for peer_addr, peer_writer in self.network_manager.active_connections.items():
+            try:
+                peer_writer.write(out_m.serialize())
+                await peer_writer.drain()
+            except: 
+                pass
 
-            tx = self.network_manager.wallet.create_transaction(
-                to_addr, satoshi, self.network_manager.chain_manager.chain_state, current_height,
-                mempool=self.network_manager.mempool
-            )
+    async def handle_wallet_send(self, request):
+        try:
+            data = await request.json()
+            to_addr = data.get('to')
+            amount = float(data.get('amount'))
             
-            # Broadcast
-            # Validation first?
-            # NetworkManager.broadcast_transaction
-            # We don't have that method explicitly?
-            # We have protocol message handling.
-            # We should add tx to mempool AND broadcast "inv".
-            
-            # 1. Add to Mempool (Validation happens here)
-            # validation.validate_transaction needs UTXO set?
-            # mempool.add_transaction(tx, chain_state)
-            if self.network_manager.mempool.add_transaction(tx):
-                # Broadcast INV to peers
-                import json as json_mod
-                from icsicoin.network.messages import Message
-                tx_hash_hex = tx.get_hash().hex()
-                inv_msg = {
-                    "type": "inv",
-                    "inventory": [{"type": "tx", "hash": tx_hash_hex}]
-                }
-                json_payload = json_mod.dumps(inv_msg).encode('utf-8')
-                out_m = Message('inv', json_payload)
+            # Basic validation
+            if not to_addr or amount <= 0:
+                return web.json_response({'error': 'Invalid parameters'}, status=400)
                 
-                for peer_addr, peer_writer in self.network_manager.active_connections.items():
-                    try:
-                        peer_writer.write(out_m.serialize())
-                        await peer_writer.drain()
-                    except: pass
+            # Run wallet creation in thread to avoid blocking loop
+            loop = asyncio.get_event_loop()
+            
+            # Helper to run blocking wallet code
+            def create_tx_blocking():
+                # Convert to satoshi
+                satoshi = int(amount * 100000000)
+                # Get current height for maturity check
+                best = self.network_manager.chain_manager.block_index.get_best_block()
+                current_height = best['height'] if best else 0
+                
+                return self.network_manager.wallet.create_transaction(
+                    to_addr, satoshi, self.network_manager.chain_manager.chain_state, current_height,
+                    mempool=self.network_manager.mempool
+                )
+
+            # Await the thread
+            tx = await loop.run_in_executor(None, create_tx_blocking)
+            
+            if not tx:
+                 return web.json_response({'error': 'Insufficient funds or wallet error'}, status=400)
+            
+            # Add to Mempool (Validation happens here)
+            if self.network_manager.mempool.add_transaction(tx):
+                # Broadcast INV to peers (ASYNCHRONOUSLY)
+                asyncio.create_task(self._broadcast_tx_task(tx))
                 
                 return web.json_response({'status': 'sent', 'txid': tx.get_hash().hex()})
             else:

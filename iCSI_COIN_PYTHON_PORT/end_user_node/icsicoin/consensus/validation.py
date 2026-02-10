@@ -135,13 +135,17 @@ def validate_block(block, utxo_set):
 
     # Track spent outputs in this block to prevent double-spending within the block
     spent_in_block = set()
+    
+    # Track new outputs created in this block (for chaining)
+    # Key: (tx_hash_hex, vout_index) -> UTXO dict
+    chained_utxos = {}
 
     # 2. Validate Transactions
     for i, tx in enumerate(block.vtx):
         # Coinbase (first tx) is special
         is_coinbase = (i == 0)
         
-        is_valid, reason = validate_transaction(tx, utxo_set, is_coinbase)
+        is_valid, reason = validate_transaction(tx, utxo_set, is_coinbase, chained_utxos)
         if not is_valid:
              logger.error(f"Block validation failed: Invalid transaction {tx.get_hash().hex()} at index {i}: {reason}")
              return False, f"Invalid Tx {i}: {reason}"
@@ -154,10 +158,20 @@ def validate_block(block, utxo_set):
                     logger.error(f"Block validation failed: {reason}")
                     return False, reason # Double spend within block
                 spent_in_block.add(prev_out)
+        
+        # Add outputs to chained_utxos
+        tx_hash = tx.get_hash().hex()
+        for idx, out in enumerate(tx.vout):
+            chained_utxos[(tx_hash, idx)] = {
+                'amount': out.amount, 
+                'script_pubkey': out.script_pubkey, 
+                'block_height': 0, # Placeholder, not yet in chain
+                'is_coinbase': is_coinbase
+            }
             
     return True, "Valid"
 
-def validate_transaction(tx, utxo_set, is_coinbase=False):
+def validate_transaction(tx, utxo_set, is_coinbase=False, chained_utxos=None):
     """
     Validate a single transaction.
     """
@@ -184,7 +198,15 @@ def validate_transaction(tx, utxo_set, is_coinbase=False):
     for i, txin in enumerate(tx.vin):
         # Look up UTXO
         prev_hash_hex = txin.prev_hash.hex()
-        utxo = utxo_set.get_utxo(prev_hash_hex, txin.prev_index)
+        
+        # 1. Check Chained UTXOs (Intra-block)
+        utxo = None
+        if chained_utxos and (prev_hash_hex, txin.prev_index) in chained_utxos:
+             utxo = chained_utxos[(prev_hash_hex, txin.prev_index)]
+        
+        # 2. Check Database
+        if not utxo:
+             utxo = utxo_set.get_utxo(prev_hash_hex, txin.prev_index)
         
         if not utxo:
             # Input does not exist or is already spent
