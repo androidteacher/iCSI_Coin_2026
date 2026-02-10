@@ -41,27 +41,32 @@ class BlockIndexDB:
     def repair_chain_pointer(self):
         """
         SELF-HEAL: Check if chain_info pointer matches the actual max height in block_index.
-        If we have blocks but the pointer is lost/old (e.g. crash), fast-forward it.
+        Prioritizes Validated Blocks (status=3) to avoid jumping to orphans.
         """
         try:
             with sqlite3.connect(self.db_path, timeout=30.0) as conn:
-                # 1. Get Actual Max Height
                 cursor = conn.cursor()
-                cursor.execute("SELECT MAX(height) FROM block_index")
-                row = cursor.fetchone()
-                max_height = row[0] if row and row[0] is not None else -1
                 
-                if max_height == -1:
+                # 1. Get Actual Max Valid Height (Recommended)
+                cursor.execute("SELECT MAX(height) FROM block_index WHERE status=3")
+                row = cursor.fetchone()
+                max_valid_height = row[0] if row and row[0] is not None else -1
+                
+                # Fallback: If no valid blocks (fresh sync?), check any blocks
+                if max_valid_height == -1:
+                    cursor.execute("SELECT MAX(height) FROM block_index")
+                    row = cursor.fetchone()
+                    max_valid_height = row[0] if row and row[0] is not None else -1
+                
+                if max_valid_height == -1:
                     return # Empty DB, nothing to repair
-                    
+                
+                target_height = max_valid_height
+
                 # 2. Get Current Head Pointer
                 cursor.execute("SELECT value FROM chain_info WHERE key='best_block_hash'")
                 row = cursor.fetchone()
                 current_head_hash = row[0] if row else None
-                
-                # Check if we use 'value' or column name?
-                # Previous CREATE TABLE said: key TEXT PRIMARY KEY, value TEXT
-                # So we select value where key='best_block_hash'
                 
                 current_head_height = -1
                 if current_head_hash:
@@ -71,20 +76,25 @@ class BlockIndexDB:
                         current_head_height = row[0]
                 
                 # 3. Compare and Repair
-                if max_height > current_head_height:
-                    print(f"[DB REPAIR] Detected Chain Pointer Corruption! Head: {current_head_height}, Actual Max: {max_height}")
-                    # Find hash for max height
-                    cursor.execute("SELECT block_hash FROM block_index WHERE height=?", (max_height,))
+                if target_height > current_head_height:
+                    # Log internally if possible, or just print
+                    # print(f"[DB REPAIR] Corruption: Head {current_head_height} < Max {target_height}")
+                    
+                    # Find hash for max height (Prioritize status=3 if available)
+                    cursor.execute("SELECT block_hash FROM block_index WHERE height=? AND status=3", (target_height,))
                     row = cursor.fetchone()
+                    if not row:
+                        # Fallback to any status if status=3 missing for this height
+                        cursor.execute("SELECT block_hash FROM block_index WHERE height=?", (target_height,))
+                        row = cursor.fetchone()
+                        
                     if row:
                         real_best_hash = row[0]
-                        print(f"[DB REPAIR] Self-Healing: Updating Head Pointer to {real_best_hash} (Height {max_height})...")
-                        
+                        # print(f"[DB REPAIR] Self-Healing: Updating Head to {real_best_hash} (Height {target_height})")
                         conn.execute("INSERT OR REPLACE INTO chain_info (key, value) VALUES ('best_block_hash', ?)", (real_best_hash,))
                         conn.commit()
-                        print("[DB REPAIR] Database Integrity Restored.")
         except Exception as e:
-            print(f"[DB REPAIR] Error verifying DB integrity: {e}")
+            print(f"[DB REPAIR] Error: {e}")
 
     def add_block(self, block_hash, file_num, offset, length, prev_hash, height=0, status=1):
         """Add or update a block entry."""
@@ -148,27 +158,32 @@ class BlockIndexDB:
             best_info = None
             if row:
                 best_info = self.get_block_info(row[0])
-                
-            # LAZY INTEGRITY CHECK:
-            # If we seem to be at Genesis (or empty), check if we truly are.
-            if best_info is None or best_info['height'] == 0:
-                # Check actual max height
+            
+            current_height = best_info['height'] if best_info else 0
+            
+            # IMPROVED LAZY REPAIR:
+            # Always check if we are lagging behind the actual index (Corruption "Stuck Middle" case)
+            # We prioritize status=3 (Connected) blocks to ensure we land on a valid tip.
+            cursor.execute("SELECT MAX(height) FROM block_index WHERE status=3")
+            r = cursor.fetchone()
+            max_valid_h = r[0] if r and r[0] is not None else 0
+            
+            # If no status=3 found (e.g. only downloaded), check raw max
+            if max_valid_h == 0:
                 cursor.execute("SELECT MAX(height) FROM block_index")
                 r = cursor.fetchone()
-                max_h = r[0] if r and r[0] is not None else 0
-                
-                if max_h > 0:
-                    # Corruption detected! (Head=0, Max > 0)
-                    # Trigger immediate repair
-                    # We can't log here easily without importing logging properly or passing it in.
-                    # print(f"[LazyRepair] Detecting mismatch: Head=0, Max={max_h}")
-                    self.repair_chain_pointer()
-                    
-                    # Retry fetch
-                    cursor.execute("SELECT value FROM chain_info WHERE key = 'best_block_hash'")
-                    row = cursor.fetchone()
-                    if row:
-                        best_info = self.get_block_info(row[0])
+                max_valid_h = r[0] if r and r[0] is not None else 0
+
+            if max_valid_h > current_height:
+                 # CRITICAL: We are stuck at 'current_height' but have blocks up to 'max_valid_h'.
+                 # Triger Repair.
+                 self.repair_chain_pointer()
+                 
+                 # Retry fetch
+                 cursor.execute("SELECT value FROM chain_info WHERE key = 'best_block_hash'")
+                 row = cursor.fetchone()
+                 if row:
+                     best_info = self.get_block_info(row[0])
                         
             return best_info
 
