@@ -994,24 +994,36 @@ class WebServer:
         return web.json_response({'error': 'Wallet not found'}, status=404)
 
     async def _broadcast_tx_task(self, tx):
-        import json as json_mod
-        from icsicoin.network.messages import Message
-        
-        tx_hash_hex = tx.get_hash().hex()
-        inv_msg = {
-            "type": "inv",
-            "inventory": [{"type": "tx", "hash": tx_hash_hex}]
-        }
-        json_payload = json_mod.dumps(inv_msg).encode('utf-8')
-        out_m = Message('inv', json_payload)
-        
-        # Best effort broadcast
-        for peer_addr, peer_writer in self.network_manager.active_connections.items():
-            try:
-                peer_writer.write(out_m.serialize())
-                await peer_writer.drain()
-            except: 
-                pass
+        try:
+            import json as json_mod
+            from icsicoin.network.messages import Message
+            
+            tx_hash_hex = tx.get_hash().hex()
+            logger.info(f"Starting async broadcast for tx {tx_hash_hex}")
+            
+            inv_msg = {
+                "type": "inv",
+                "inventory": [{"type": "tx", "hash": tx_hash_hex}]
+            }
+            json_payload = json_mod.dumps(inv_msg).encode('utf-8')
+            out_m = Message('inv', json_payload)
+            
+            count = 0
+            # Best effort broadcast
+            for peer_addr, peer_writer in self.network_manager.active_connections.items():
+                try:
+                    logger.debug(f"Broadcasting tx {tx_hash_hex} to {peer_addr}")
+                    peer_writer.write(out_m.serialize())
+                    await peer_writer.drain()
+                    count += 1
+                except Exception as e: 
+                    logger.error(f"Failed to broadcast tx {tx_hash_hex} to {peer_addr}: {e}")
+                    pass
+            
+            logger.info(f"Async broadcast for tx {tx_hash_hex} completed. Sent to {count} peers.")
+            
+        except Exception as e:
+            logger.exception(f"Critical error in _broadcast_tx_task: {e}")
 
     async def handle_wallet_send(self, request):
         try:
