@@ -1,0 +1,381 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>iCSI Coin Database Queries</title>
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&family=Rajdhani:wght@500;600;700&display=swap"
+        rel="stylesheet">
+
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        background: '#000000',
+                        surface: '#09090b', // Zinc 950
+                        border: '#27272a',   // Zinc 800
+                        primary: 'rgb(var(--color-primary) / <alpha-value>)',  // Dynamic Primary
+                        secondary: '#06b6d4', // Cyan
+                        muted: '#a1a1aa',    // Zinc 400
+                    },
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                        mono: ['JetBrains Mono', 'monospace'],
+                        heading: ['Rajdhani', 'sans-serif'],
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        :root {
+            /* Default Purple */
+            --color-primary: 168 85 247;
+        }
+
+        /* Custom Scrollbar to match Dark Theme */
+        ::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: #27272a;
+            border-radius: 3px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: #3f3f46;
+        }
+    </style>
+    <script>
+        // Apply theme immediately to prevent flash
+        const savedTheme = localStorage.getItem('theme-color');
+        if (savedTheme) {
+            document.documentElement.style.setProperty('--color-primary', savedTheme);
+        }
+    </script>
+</head>
+
+<body
+    class="bg-background text-white font-sans min-h-screen min-w-[1280px] antialiased selection:bg-primary selection:text-black">
+
+    <!-- Top Navigation Bar -->
+    <nav class="max-w-[1400px] mx-auto px-6 pt-6 pb-2">
+        <div class="bg-surface border border-border rounded-xl px-6 py-3 flex items-center justify-between shadow-lg">
+            <div class="flex items-center gap-3">
+                <span class="w-3 h-3 rounded-full bg-blue-500 shadow-[0_0_12px_rgba(59,130,246,0.8)]"></span>
+                <span class="font-heading font-bold text-lg uppercase tracking-widest text-white">iCSI Coin</span>
+                <span class="text-zinc-600 text-xs font-mono ml-2">Database Inspector</span>
+            </div>
+            <div class="flex items-center gap-2">
+                <a href="/"
+                    class="px-4 py-2 rounded-lg bg-zinc-800 border border-zinc-700 text-zinc-300 font-bold text-xs uppercase tracking-wider hover:bg-zinc-700 hover:text-white transition-all flex items-center gap-2">
+                    ⬅ Back to Dashboard
+                </a>
+
+                <!-- Node Management Dropdown -->
+                <div class="relative group ml-2">
+                    <button
+                        class="px-4 py-2 rounded-lg bg-zinc-800 border border-zinc-700 text-zinc-300 font-bold text-xs uppercase tracking-wider hover:bg-zinc-700 hover:text-white transition-all flex items-center gap-2">
+                        🛠 Node Management
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7">
+                            </path>
+                        </svg>
+                    </button>
+                    <!-- Dropdown Menu -->
+                    <div
+                        class="absolute right-0 mt-2 w-56 bg-surface border border-border rounded-xl shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50 transform origin-top-right">
+                        <div class="py-1">
+                            <a href="/management"
+                                class="block w-full text-left px-4 py-3 text-sm text-zinc-300 hover:bg-zinc-800 hover:text-white border-b border-zinc-800">
+                                🖥 Terminal Scripts
+                            </a>
+                            <a href="/db_query"
+                                class="block w-full text-left px-4 py-3 text-sm text-zinc-300 hover:bg-zinc-800 hover:text-white">
+                                🔍 Query Database
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <div class="max-w-[1000px] mx-auto p-6 pt-8 space-y-12 mb-12">
+
+        <!-- Header -->
+        <div class="text-center space-y-4">
+            <h1 class="text-4xl font-heading font-bold text-white uppercase tracking-widest">
+                Blockchain Database Queries
+            </h1>
+            <p class="text-zinc-500 max-w-2xl mx-auto">
+                Inspect the raw state of your node's database.
+                <br><span class="text-xs font-mono text-zinc-600">All queries specific to SQLite architecture.</span>
+            </p>
+        </div>
+
+        <!-- SECTION 1: ECONOMICS -->
+        <div class="space-y-6">
+            <h3
+                class="text-xl font-heading font-bold text-primary uppercase tracking-widest border-b border-primary/20 pb-2">
+                I. Economic Statistics</h3>
+
+            <!-- 1. TOTAL SUPPLY -->
+            <div class="bg-surface border border-border rounded-xl p-8 space-y-4">
+                <h2 class="text-xl font-heading font-bold text-white flex items-center gap-2">
+                    <span class="text-zinc-500">01.</span> Calculate Total Coin Supply
+                </h2>
+                <p class="text-zinc-400 text-sm">
+                    Sums up the value of all unspent outputs in the database (UTXO Set). This is the total number of
+                    coins in circulation according to your node.
+                </p>
+                <div
+                    class="bg-black border border-zinc-800 rounded p-4 font-mono text-xs text-zinc-500 overflow-x-auto">
+                    sqlite3 end_user_node/wallet_data/chainstate.sqlite "SELECT SUM(amount) / 100000000.0 FROM utxo;"
+                </div>
+                <button onclick="runQuery('get_supply')"
+                    class="px-4 py-2 bg-primary text-black font-bold uppercase text-xs rounded hover:bg-opacity-90 transition-colors">
+                    Run this Query!
+                </button>
+                <div id="res_get_supply"
+                    class="hidden mt-4 p-4 bg-black border border-zinc-800 rounded text-green-400 font-mono text-xs whitespace-pre-wrap">
+                </div>
+            </div>
+
+            <!-- 2. RICH LIST -->
+            <div class="bg-surface border border-border rounded-xl p-8 space-y-4">
+                <h2 class="text-xl font-heading font-bold text-white flex items-center gap-2">
+                    <span class="text-zinc-500">02.</span> Rich List (Top 10 Addresses)
+                </h2>
+                <p class="text-zinc-400 text-sm">
+                    Shows the top 10 addresses holding the most UTXOs. Note: This groups by Script PubKey.
+                </p>
+                <div
+                    class="bg-black border border-zinc-800 rounded p-4 font-mono text-xs text-zinc-500 overflow-x-auto">
+                    sqlite3 end_user_node/wallet_data/chainstate.sqlite "SELECT HEX(script_pubkey), COUNT(*) as
+                    utxo_count, SUM(amount)/100000000.0 as balance FROM utxo GROUP BY script_pubkey ORDER BY balance
+                    DESC LIMIT 10;"
+                </div>
+                <button onclick="runQuery('get_rich_list')"
+                    class="px-4 py-2 bg-primary text-black font-bold uppercase text-xs rounded hover:bg-opacity-90 transition-colors">
+                    Run this Query!
+                </button>
+                <div id="res_get_rich_list"
+                    class="hidden mt-4 p-4 bg-black border border-zinc-800 rounded text-green-400 font-mono text-xs whitespace-pre-wrap">
+                </div>
+            </div>
+        </div>
+
+        <!-- SECTION 2: STATS -->
+        <div class="space-y-6">
+            <h3
+                class="text-xl font-heading font-bold text-secondary uppercase tracking-widest border-b border-secondary/20 pb-2">
+                II. Blockchain Statistics</h3>
+
+            <!-- 3. GENERAL STATS GRID -->
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+
+                <!-- Transactions -->
+                <div class="bg-surface border border-border rounded-xl p-6 space-y-4">
+                    <h2 class="text-lg font-heading font-bold text-white">03. Total Transactions</h2>
+                    <p class="text-zinc-400 text-xs">Count of all indexed transactions.</p>
+                    <div
+                        class="bg-black border border-zinc-800 rounded p-3 font-mono text-[10px] text-zinc-500 overflow-x-auto mb-2">
+                        sqlite3 end_user_node/wallet_data/block_index.sqlite "SELECT COUNT(*) FROM tx_index;"
+                    </div>
+                    <button onclick="runQuery('get_tx_count')"
+                        class="w-full px-4 py-2 bg-secondary/10 border border-secondary/50 text-secondary font-bold uppercase text-xs rounded hover:bg-secondary/20 transition-colors">
+                        Run
+                    </button>
+                    <div id="res_get_tx_count"
+                        class="hidden mt-2 p-3 bg-black border border-zinc-800 rounded text-green-400 font-mono text-xs whitespace-pre-wrap">
+                    </div>
+                </div>
+
+                <!-- Chain Size -->
+                <div class="bg-surface border border-border rounded-xl p-6 space-y-4">
+                    <h2 class="text-lg font-heading font-bold text-white">04. Chain Data Size</h2>
+                    <p class="text-zinc-400 text-xs">Total size of all blocks in bytes.</p>
+                    <div
+                        class="bg-black border border-zinc-800 rounded p-3 font-mono text-[10px] text-zinc-500 overflow-x-auto mb-2">
+                        sqlite3 end_user_node/wallet_data/block_index.sqlite "SELECT SUM(length) FROM block_index;"
+                    </div>
+                    <button onclick="runQuery('get_chain_size')"
+                        class="w-full px-4 py-2 bg-secondary/10 border border-secondary/50 text-secondary font-bold uppercase text-xs rounded hover:bg-secondary/20 transition-colors">
+                        Run
+                    </button>
+                    <div id="res_get_chain_size"
+                        class="hidden mt-2 p-3 bg-black border border-zinc-800 rounded text-green-400 font-mono text-xs whitespace-pre-wrap">
+                    </div>
+                </div>
+
+                <!-- Avg Block Size -->
+                <div class="bg-surface border border-border rounded-xl p-6 space-y-4">
+                    <h2 class="text-lg font-heading font-bold text-white">05. Avg Block Size</h2>
+                    <p class="text-zinc-400 text-xs">Average block size in bytes.</p>
+                    <div
+                        class="bg-black border border-zinc-800 rounded p-3 font-mono text-[10px] text-zinc-500 overflow-x-auto mb-2">
+                        sqlite3 end_user_node/wallet_data/block_index.sqlite "SELECT AVG(length) FROM block_index;"
+                    </div>
+                    <button onclick="runQuery('get_avg_block_size')"
+                        class="w-full px-4 py-2 bg-secondary/10 border border-secondary/50 text-secondary font-bold uppercase text-xs rounded hover:bg-secondary/20 transition-colors">
+                        Run
+                    </button>
+                    <div id="res_get_avg_block_size"
+                        class="hidden mt-2 p-3 bg-black border border-zinc-800 rounded text-green-400 font-mono text-xs whitespace-pre-wrap">
+                    </div>
+                </div>
+
+            </div>
+        </div>
+
+
+        <!-- SECTION 3: DEBUGGING -->
+        <div class="space-y-6">
+            <h3
+                class="text-xl font-heading font-bold text-red-500 uppercase tracking-widest border-b border-red-500/20 pb-2">
+                III. Node Health & Debugging</h3>
+
+            <!-- 6. MAX HEIGHT -->
+            <div class="bg-surface border border-border rounded-xl p-8 space-y-4">
+                <h2 class="text-xl font-heading font-bold text-white flex items-center gap-2">
+                    <span class="text-zinc-500">06.</span> Check Current Sync Height
+                </h2>
+                <div
+                    class="bg-black border border-zinc-800 rounded p-4 font-mono text-xs text-zinc-500 overflow-x-auto">
+                    sqlite3 end_user_node/wallet_data/block_index.sqlite "SELECT MAX(height) FROM block_index;"
+                </div>
+                <button onclick="runQuery('get_max_height')"
+                    class="px-4 py-2 bg-zinc-800 text-zinc-300 font-bold uppercase text-xs rounded hover:bg-zinc-700 transition-colors">
+                    Run this Query!
+                </button>
+                <div id="res_get_max_height"
+                    class="hidden mt-4 p-4 bg-black border border-zinc-800 rounded text-green-400 font-mono text-xs whitespace-pre-wrap">
+                </div>
+            </div>
+
+            <!-- 7. FORKS -->
+            <div class="bg-surface border border-border rounded-xl p-8 space-y-4">
+                <h2 class="text-xl font-heading font-bold text-white flex items-center gap-2">
+                    <span class="text-zinc-500">07.</span> Check for Forks
+                </h2>
+                <div
+                    class="bg-black border border-zinc-800 rounded p-4 font-mono text-xs text-zinc-500 overflow-x-auto">
+                    sqlite3 end_user_node/wallet_data/block_index.sqlite "SELECT height, COUNT(*) as count FROM
+                    block_index GROUP BY height HAVING count &gt; 1 ORDER BY height DESC LIMIT 10;"
+                </div>
+                <button onclick="runQuery('get_forks')"
+                    class="px-4 py-2 bg-zinc-800 text-zinc-300 font-bold uppercase text-xs rounded hover:bg-zinc-700 transition-colors">
+                    Run this Query!
+                </button>
+                <div id="res_get_forks"
+                    class="hidden mt-4 p-4 bg-black border border-zinc-800 rounded text-green-400 font-mono text-xs whitespace-pre-wrap">
+                </div>
+            </div>
+
+            <!-- 8. ORPHANS -->
+            <div class="bg-surface border border-border rounded-xl p-8 space-y-4">
+                <h2 class="text-xl font-heading font-bold text-white flex items-center gap-2">
+                    <span class="text-zinc-500">08.</span> List Orphan Blocks
+                </h2>
+                <div
+                    class="bg-black border border-zinc-800 rounded p-4 font-mono text-xs text-zinc-500 overflow-x-auto">
+                    sqlite3 end_user_node/wallet_data/block_index.sqlite "SELECT * FROM block_index WHERE prev_hash NOT
+                    IN (SELECT block_hash FROM block_index) AND height > 0;"
+                </div>
+                <button onclick="runQuery('get_orphans')"
+                    class="px-4 py-2 bg-zinc-800 text-zinc-300 font-bold uppercase text-xs rounded hover:bg-zinc-700 transition-colors">
+                    Run this Query!
+                </button>
+                <div id="res_get_orphans"
+                    class="hidden mt-4 p-4 bg-black border border-zinc-800 rounded text-green-400 font-mono text-xs whitespace-pre-wrap">
+                </div>
+            </div>
+
+            <!-- 9. INSPECT BLOCK -->
+            <div class="bg-surface border border-border rounded-xl p-8 space-y-4">
+                <h2 class="text-xl font-heading font-bold text-white flex items-center gap-2">
+                    <span class="text-zinc-500">09.</span> Inspect Specific Block
+                </h2>
+                <div
+                    class="bg-black border border-zinc-800 rounded p-4 font-mono text-xs text-zinc-500 overflow-x-auto">
+                    sqlite3 end_user_node/wallet_data/block_index.sqlite "SELECT * FROM block_index WHERE height =
+                    5000;"
+                </div>
+                <div class="flex items-center gap-2">
+                    <input type="number" id="input_get_block" placeholder="Height (e.g. 5000)"
+                        class="bg-black border border-zinc-700 text-white px-3 py-2 rounded text-sm focus:border-primary focus:outline-none w-48">
+                    <button onclick="runQuery('get_block')"
+                        class="px-4 py-2 bg-zinc-800 text-zinc-300 font-bold uppercase text-xs rounded hover:bg-zinc-700 transition-colors">
+                        Run this Query!
+                    </button>
+                </div>
+                <div id="res_get_block"
+                    class="hidden mt-4 p-4 bg-black border border-zinc-800 rounded text-green-400 font-mono text-xs whitespace-pre-wrap">
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+        async function runQuery(queryId) {
+            const resDiv = document.getElementById(`res_${queryId}`);
+            resDiv.classList.remove('hidden');
+            resDiv.innerText = "Running...";
+            resDiv.classList.add('animate-pulse');
+
+            let params = {};
+            // Check for inputs
+            if (queryId === 'get_block') {
+                const val = document.getElementById('input_get_block').value;
+                if (!val) {
+                    resDiv.innerText = "Error: Please enter a height.";
+                    return;
+                }
+                params['height'] = parseInt(val);
+            }
+
+            try {
+                const response = await fetch('/api/db/query', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ query_id: queryId, params: params })
+                });
+
+                const data = await response.json();
+                resDiv.classList.remove('animate-pulse');
+
+                if (data.error) {
+                    resDiv.innerText = `Error: ${data.error}`;
+                    resDiv.classList.add('text-red-400');
+                    resDiv.classList.remove('text-green-400');
+                } else {
+                    resDiv.innerText = JSON.stringify(data.result, null, 2);
+                    resDiv.classList.remove('text-red-400');
+                    resDiv.classList.add('text-green-400');
+                }
+            } catch (e) {
+                resDiv.classList.remove('animate-pulse');
+                resDiv.innerText = `Network Error: ${e}`;
+            }
+        }
+    </script>
+</body>
+
+</html>

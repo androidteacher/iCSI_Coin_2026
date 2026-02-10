@@ -101,21 +101,15 @@
             </div>
             <div class="flex items-center gap-2">
                 <!-- Navigation Buttons -->
-                <button onclick="openBeggarModal()"
-                    class="px-4 py-2 rounded-lg bg-primary/10 border border-primary/40 text-primary font-bold text-xs uppercase tracking-wider hover:bg-primary/20 hover:border-primary/60 transition-all flex items-center gap-2">
-                    💰 Beggars List
-                    <span id="begMenuDot" class="hidden w-2 h-2 rounded-full bg-yellow-400 animate-pulse"></span>
-                </button>
-
                 <a href="/secret"
-                    class="px-4 py-2 rounded-lg bg-zinc-800 border border-zinc-700 text-zinc-300 font-bold text-xs uppercase tracking-wider hover:bg-zinc-700 hover:text-white transition-all flex items-center gap-2 whitespace-nowrap">
+                    class="px-4 py-2 rounded-lg bg-zinc-800 border border-zinc-700 text-zinc-300 font-bold text-xs uppercase tracking-wider hover:bg-zinc-700 hover:text-white transition-all flex items-center gap-2 whitespace-nowrap h-10">
                     🕵️ Secret Message
                 </a>
 
                 <!-- Management Dropdown -->
                 <div class="relative group">
                     <button
-                        class="px-4 py-2 rounded-lg bg-zinc-800 border border-zinc-700 text-zinc-300 font-bold text-xs uppercase tracking-wider hover:bg-zinc-700 hover:text-white transition-all flex items-center gap-2">
+                        class="px-4 py-2 rounded-lg bg-zinc-800 border border-zinc-700 text-zinc-300 font-bold text-xs uppercase tracking-wider hover:bg-zinc-700 hover:text-white transition-all flex items-center gap-2 whitespace-nowrap h-10">
                         🔗 Dashboard Links
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7">
@@ -126,41 +120,81 @@
                     <div
                         class="absolute right-0 mt-2 w-56 bg-surface border border-border rounded-xl shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50 transform origin-top-right">
                         <div class="py-1">
-                            <button onclick="openModal('networkUplinkModal')"
+                            <!-- 1. Rich List -->
+                            <button onclick="openRichListModal()"
                                 class="block w-full text-left px-4 py-3 text-sm text-zinc-300 hover:bg-zinc-800 hover:text-white border-b border-zinc-800">
-                                📡 Network Uplink
+                                🏆 Rich List (Top 10)
                             </button>
-                            <button onclick="openDownloadMinerModal()"
+                            <!-- 2. Beggars List -->
+                            <button onclick="openBeggarModal()"
                                 class="block w-full text-left px-4 py-3 text-sm text-zinc-300 hover:bg-zinc-800 hover:text-white border-b border-zinc-800">
-                                ⛏ Download Miner
+                                💰 Beggars List
                             </button>
-                            <button onclick="openDataModal()"
+                            <!-- 3. Blockchain Queries -->
+                            <a href="/db_query"
                                 class="block w-full text-left px-4 py-3 text-sm text-zinc-300 hover:bg-zinc-800 hover:text-white border-b border-zinc-800">
-                                💾 Node Data (Backup)
-                            </button>
+                                🔍 Blockchain Queries
+                            </a>
+                            <!-- 4. API Info -->
                             <a href="/api-docs"
                                 class="block w-full text-left px-4 py-3 text-sm text-zinc-300 hover:bg-zinc-800 hover:text-white border-b border-zinc-800">
                                 📚 API Info
                             </a>
+                            <!-- 5. Download Miner -->
+                            <button onclick="openDownloadMinerModal()"
+                                class="block w-full text-left px-4 py-3 text-sm text-zinc-300 hover:bg-zinc-800 hover:text-white border-b border-zinc-800">
+                                ⛏ Download Miner
+                            </button>
+                            <!-- 6. Node Data -->
+                            <button onclick="openDataModal()"
+                                class="block w-full text-left px-4 py-3 text-sm text-zinc-300 hover:bg-zinc-800 hover:text-white border-b border-zinc-800">
+                                💾 Node Data (Backup)
+                            </button>
+                            <!-- 7. Theme -->
+                            <button onclick="openThemeModal()"
+                                class="block w-full text-left px-4 py-3 text-sm text-zinc-300 hover:bg-zinc-800 hover:text-white border-b border-zinc-800">
+                                🎨 Theme
+                            </button>
+                            <!-- 8. RPC Auth -->
                             <button onclick="openRpcConfigModal()"
                                 class="block w-full text-left px-4 py-3 text-sm text-zinc-300 hover:bg-zinc-800 hover:text-white border-b border-zinc-800">
                                 🔒 RPC Auth
                             </button>
-                            <button onclick="openThemeModal()"
+                            <!-- 9. Network Uplink -->
+                            <button onclick="openNetworkUplinkModal()"
                                 class="block w-full text-left px-4 py-3 text-sm text-zinc-300 hover:bg-zinc-800 hover:text-white">
-                                🎨 Theme
+                                📡 Network Uplink
                             </button>
                         </div>
                     </div>
                 </div>
+                <!-- Node Management Dropdown -->
+                <div class="relative group ml-2">
+                    <button
+                        class="px-4 py-2 rounded-lg bg-zinc-800 border border-zinc-700 text-zinc-300 font-bold text-xs uppercase tracking-wider hover:bg-zinc-700 hover:text-white transition-all flex items-center gap-2 whitespace-nowrap h-10">
+                        🛠 Node Management
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7">
+                            </path>
+                        </svg>
+                    </button>
+                    <!-- Dropdown Menu -->
+                    <div
+                        class="absolute right-0 mt-2 w-56 bg-surface border border-border rounded-xl shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50 transform origin-top-right">
+                        <div class="py-1">
+                            <a href="/management"
+                                class="block w-full text-left px-4 py-3 text-sm text-zinc-300 hover:bg-zinc-800 hover:text-white">
+                                🖥 Terminal Scripts
+                            </a>
+                        </div>
+                    </div>
+                </div>
+
                 <button onclick="window.location.href='/explorer'"
-                    class="px-4 py-2 rounded-lg bg-primary/10 border border-primary/40 text-primary font-bold text-xs uppercase tracking-wider hover:bg-primary/20 hover:border-primary/60 transition-all flex items-center gap-2">
+                    class="px-4 py-2 rounded-lg bg-primary/10 border border-primary/40 text-primary font-bold text-xs uppercase tracking-wider hover:bg-primary/20 hover:border-primary/60 transition-all flex items-center gap-2 whitespace-nowrap h-10 ml-2">
                     📦 Blockchain Explorer
                 </button>
-                <button onclick="window.location.href='/management'"
-                    class="px-4 py-2 rounded-lg bg-zinc-800 border border-zinc-700 text-zinc-300 font-bold text-xs uppercase tracking-wider hover:bg-zinc-700 hover:text-white transition-all ml-2 flex items-center gap-2">
-                    🛠 Node Management
-                </button>
+
                 <button onclick="logout()"
                     class="px-4 py-2 rounded-lg bg-red-900/10 border border-red-900/40 text-red-500 font-bold text-xs uppercase tracking-wider hover:bg-red-900/20 hover:border-red-900/60 transition-all ml-2">
                     Logout
@@ -918,6 +952,78 @@ pip install -r requirements.txt</code></pre>
             </div>
         </div>
     </div>
+    <!-- Rich List Modal -->
+    <div id="richListModal" class="fixed inset-0 bg-black/80 backdrop-blur-sm hidden items-center justify-center z-50">
+        <div
+            class="bg-surface border border-border rounded-xl p-0 w-[95%] max-w-2xl h-[80vh] flex flex-col shadow-2xl overflow-hidden animate-[slideUp_0.3s_ease-out]">
+            <div class="flex justify-between items-center p-6 border-b border-border bg-black">
+                <h3 class="font-heading font-bold text-xl uppercase text-yellow-500">🏆 Network Rich List</h3>
+                <button onclick="closeModal('richListModal')" class="text-zinc-500 hover:text-white text-xl">✕</button>
+            </div>
+            <div class="px-6 py-3 bg-zinc-950 border-b border-border font-mono text-xs text-zinc-500">
+                Top 10 addresses by UTXO Count and Balance.
+            </div>
+            <div id="richListContent" class="flex-1 overflow-y-auto p-0">
+                <!-- Content Populated by JS -->
+                <div class="p-8 text-center text-zinc-500 font-mono animate-pulse">Loading data...</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Rich List Script -->
+    <script>
+        async function openRichListModal() {
+            const modal = document.getElementById('richListModal');
+            const content = document.getElementById('richListContent');
+            modal.style.display = 'flex';
+
+            try {
+                const res = await fetch('/api/db/query', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ query_id: 'get_rich_list', params: {} })
+                });
+                const data = await res.json();
+
+                if (data.result && Array.isArray(data.result)) {
+                    const rows = data.result.map((row, index) => {
+                        // API returns Dicts: {script, utxo_count, balance}
+
+                        const script = row.script || 'Unknown';
+                        const count = row.utxo_count || 0;
+                        const balance = parseFloat(row.balance || 0).toFixed(8);
+
+                        // Try to convert simple P2PKH script to address (Very basic attempt or just show script)
+                        // Script is usually: 76a914...88ac
+                        // For now, we just show the script hash (middle part) or the whole thing if complex.
+                        const shortScript = script.length > 20 ? script.substring(0, 30) + '...' : script;
+
+                        return `
+                        <div class="flex items-center justify-between p-4 border-b border-zinc-900 hover:bg-zinc-900/50 transition-colors">
+                            <div class="flex items-center gap-4">
+                                <span class="font-heading font-bold text-xl text-zinc-600 w-8">#${index + 1}</span>
+                                <div>
+                                    <div class="font-mono text-xs text-yellow-500 break-all">${shortScript}</div>
+                                    <div class="font-mono text-[10px] text-zinc-600 mt-1">${count} UTXOs</div>
+                                </div>
+                            </div>
+                            <div class="font-mono text-sm font-bold text-white">
+                                ${balance} <span class="text-xs text-primary">iCSI</span>
+                            </div>
+                        </div>
+                        `;
+                    }).join('');
+
+                    content.innerHTML = rows;
+                } else {
+                    content.innerHTML = '<div class="p-8 text-center text-red-500 font-mono">No data found</div>';
+                }
+            } catch (e) {
+                console.error(e);
+                content.innerHTML = `<div class="p-8 text-center text-red-500 font-mono">Error: ${e}</div>`;
+            }
+        }
+    </script>
 </body>
 
 </html>

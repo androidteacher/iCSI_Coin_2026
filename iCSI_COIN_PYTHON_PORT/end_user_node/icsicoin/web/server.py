@@ -56,6 +56,8 @@ class WebServer:
         # Routes
         self.app.router.add_get('/', self.handle_index)
         self.app.router.add_get('/management', self.handle_management_page)
+        self.app.router.add_get('/db_query', self.handle_db_query_page)
+        self.app.router.add_post('/api/db/query', self.handle_api_db_query)
         self.app.router.add_get('/secret', self.handle_secret_page)
         self.app.router.add_static('/static', os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), 'static'))
         
@@ -158,6 +160,108 @@ class WebServer:
     # --- MANAGEMENT ---
     async def handle_management_page(self, request):
         return await self.render_template('management.html')
+
+    async def handle_db_query_page(self, request):
+        return await self.render_template('db_query.html')
+
+    async def handle_api_db_query(self, request):
+        data = await self._get_json(request)
+        query_id = data.get('query_id')
+        params = data.get('params', {})
+        
+        # Security: Allow List of Safe Queries
+        # We execute raw SQL here but ONLY the strings defined below.
+        # User input only goes into parameterized bindings (?)
+        
+        query_map = {
+            'get_max_height': {
+                'db': 'block_index',
+                'sql': "SELECT MAX(height) as max_height FROM block_index;"
+            },
+            'get_forks': {
+                'db': 'block_index',
+                'sql': "SELECT height, COUNT(*) as count FROM block_index GROUP BY height HAVING count > 1 ORDER BY height DESC LIMIT 10;"
+            },
+            'get_orphans': {
+                'db': 'block_index',
+                'sql': "SELECT * FROM block_index WHERE prev_hash NOT IN (SELECT block_hash FROM block_index) AND height > 0;"
+            },
+            'get_block': {
+                'db': 'block_index',
+                'sql': "SELECT * FROM block_index WHERE height = ?;",
+                'args': ['height']
+            },
+            'get_supply': {
+                'db': 'chainstate',
+                'sql': "SELECT SUM(amount) / 100000000.0 as supply FROM utxo;"
+            },
+            'get_rich_list': {
+                'db': 'chainstate',
+                'sql': "SELECT HEX(script_pubkey) as script, COUNT(*) as utxo_count, SUM(amount)/100000000.0 as balance FROM utxo GROUP BY script_pubkey ORDER BY balance DESC LIMIT 10;"
+            },
+            'get_tx_count': {
+                'db': 'block_index',
+                'sql': "SELECT COUNT(*) as count FROM tx_index;"
+            },
+            'get_chain_size': {
+                'db': 'block_index',
+                'sql': "SELECT SUM(length) as bytes FROM block_index;"
+            },
+            'get_avg_block_size': {
+                'db': 'block_index',
+                'sql': "SELECT AVG(length) as avg_bytes FROM block_index;"
+            }
+        }
+        
+        if query_id not in query_map:
+            return web.json_response({'error': 'Invalid Query ID'}, status=400)
+            
+        qi = query_map[query_id]
+        sql = qi['sql']
+        db_name = qi['db']
+        
+        # Build Args
+        sql_args = []
+        if 'args' in qi:
+            for arg_name in qi['args']:
+                if arg_name not in params:
+                    return web.json_response({'error': f'Missing parameter: {arg_name}'}, status=400)
+                sql_args.append(params[arg_name])
+        
+        # Execute
+        try:
+            # We need to access the DB connections from the manager -> chain_manager -> block_index/chain_state
+            # But the 'databases.py' classes usually manage their own connections carefully.
+            # It's better to ask the DB object to run a query if exposed, 
+            # OR open a read-only cursor here. 
+            # Given we have WAL mode, read-only connection is safe.
+            
+            import sqlite3
+            
+            db_path = ""
+            if db_name == 'block_index':
+                db_path = self.network_manager.chain_manager.block_index.db_path
+            elif db_name == 'chainstate':
+                db_path = self.network_manager.chain_manager.chain_state.db_path
+                
+            # Connect Read Only
+            # uri=True allows 'file:path?mode=ro'
+            conn = sqlite3.connect(f"file:{db_path}?mode=ro", uri=True, timeout=5.0)
+            conn.row_factory = sqlite3.Row
+            cursor = conn.cursor()
+            
+            cursor.execute(sql, tuple(sql_args))
+            rows = cursor.fetchall()
+            
+            # Convert rows to dicts
+            result = [dict(row) for row in rows]
+            
+            conn.close()
+            
+            return web.json_response({'result': result})
+            
+        except Exception as e:
+            return web.json_response({'error': str(e)}, status=500)
 
     # --- AUTHENTICATION ---
 
