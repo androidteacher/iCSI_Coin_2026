@@ -55,6 +55,7 @@ class WebServer:
 
         # Routes
         self.app.router.add_get('/', self.handle_index)
+        self.app.router.add_get('/management', self.handle_management_page)
         self.app.router.add_get('/secret', self.handle_secret_page)
         self.app.router.add_static('/static', os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), 'static'))
         
@@ -153,6 +154,10 @@ class WebServer:
         template = self.jinja_env.get_template(template_name)
         content = template.render(context)
         return web.Response(text=content, content_type='text/html')
+
+    # --- MANAGEMENT ---
+    async def handle_management_page(self, request):
+        return await self.render_template('management.html')
 
     # --- AUTHENTICATION ---
 
