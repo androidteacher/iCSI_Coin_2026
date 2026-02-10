@@ -484,6 +484,35 @@ class NetworkManager:
                             await writer.drain()
                             logger.info(f"Sent GETDATA for {len(to_get)} items to {addr}")
                             self.log_peer_event(addr, "SENT", "GETDATA", f"Requested {len(to_get)} blocks/txs")
+                        
+                        else:
+                            # CONTINUE SYNC LOGIC
+                            # If to_get is empty, we already have everything in this INV.
+                            # But if the INV was full (suggesting more blocks exist), we should ask for what comes NEXT.
+                            # Otherwise we stall here.
+                            
+                            # We check the last item in the inventory.
+                            last_item = inventory[-1]
+                            if last_item['type'] == 'block':
+                                last_hash = last_item['hash']
+                                
+                                # Only continue if the batch was substantial (e.g. > 10 items)
+                                # Peer sends up to 500 usually.
+                                if len(inventory) > 10:
+                                     logger.info(f"Continue Sync: Received {len(inventory)} known blocks from {addr}. Requesting next batch starting from {last_hash}...")
+                                     
+                                     # Send getblocks with this hash as locator
+                                     # This tells peer: "I have up to X, give me X+1..."
+                                     msg = {
+                                         "type": "getblocks",
+                                         "locator": [last_hash] 
+                                     }
+                                     json_payload = json.dumps(msg).encode('utf-8')
+                                     out_msg = Message('getblocks', json_payload)
+                                     
+                                     writer.write(out_msg.serialize())
+                                     await writer.drain()
+                                     self.last_getblocks_time = time.time()
 
                     except Exception as e:
                         logger.error(f"INV error: {e}")
@@ -538,12 +567,30 @@ class NetworkManager:
                             
                             if success:
                                 # Remove received transactions from mempool
-                                for tx in block.vtx:
-                                    self.mempool.remove_transaction(tx.get_hash().hex())
+                                # Remove received transactions from mempool
+                                try:
+                                    for tx in block.vtx:
+                                        self.mempool.remove_transaction(tx.get_hash().hex())
+                                except Exception as e:
+                                    logger.warning(f"Failed to remove tx from mempool: {e}")
 
                                 self.log_peer_event(addr, "CONSENSUS", "ACCEPTED", f"Block {b_hash[:16]}... added to chain")
                                 
                                 self.last_block_received_time = time.time() # Update watchdog timer
+
+                                # PEER HEIGHT UPDATE FIX:
+                                # Update the peer's height so the Watchdog knows it's a good peer.
+                                try:
+                                    best_info = self.block_index.get_best_block()
+                                    if best_info:
+                                        new_height = best_info['height']
+                                        current_peer_height = self.peer_stats.get(addr, {}).get('height', 0)
+                                        if new_height > current_peer_height:
+                                            self.peer_stats.setdefault(addr, {})['height'] = new_height
+                                            # Optional: Log rarely to avoid spam, or just rely on 'Accepted' logs
+                                            # logger.debug(f"Updated peer {addr} height to {new_height}")
+                                except Exception as e:
+                                    logger.warning(f"Failed to update peer height stats: {e}")
 
                                 # LOW_DELAY SYNC FIX:
                                 # We request more blocks if:
@@ -575,8 +622,17 @@ class NetworkManager:
                                 
                                 # ORPHAN HANDLING
                                 if "Orphan" in reason:
-                                    logger.info(f"Orphan block detected from {addr}. Requesting ancestry...")
-                                    await self.send_getblocks(writer)
+                                    # Debounce: Don't spam getblocks if we just asked
+                                    stats = self.peer_stats.get(addr, {})
+                                    last_req = stats.get('last_ancestry_req', 0)
+                                    if time.time() - last_req > 5.0:
+                                        logger.info(f"Orphan detected from {addr}. Requesting ancestor chain to bridge fork...")
+                                        await self.send_getblocks(writer)
+                                        # Update stats timestamp
+                                        if addr in self.peer_stats:
+                                            self.peer_stats[addr]['last_ancestry_req'] = time.time()
+                                    else:
+                                        logger.debug(f"Orphan from {addr}, but ancestry request sent recently. Skipping.")
                                 else:
                                     pass # Invalid or known
                                 
@@ -1091,6 +1147,12 @@ class NetworkManager:
                 # If we are silent for > 60s, we should ask for blocks regardless of tip age.
                 # This ensures we catch up even if only a few minutes behind.
                 
+                # OPTIMIZATION: If we recently asked for blocks (via Continue Sync or previous loop), 
+                # don't interrupt it.
+                if time.time() - getattr(self, 'last_getblocks_time', 0) < 10:
+                     # logger.debug("Sync in progress (recent getblocks), skipping watchdog check.")
+                     continue
+
                 # Check if we are stalling
                 # Stalled = No block received in last 60 seconds
                 time_since_last_block = time.time() - self.last_block_received_time
@@ -1100,15 +1162,40 @@ class NetworkManager:
                     
                     # Trigger getblocks to a random peer
                     if self.active_connections:
-                        # Pick a random peer
-                        import random
-                        target_peer = random.choice(list(self.active_connections.keys()))
-                        writer = self.active_connections[target_peer]
+                        # 2. TARGETED SYNC: Don't pick random (could be behind). Pick the BEST chain.
+                        best_peer = None
+                        max_height = -1
                         
-                        await self.send_getblocks(writer)
+                        # Current height for comparison
+                        current_height = best_block['height']
                         
-                        # Reset timer so we don't spam every loop if response is slow
-                        self.last_block_received_time = time.time() 
+                        for peer_addr in self.active_connections.keys():
+                            stats = self.peer_stats.get(peer_addr, {})
+                            # Filter Stale Peers (Ghosts)
+                            if now - stats.get('last_seen', 0) > 60:
+                                continue
+
+                            h = stats.get('height', 0)
+                            if h > max_height:
+                                max_height = h
+                                best_peer = peer_addr
+                                
+                        if best_peer and max_height > current_height:
+                             logger.info(f"Sync Watchdog: Requesting blocks from BEST peer {best_peer} (Height {max_height})")
+                             writer = self.active_connections[best_peer]
+                             await self.send_getblocks(writer)
+                             # Reset timer (block recv timer, not getblocks timer, though getblocks timer is updated inside send_getblocks)
+                             self.last_block_received_time = time.time()
+                        else:
+                             # Fallback: If no one stands out, or all equal, try random?
+                             # Or just pick random if max_height <= current_height to probe for side chains?
+                             # Let's try random as fallback if we think we are top, just in case stats are stale.
+                             import random
+                             target_peer = random.choice(list(self.active_connections.keys()))
+                             logger.info(f"Sync Watchdog: targeted sync found nothing better (Max {max_height}), trying random {target_peer}")
+                             writer = self.active_connections[target_peer]
+                             await self.send_getblocks(writer)
+                             self.last_block_received_time = time.time()
                             
             except Exception as e:
                 logger.error(f"Sync Watchdog error: {e}")
