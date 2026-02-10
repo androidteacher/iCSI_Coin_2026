@@ -173,10 +173,15 @@ class NetworkManager:
         self.tasks.add(t6)
         t6.add_done_callback(self.tasks.discard)
 
-        # Sync Watchdog (New)
+        # Sync Watchdog
         t7 = asyncio.create_task(self.sync_worker())
         self.tasks.add(t7)
         t7.add_done_callback(self.tasks.discard)
+
+        # Runtime Integrity Watchdog (Every 10s)
+        t8 = asyncio.create_task(self.integrity_check_loop())
+        self.tasks.add(t8)
+        t8.add_done_callback(self.tasks.discard)
 
     async def _on_multicast_discover(self, ip, ports, p2p_port):
         """Called when a new peer is discovered via multicast."""
@@ -1149,6 +1154,29 @@ class NetworkManager:
             logger.info(f"Sent GETBLOCKS (Locator: {locator}) to peer")
         except Exception as e:
             logger.error(f"Error sending getblocks: {e}")
+
+    async def integrity_check_loop(self):
+        """
+        Background task to verify DB consistency every 10 seconds.
+        Auto-heals 'Stuck at Block 2' issues without restart.
+        """
+        while True:
+            try:
+                # Run repair logic (fast index scan)
+                # logger.debug("Running Runtime Integrity Check...") 
+                # We don't log unless checks fail/repair happens (handled inside repair_chain_pointer)
+                
+                # Run in thread executor if needed? No, sqlite3 connect is blocking but fast.
+                # Ideally ensuring thread safety for sqlite access.
+                # repair_chain_pointer creates its own connection, so it is thread-safe regarding connection.
+                # However, it might block the event loop for a few ms. Acceptable.
+                
+                self.chain_manager.block_index.repair_chain_pointer()
+                
+            except Exception as e:
+                logger.error(f"Integrity Check Failed: {e}")
+                
+            await asyncio.sleep(10)
 
     async def announce_new_block(self, block):
         """Broadcasts a new block inventory to all peers"""
