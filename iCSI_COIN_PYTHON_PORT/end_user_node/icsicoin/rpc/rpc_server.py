@@ -252,6 +252,44 @@ class RPCServer:
              except Exception as e:
                  error = {"code": -1, "message": f"Failed to add node: {e}"}
 
+        elif method == 'getpeerinfo':
+            peers = []
+            try:
+                for peer_addr, writer in self.network_manager.active_connections.items():
+                    # active_connections keys are tuples (ip, port)
+                    ip, port = peer_addr
+                    
+                    stats = self.network_manager.peer_stats.get(peer_addr, {})
+                    
+                    peer_info = {
+                        "id": f"{ip}:{port}",
+                        "addr": f"{ip}:{port}",
+                        "addrlocal": f"{self.network_manager.external_ip}:{self.network_manager.port}" if self.network_manager.external_ip else "127.0.0.1:9341",
+                        "services": "00000001",
+                        "relaytxes": True,
+                        "lastsend": 0,
+                        "lastrecv": stats.get('last_seen', int(time.time())),
+                        "bytesbound": 0,
+                        "bytesrecv": 0,
+                        "conntime": 0,
+                        "timeoffset": 0,
+                        "pingtime": 0,
+                        "minping": 0,
+                        "version": 70015,
+                        "subver": "/iCSI:0.1/",
+                        "inbound": False,
+                        "startingheight": stats.get('height', 0),
+                        "banscore": 0,
+                        "synced_headers": stats.get('height', 0),
+                        "synced_blocks": stats.get('height', 0),
+                        "inflight": [],
+                        "whitelisted": False
+                    }
+                    peers.append(peer_info)
+                result = peers
+            except Exception as e:
+                error = {"code": -1, "message": f"GetPeerInfo Failed: {e}"}
+
 
         response = {
             "result": result,
