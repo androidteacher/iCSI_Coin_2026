@@ -762,25 +762,56 @@ class NetworkManager:
                                         self.log_peer_event(addr, "OUT", "GETBLOCKS", "Triggering ancestry fetch for Orphan recovery")
                                         await self.send_getblocks(writer)
                                         
-                                        # BACKFILL STRATEGY: Explicitly request parent
-                                        # This bridges the gap if the peer fails to interpret our locator correctly.
-                                        orphan_block = self.chain_manager.orphan_blocks.get(b_hash)
-                                        if orphan_block:
+                                        # BACKFILL STRATEGY: Iterative Ancestry Lookup
+                                        # If we have a chain of orphans (A->B->C), receiving C should trigger request for B's parent (if B is known orphan).
+                                        # We trace back up to 100 steps to find the "Root Orphan" that needs a parent.
+                                        
+                                        curr_hash = b_hash
+                                        steps = 0
+                                        target_parent = None
+                                        
+                                        while steps < 100:
+                                            orphan_block = self.chain_manager.orphan_blocks.get(curr_hash)
+                                            if not orphan_block:
+                                                # Should not happen for the first iteration (b_hash), but safe to break
+                                                break
+                                                
                                             prev_hash = orphan_block.header.prev_block.hex()
-                                            # Only request if we don't have it (and it's not already a known orphan)
-                                            # Actually, if it's a known orphan, we might still want to request ITS parent?
-                                            # But that would be handled when we received THAT orphan.
-                                            # So only request if we simply don't have it.
-                                            if not self.block_index.get_block_info(prev_hash) and prev_hash not in self.chain_manager.orphan_blocks:
-                                                 logger.info(f"Orphan Backfill: Requesting missing parent {prev_hash} from {addr}")
-                                                 self.log_peer_event(addr, "OUT", "GETDATA", f"Requesting missing parent {prev_hash[:16]}...")
-                                                 
-                                                 inv_item = {"type": "block", "hash": prev_hash}
-                                                 msg = {"type": "getdata", "inventory": [inv_item]}
-                                                 payload = json.dumps(msg).encode('utf-8')
-                                                 out_m = Message('getdata', payload)
-                                                 writer.write(out_m.serialize())
-                                                 await writer.drain()
+                                            
+                                            # Do we have this parent in the MAIN chain?
+                                            if self.block_index.get_block_info(prev_hash):
+                                                # Parent is known and processed. 
+                                                # If we are here, it means we FAILED to connect the child despite having parent?
+                                                # That suggests validation failure or race condition. 
+                                                # We stop here.
+                                                target_parent = None
+                                                break
+                                                
+                                            # Do we have this parent in the ORPHAN pool?
+                                            if prev_hash in self.chain_manager.orphan_blocks:
+                                                # Yes, so we need TO CHECK *ITS* PARENT. 
+                                                # Move one step back.
+                                                curr_hash = prev_hash
+                                                steps += 1
+                                                continue
+                                            
+                                            # If neither, THIS is the missing link we need.
+                                            target_parent = prev_hash
+                                            break
+                                            
+                                        if target_parent:
+                                             logger.info(f"Orphan Backfill: Found gap at {target_parent[:16]} (Child: {curr_hash[:16]}). Requesting...")
+                                             self.log_peer_event(addr, "OUT", "GETDATA", f"Requesting missing root parent {target_parent[:16]}...")
+                                             
+                                             inv_item = {"type": "block", "hash": target_parent}
+                                             msg = {"type": "getdata", "inventory": [inv_item]}
+                                             payload = json.dumps(msg).encode('utf-8')
+                                             out_m = Message('getdata', payload)
+                                             writer.write(out_m.serialize())
+                                             await writer.drain()
+                                        else:
+                                             # No actionable parent found (or loop/limit hit)
+                                             pass
 
                                         # Update stats for tracking
                                         if addr in self.peer_stats:
