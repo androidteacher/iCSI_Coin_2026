@@ -1484,7 +1484,7 @@ class NetworkManager:
              # logger.info(f"Fast-Fail: Skipping dead peer {host}:{port}")
              # Mark as failed so we don't retry immediately
              self.failed_peers[target] = {'timestamp': int(time.time()), 'error': 'Fast-Fail Timeout'}
-             return
+             return False
 
         self.pending_peers.add(target)
         # Clear previous failure if any
@@ -1587,9 +1587,10 @@ class NetworkManager:
             # Remove from pending once connected
             self.pending_peers.discard(target)
             
-            # Delegate to unified loop
+            # Delegate to unified loop in background task
             # Here 'target' is (ip, port) of the listener, which is what we want for stats/logs.
-            await self.process_message_loop(reader, writer, target)
+            asyncio.create_task(self.process_message_loop(reader, writer, target))
+            return True
 
         except Exception as e:
             # Immediate failure (timeout, connection refused, etc)
@@ -1613,6 +1614,7 @@ class NetworkManager:
             self.peers.discard((host, port))
             # Record failure
             self.failed_peers[target] = {'timestamp': int(time.time()), 'error': str(e)}
+            return False
         finally:
             self.pending_peers.discard(target)
 

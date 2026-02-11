@@ -691,15 +691,32 @@ class WebServer:
         pass
         
         # 3. Connect to Seeds
-        connected = 0
+        connected_count = 0
         force = data.get('force', False)
+        wait = data.get('wait', force) # Force implies wait for feedback
         
-        for target in targets:
-            # Pass force flag to manager
-            asyncio.create_task(self.network_manager.connect_to_peer(target, force=force))
-            connected += 1
+        results = []
+
+        if wait:
+            # Synchronous wait for feedback
+            for target in targets:
+                success = await self.network_manager.connect_to_peer(target, force=force)
+                results.append({'target': target, 'success': success})
+                if success: connected_count += 1
             
-        return web.json_response({'status': 'initiated', 'connected_count': connected, 'seed_ip': seed_ip})
+            return web.json_response({
+                'status': 'completed', 
+                'connected_count': connected_count, 
+                'results': results,
+                'seed_ip': seed_ip
+            })
+        else:
+            # Fire and forget (Async)
+            for target in targets:
+                asyncio.create_task(self.network_manager.connect_to_peer(target, force=force))
+                connected_count += 1
+                
+            return web.json_response({'status': 'initiated', 'connected_count': connected_count, 'seed_ip': seed_ip})
 
     async def handle_set_stun(self, request):
         data = await self._get_json(request)

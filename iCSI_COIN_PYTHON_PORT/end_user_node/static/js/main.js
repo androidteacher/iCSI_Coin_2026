@@ -251,7 +251,8 @@ async function updatePeers() {
         data.peers.forEach(p => {
 
             // Show ACTIVE, ACTIVE (ICE), and DISCOVERED
-            if (!p.status.toUpperCase().includes('ACTIVE') && !p.status.toUpperCase().includes('DISCOVERED')) return;
+            // Show ALL peers (Active, Discovered, and Failed) for debugging
+            // if (!p.status.toUpperCase().includes('ACTIVE') && !p.status.toUpperCase().includes('DISCOVERED')) return;
 
             const key = `${p.ip}:${p.port}`;
             if (filter && !key.toLowerCase().includes(filter)) return;
@@ -260,7 +261,9 @@ async function updatePeers() {
             tr.className = "hover:bg-zinc-900/50 transition-colors";
 
             // Status Indicator Logic
-            let statusDot = `<span class="inline-block w-2 h-2 rounded-full bg-green-500 mr-2"></span>`;
+            // Default: Empty Circle (Border only)
+            const dotId = `dot-${p.ip.replace(/\./g, '-')}-${p.port}`;
+            let statusDot = `<span id="${dotId}" class="inline-block w-3 h-3 rounded-full border-2 border-zinc-600 mr-2 transition-colors"></span>`;
 
             // ACTION BUTTON LOGIC
             // Standard action is LOG + TEST (Force Reconnect)
@@ -271,12 +274,14 @@ async function updatePeers() {
 
             let actionBtn = logBtn + testBtn;
 
+            // Status coloring removed for manual test feedback only
+            /*
             if (p.status === 'DISCOVERED') {
                 statusDot = `<span class="inline-block w-2 h-2 rounded-full bg-yellow-500 mr-2 animate-pulse"></span>`;
-                // For DISCOVERED, "TEST" is just Connect (but we use force=true to be safe)
-                // We keep the "TEST" label as requested by user
-                actionBtn = `<button class="px-3 py-1 bg-primary text-black hover:bg-white text-[10px] font-bold uppercase rounded-md transition-colors shadow-lg shadow-primary/20" onclick="connectToPeer('${p.ip}', ${p.port}, this, true)">TEST</button>`;
+            } else if (p.status.startsWith('FAILED')) {
+                statusDot = `<span class="inline-block w-2 h-2 rounded-full bg-red-500 mr-2"></span>`;
             }
+            */
 
             tr.innerHTML = `
                 <td class="py-3 pl-2 text-zinc-300 font-mono flex items-center">
@@ -296,55 +301,76 @@ async function updatePeers() {
 
 async function connectToPeer(ip, port, btn, force = false) {
     const originalText = btn.innerText;
-    const originalClass = btn.className;
+    const dotId = `dot-${ip.replace(/\./g, '-')}-${port}`;
+    const dot = document.getElementById(dotId);
 
+    // Feedback on button (loading state)
     btn.innerText = "...";
     btn.disabled = true;
 
     try {
+        // Send force=true AND wait=true explicitly
         const res = await fetch(API.connect, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
                 seed_ip: `${ip}:${port}`,
-                force: force
+                force: force,
+                wait: true
             })
         });
         const data = await res.json();
 
-        if (res.ok) {
-            btn.innerText = "OK";
-            // Flash Green
-            btn.className = "px-3 py-1 bg-green-500 text-black font-bold uppercase text-[10px] rounded-md transition-colors shadow-[0_0_10px_rgba(34,197,94,0.4)]";
+        // Check the 'results' array for success status of this specific target
+        let success = false;
+        if (data.results) {
+            // Find result for this target (handling potential "ip:port" vs [ip, port] formats if any)
+            const myResult = data.results.find(r => r.target.includes(ip) && r.target.includes(String(port)));
+            if (myResult && myResult.success) success = true;
+        } else if (data.connected_count > 0) {
+            // Fallback for older API or single target implicit success
+            success = true;
+        }
 
-            // Revert after 3 seconds
+        if (res.ok && success) {
+            btn.innerText = "OK";
+            // Button stays standard style, only text changes briefly
+
+            // DOT TURNS GREEN
+            if (dot) dot.className = "inline-block w-3 h-3 rounded-full border-2 border-green-500 bg-green-500 mr-2 transition-colors shadow-[0_0_10px_rgba(34,197,94,0.6)]";
+
             setTimeout(() => {
                 btn.innerText = originalText;
-                btn.className = originalClass; // Restore original look
                 btn.disabled = false;
+                // Revert dot to empty
+                if (dot) dot.className = "inline-block w-3 h-3 rounded-full border-2 border-zinc-600 mr-2 transition-colors";
             }, 3000);
 
         } else {
-            alert("Connection Failed: " + (data.error || res.statusText));
+            // Failure
             btn.innerText = "FAIL";
-            btn.className = "px-3 py-1 bg-red-500 text-white font-bold uppercase text-[10px] rounded-md";
+            // DOT TURNS RED
+            if (dot) dot.className = "inline-block w-3 h-3 rounded-full border-2 border-red-500 bg-red-500 mr-2 transition-colors shadow-[0_0_10px_rgba(239,68,68,0.6)]";
+
             setTimeout(() => {
                 btn.innerText = originalText;
-                btn.className = originalClass;
                 btn.disabled = false;
+                // Revert dot to empty
+                if (dot) dot.className = "inline-block w-3 h-3 rounded-full border-2 border-zinc-600 mr-2 transition-colors";
             }, 3000);
         }
     } catch (e) {
         alert("Connection Error: " + e);
         btn.innerText = "ERR";
-        btn.className = "px-3 py-1 bg-red-500 text-white font-bold uppercase text-[10px] rounded-md";
+        if (dot) dot.className = "inline-block w-3 h-3 rounded-full border-2 border-red-500 bg-red-500 mr-2 transition-colors";
         setTimeout(() => {
             btn.innerText = originalText;
-            btn.className = originalClass;
             btn.disabled = false;
+            if (dot) dot.className = "inline-block w-3 h-3 rounded-full border-2 border-zinc-600 mr-2 transition-colors";
         }, 3000);
     }
 }
+
 
 async function showLogs(ip, port) {
     const modal = document.getElementById('logModal');
