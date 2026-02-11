@@ -333,7 +333,7 @@ class NetworkManager:
                 magic, command, length, checksum = Message.parse_header(header_data)
                 
                 # LOG EVERY RECEIVED COMMAND (As requested)
-                logger.info(f"[RECV] CMD: {command} (Size: {length}) from {addr}")
+                logger.debug(f"[RECV] CMD: {command} (Size: {length}) from {addr}")
                 
                 # Read Payload
                 if length > 0:
@@ -418,14 +418,14 @@ class NetworkManager:
                         addr_msg = AddrMessage(peers_list)
                         writer.write(addr_msg.serialize())
                         await writer.drain()
-                        logger.info(f"Sent ADDR with {len(peers_list)} peers to {addr}: {debug_advertised}")
+                        logger.debug(f"Sent ADDR with {len(peers_list)} peers to {addr}: {debug_advertised}")
                         self.log_peer_event(addr, "SENT", "ADDR", f"Sent nodes: {debug_advertised}")
 
                 elif command == 'addr':
                     addresses = AddrMessage.parse(payload)
                      # Create a human-readable list of received nodes
                     received_nodes_str = ", ".join([f"{a['ip']}:{a['port']}" for a in addresses])
-                    logger.info(f"Received ADDR from {addr} with {len(addresses)} nodes: [{received_nodes_str}]")
+                    logger.debug(f"Received ADDR from {addr} with {len(addresses)} nodes: [{received_nodes_str}]")
                     self.log_peer_event(addr, "RECV", "ADDR", f"Received {len(addresses)} nodes")
                     for a in addresses:
                         p = (a['ip'], a['port'])
@@ -516,7 +516,7 @@ class NetworkManager:
                     try:
                         data = json.loads(payload.decode('utf-8'))
                         inventory = data.get('inventory', [])
-                        logger.info(f"Received INV from {addr} with {len(inventory)} items")
+                        logger.debug(f"Received INV from {addr} with {len(inventory)} items")
                         
                         to_get = []
                         for item in inventory:
@@ -595,6 +595,39 @@ class NetworkManager:
                                             logger.error(f"Failed to read/send block {item['hash']}: {e}")
                                     else:
                                         logger.warning(f"Requested block {item['hash']} not found in index")
+                                
+                                elif item['type'] == 'tx':
+                                    # Retrieve tx from mempool
+                                    tx = self.mempool.get_transaction(item['hash'])
+                                    if tx:
+                                        try:
+                                            # Send TX message
+                                            # We need to wrap it in a 'tx' command like existing codebase expects?
+                                            # Let's check 'tx' handler below.
+                                            # It expects { "payload": hex_tx } ?? No wait.
+                                            # Let's see how 'tx' message is typically formed.
+                                            # The existing codebase doesn't seem to have a standard TX message serializer yet?
+                                            # Wait, existing grep showed 'elif command == 'tx''. Let's check its parsing.
+                                            # Assuming it follows 'block' pattern: JSON with payload hex.
+                                            
+                                            tx_hex = binascii.hexlify(tx.serialize()).decode('ascii')
+                                            msg = {
+                                                "type": "tx",
+                                                "payload": tx_hex
+                                            }
+                                            json_payload = json.dumps(msg).encode('utf-8')
+                                            out_msg = Message('tx', json_payload)
+                                            writer.write(out_msg.serialize())
+                                            await writer.drain()
+                                            logger.info(f"Sent TX {item['hash']} to {addr}")
+                                            self.log_peer_event(addr, "SENT", "TX", f"Hash {item['hash'][:16]}...")
+                                        except Exception as e:
+                                            logger.error(f"Failed to send tx {item['hash']}: {e}")
+                                    else:
+                                        # Could be in block?
+                                        # For now, only serve from mempool.
+                                        logger.debug(f"Requested TX {item['hash']} not found in mempool")
+
                             except Exception as item_e:
                                 logger.error(f"Error processing inventory item {item}: {item_e}")
 

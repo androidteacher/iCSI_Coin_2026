@@ -955,8 +955,22 @@ class WebServer:
 
     async def handle_send_test(self, request):
         data = await self._get_json(request)
-        await self.network_manager.send_test_message(data.get('ip'), data.get('port'), "TEST_PACKET")
-        return web.json_response({'status': 'sent'})
+        target_ip = data.get('ip')
+        target_port = data.get('port')
+        
+        # 1. Send Test Message
+        await self.network_manager.send_test_message(target_ip, target_port, "TEST_PACKET")
+        
+        # 2. TRIGGER SYNC (Manual Kick)
+        # Find the writer for this peer and send getblocks
+        # This helps if the node is stalled.
+        target = (target_ip, int(target_port))
+        if target in self.network_manager.active_connections:
+            writer = self.network_manager.active_connections[target]
+            await self.network_manager.send_getblocks(writer)
+            logger.info(f"Manual Sync Triggered for {target_ip}:{target_port}")
+            
+        return web.json_response({'status': 'sent', 'message': 'Test message sent & Sync triggered'})
         
     async def handle_get_stats(self, request):
         best_block = self.network_manager.chain_manager.block_index.get_best_block()
@@ -1105,7 +1119,7 @@ class WebServer:
             # Best effort broadcast
             for peer_addr, peer_writer in self.network_manager.active_connections.items():
                 try:
-                    logger.debug(f"Broadcasting tx {tx_hash_hex} to {peer_addr}")
+                    logger.info(f"Broadcasting tx {tx_hash_hex} to {peer_addr}")
                     peer_writer.write(out_m.serialize())
                     await peer_writer.drain()
                     count += 1
@@ -1152,11 +1166,13 @@ class WebServer:
             
             # Add to Mempool (Validation happens here)
             if self.network_manager.mempool.add_transaction(tx):
+                logger.info(f"💰 Wallet: TX {tx.get_hash().hex()} created and added to Mempool")
                 # Broadcast INV to peers (ASYNCHRONOUSLY)
                 asyncio.create_task(self._broadcast_tx_task(tx))
                 
                 return web.json_response({'status': 'sent', 'txid': tx.get_hash().hex()})
             else:
+                 logger.warning(f"TX {tx.get_hash().hex()} rejected by mempool")
                  return web.json_response({'error': 'Transaction rejected by mempool (Invalid or double spend)'}, status=400)
                  
         except Exception as e:
