@@ -584,8 +584,14 @@ class NetworkManager:
 
                             # Process via ChainManager
                             # Process via ChainManager
+                            # Offload CPU-bound validation to thread to prevent blocking the event loop
+                            loop = asyncio.get_running_loop()
+                            t0 = time.time()
                             # Fix: Unpack tuple (success, reason)
-                            success, reason = self.chain_manager.process_block(block)
+                            success, reason = await loop.run_in_executor(None, self.chain_manager.process_block, block)
+                            dt = time.time() - t0
+                            if dt > 0.5:
+                                logger.warning(f"SLOW BLOCK PROCESS: {b_hash[:16]} took {dt:.2f}s")
                             
                             if success:
                                 # Remove received transactions from mempool
