@@ -713,11 +713,15 @@ class WebServer:
         
         def is_visible(peer):
             # Rule 1: Must have logs
-            if peer not in self.network_manager.peer_logs or not self.network_manager.peer_logs[peer]:
-                return False
-            # Rule 2: Active in last 60s
+            # RELAXED: Allow if we have logs OR if it is in known_peers/peers
+            # Actually, just check last time.
+            
+            # Rule 2: Active in last 3600s (1 hour) instead of 60s
             last_time = self.network_manager.peer_last_log_time.get(peer, 0)
-            if now - last_time > 60:
+            if now - last_time > 3600:
+                # If truly dead/silent for an hour, hide it unless it's currently connected
+                if peer in self.network_manager.peers:
+                    return True
                 return False
             return True
 
@@ -726,13 +730,16 @@ class WebServer:
         # 3: Active Listening Port (9333-9335)
         # 2: Active Other Port
         # 1: ICE Active
-        # 0: Failed
+        # 0: Known / Discovered (Not Connected)
+        # -1: Failed
         peers_by_ip = {}
 
         def add_candidate(ip, port, status, can_delete, priority):
             # Check visibility first
-            if not is_visible((ip, port)):
-                 return
+            # if not is_visible((ip, port)) and priority < 2:
+            #      return
+            # Relaxed visibility for now to debug
+            pass
 
             if ip not in peers_by_ip:
                 peers_by_ip[ip] = {
@@ -775,14 +782,24 @@ class WebServer:
                  if (ip, port) not in self.network_manager.peers:
                      add_candidate(ip, port, 'ACTIVE (ICE)', False, 1)
 
-        # 3. Failed Peers
+        # 3. Known Peers (Discovered but not connected)
+        if hasattr(self.network_manager, 'known_peers'):
+             for (ip, port) in list(self.network_manager.known_peers):
+                 # Don't overwrite Active/ICE
+                 if (ip, port) not in self.network_manager.peers:
+                     add_candidate(ip, port, 'DISCOVERED', True, 0)
+
+        # 4. Failed Peers
         if hasattr(self.network_manager, 'failed_peers'):
              for (ip, port), data in self.network_manager.failed_peers.items():
-                 add_candidate(ip, port, f"FAILED: {data.get('error','')}", True, 0)
+                 add_candidate(ip, port, f"FAILED: {data.get('error','')}", True, -1)
         
         # Convert to list
         peers_list = list(peers_by_ip.values())
         
+        # Sort by priority desc
+        peers_list.sort(key=lambda x: x['priority'], reverse=True)
+
         # Remove internal priority field before sending
         for p in peers_list:
              del p['priority']

@@ -250,24 +250,74 @@ async function updatePeers() {
 
         data.peers.forEach(p => {
 
-            if (!p.status.toUpperCase().includes('ACTIVE')) return; // Show ACTIVE and ACTIVE (ICE)
+            // Show ACTIVE, ACTIVE (ICE), and DISCOVERED
+            if (!p.status.toUpperCase().includes('ACTIVE') && !p.status.toUpperCase().includes('DISCOVERED')) return;
 
             const key = `${p.ip}:${p.port}`;
             if (filter && !key.toLowerCase().includes(filter)) return;
 
             const tr = document.createElement('tr');
             tr.className = "hover:bg-zinc-900/50 transition-colors";
+
+            // Status Indicator Logic
+            let statusDot = `<span class="inline-block w-2 h-2 rounded-full bg-green-500 mr-2"></span>`;
+            let actionBtn = `<button class="px-3 py-1 bg-zinc-800 hover:bg-zinc-700 text-primary text-[10px] font-bold uppercase rounded-md transition-colors" onclick="showLogs('${p.ip}', ${p.port})">LOG</button>`;
+
+            if (p.status === 'DISCOVERED') {
+                statusDot = `<span class="inline-block w-2 h-2 rounded-full bg-yellow-500 mr-2 animate-pulse"></span>`;
+                actionBtn = `<button class="px-3 py-1 bg-primary text-black hover:bg-white text-[10px] font-bold uppercase rounded-md transition-colors shadow-lg shadow-primary/20" onclick="connectToPeer('${p.ip}', ${p.port}, this)">CONNECT</button>`;
+            }
+
             tr.innerHTML = `
-                <td class="py-3 pl-2 text-zinc-300 font-mono">${p.ip}</td>
+                <td class="py-3 pl-2 text-zinc-300 font-mono flex items-center">
+                    ${statusDot}
+                    ${p.ip}
+                </td>
                 <td class="py-3 text-zinc-500 font-mono">${p.port}</td>
                 <td class="py-3 pr-2 text-right">
-                    <button class="px-3 py-1 bg-zinc-800 hover:bg-zinc-700 text-primary text-[10px] font-bold uppercase rounded-md transition-colors" onclick="showLogs('${p.ip}', ${p.port})">LOG</button>
+                    ${actionBtn}
                     ${p.can_delete ? `<button class="ml-2 text-pink-500 hover:text-pink-400 font-bold" onclick="deletePeer('${p.ip}', ${p.port})">×</button>` : ''}
                 </td>
             `;
             tbody.appendChild(tr);
         });
     } catch (e) { console.error("Peer Update Failed", e); }
+}
+
+async function connectToPeer(ip, port, btn) {
+    const originalText = btn.innerText;
+    btn.innerText = "...";
+    btn.disabled = true;
+
+    try {
+        const res = await fetch(API.connect, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ seed_ip: `${ip}:${port}` })
+        });
+        const data = await res.json();
+
+        if (res.ok) {
+            btn.innerText = "OK";
+            btn.classList.remove('bg-primary', 'text-black');
+            btn.classList.add('bg-green-500', 'text-black');
+            // Peer list update will cycle naturally
+        } else {
+            alert("Connection Failed: " + (data.error || res.statusText));
+            btn.innerText = "FAIL";
+            setTimeout(() => {
+                btn.innerText = originalText;
+                btn.disabled = false;
+            }, 2000);
+        }
+    } catch (e) {
+        alert("Connection Error: " + e);
+        btn.innerText = "ERR";
+        setTimeout(() => {
+            btn.innerText = originalText;
+            btn.disabled = false;
+        }, 2000);
+    }
 }
 
 async function showLogs(ip, port) {
