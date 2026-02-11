@@ -571,24 +571,33 @@ class NetworkManager:
                         self.log_peer_event(addr, "RECV", "GETDATA", f"Peer requested {len(inventory)} items")
                         
                         for item in inventory:
-                            if item['type'] == 'block':
-                                # Retrieve block (logic deferred to finding it in blockstore)
-                                # For Phase 4, we assume we rely on BlockIndex to find it
-                                info = self.block_index.get_block_info(item['hash'])
-                                if info:
-                                    raw_block = self.block_store.read_block(info['file_num'], info['offset'], info['length'])
-                                    # Encode to hex
-                                    block_hex = binascii.hexlify(raw_block).decode('ascii')
-                                    msg = {
-                                        "type": "block",
-                                        "payload": block_hex
-                                    }
-                                    json_payload = json.dumps(msg).encode('utf-8')
-                                    out_msg = Message('block', json_payload)
-                                    writer.write(out_msg.serialize())
-                                    await writer.drain()
-                                    logger.info(f"Sent BLOCK {item['hash']} to {addr}")
-                                    self.log_peer_event(addr, "SENT", "BLOCK", f"Hash {item['hash'][:16]}...")
+                            try:
+                                if item['type'] == 'block':
+                                    # Retrieve block (logic deferred to finding it in blockstore)
+                                    # For Phase 4, we assume we rely on BlockIndex to find it
+                                    info = self.block_index.get_block_info(item['hash'])
+                                    if info:
+                                        try:
+                                            raw_block = self.block_store.read_block(info['file_num'], info['offset'], info['length'])
+                                            # Encode to hex
+                                            block_hex = binascii.hexlify(raw_block).decode('ascii')
+                                            msg = {
+                                                "type": "block",
+                                                "payload": block_hex
+                                            }
+                                            json_payload = json.dumps(msg).encode('utf-8')
+                                            out_msg = Message('block', json_payload)
+                                            writer.write(out_msg.serialize())
+                                            await writer.drain()
+                                            logger.info(f"Sent BLOCK {item['hash']} to {addr}")
+                                            self.log_peer_event(addr, "SENT", "BLOCK", f"Hash {item['hash'][:16]}...")
+                                        except Exception as e:
+                                            logger.error(f"Failed to read/send block {item['hash']}: {e}")
+                                    else:
+                                        logger.warning(f"Requested block {item['hash']} not found in index")
+                            except Exception as item_e:
+                                logger.error(f"Error processing inventory item {item}: {item_e}")
+
                     except Exception as e:
                         logger.error(f"GETDATA error: {e}")
 
