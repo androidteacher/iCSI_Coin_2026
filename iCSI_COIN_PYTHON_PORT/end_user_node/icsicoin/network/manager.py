@@ -550,8 +550,19 @@ class NetworkManager:
                             
                             # We check the last item in the inventory.
                             last_item = inventory[-1]
+                            # CONTINUE SYNC LOGIC
+                            # If to_get is empty, we already have everything in this INV.
+                            # But if the INV was full (suggesting more blocks exist), we should ask for what comes NEXT.
+                            # Otherwise we stall here.
+                            
+                            # We check the last item in the inventory.
+                            last_item = inventory[-1]
                             if last_item['type'] == 'block':
                                 last_hash = last_item['hash']
+                                
+                                # Store the expected "End of Batch" hash
+                                # This allows handle_block to trigger getblocks when this specific block arrives.
+                                self.sync_batch_end = last_hash
                                 
                                 # Check peer height to decide if we should ask for more
                                 peer_height = self.peer_stats.get(addr, {}).get('height', 0)
@@ -564,7 +575,11 @@ class NetworkManager:
                                      logger.debug(f"INV processing complete. Checking if we need more blocks (Peer H:{peer_height} vs My H:{my_height})...")
                                      if peer_height > my_height:
                                           # Trigger getblocks to continue sync
-                                          await self.send_getblocks(writer)
+                                          # BUT: We set sync_batch_end? 
+                                          # If we DON'T download anything (because we have it all?), we must trigger NOW.
+                                          if not to_get:
+                                              logger.info("INV contained only known blocks/orphans. Forcing next batch request immediately.")
+                                              await self.send_getblocks(writer)
 
                     except Exception as e:
                         logger.error(f"INV error: {e}")
@@ -699,21 +714,26 @@ class NetworkManager:
                                 
                                 peer_height = self.peer_stats.get(addr, {}).get('height', 0)
                                 if best_info and peer_height > new_height:
-                                     # Streaming Trigger: Approaching end of 500-block batch (400/500)
-                                     # This ensures we ask BEFORE we run dry, regardless of specific height alignment.
-                                     is_batch_trigger = self.blocks_since_req >= 400
+                                     # SYNC TRIGGER OPTIMIZATION:
+                                     # We want to ask for the next batch when:
+                                     # 1. We are approaching the end of a large batch (Streaming).
+                                     # 2. We hit the EXACT end of the current batch (Batch-Stop-and-Wait).
                                      
-                                     # Stall Trigger: If we haven't asked in > 1.0s, ask again (covers slow batches or short tails)
-                                     is_stall_trigger = (time.time() - self.last_getblocks_time > 1.0)
+                                     is_streaming_trigger = self.blocks_since_req >= 400
                                      
-                                     if is_batch_trigger or is_stall_trigger:
-                                         if is_batch_trigger:
-                                             logger.info(f"Sync: Batch Trigger (Received {self.blocks_since_req} blocks). Requesting next batch...")
-                                         elif is_stall_trigger:
-                                              # logger.debug("Sync: Stall Trigger (>1.0s). Requesting more...")
-                                              pass
-                                         
+                                     # Check if this block is the last one we expected from the INV
+                                     # (Requires saving sync_batch_end in handle_inv)
+                                     last_expected = getattr(self, 'sync_batch_end', None)
+                                     is_batch_end = (b_hash == last_expected)
+                                     
+                                     if is_streaming_trigger or is_batch_end:
+                                         reason_str = "Streaming(400+)" if is_streaming_trigger else "Batch-End"
+                                         logger.info(f"Sync: Triggering next batch ({reason_str})...")
                                          await self.send_getblocks(writer)
+                                         
+                                         # Reset triggers
+                                         self.blocks_since_req = 0
+                                         self.sync_batch_end = None
 
                                 # Relay logic (simple flood)
                                 inv_msg = {
