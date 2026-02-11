@@ -787,9 +787,14 @@ class NetworkManager:
                                 if "Orphan" in reason:
                                     self.log_peer_event(addr, "CONSENSUS", "ORPHAN", f"Detected {b_hash[:16]}. Triggering recovery.")
                                     # REMOVED DEBOUNCE: Always try to fetch if we are confused.
+                                    # REMOVED DEBOUNCE: Always try to fetch if we are confused.
                                     try:
-                                        self.log_peer_event(addr, "OUT", "GETBLOCKS", "Triggering ancestry fetch for Orphan recovery")
-                                        await self.send_getblocks(writer)
+                                        # OLD LOGIC: Trigger full sync.
+                                        # New Logic: Wait! Sending getblocks here causes the Peer to dump 500 blocks we likely already have or can't connect.
+                                        # Instead, rely on the BACKFILL STRATEGY below to fetch the specific missing parent.
+                                        # self.log_peer_event(addr, "OUT", "GETBLOCKS", "Triggering ancestry fetch for Orphan recovery")
+                                        # await self.send_getblocks(writer)
+                                        pass
                                         
                                         # BACKFILL STRATEGY: Iterative Ancestry Lookup
                                         # If we have a chain of orphans (A->B->C), receiving C should trigger request for B's parent (if B is known orphan).
