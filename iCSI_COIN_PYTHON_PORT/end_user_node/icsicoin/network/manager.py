@@ -1188,6 +1188,31 @@ class NetworkManager:
                 if time_since_last_block > 20: 
                     logger.warning(f"Sync Watchdog: Silence detected! (Last Recv: {time_since_last_block:.1f}s ago). Requesting blocks...")
                     
+                    # STALL RECOVERY: Force Reconnect if stuck > 45s
+                    # This replicates the "Restart" wakeup effect.
+                    if time_since_last_block > 45 and self.active_connections:
+                        if time.time() - getattr(self, 'last_stall_recovery', 0) > 60:
+                            logger.error("🚨 Sync Watchdog: STALL DETECTED (>45s). Force-reconnecting best peer to trigger wakeup!")
+                            self.last_stall_recovery = time.time()
+                            
+                            # Find the most likely culprit (Best Peer)
+                            victim = None
+                            max_h = -1
+                            for p, stats in self.peer_stats.items():
+                                if p in self.active_connections and stats.get('height', 0) > max_h:
+                                    max_h = stats.get('height', 0)
+                                    victim = p
+                            
+                            # If no clear best, kill random
+                            if not victim:
+                                victim = random.choice(list(self.active_connections.keys()))
+                                
+                            logger.info(f"Refeshing connection to {victim}...")
+                            self.forget_peer(victim)
+                            # Discovery/Maintain Nodes will pick it up again
+                            continue 
+
+                    
                     # Trigger getblocks to a random peer
                     if self.active_connections:
                         # 2. TARGETED SYNC: Don't pick random (could be behind). Pick the BEST chain.
