@@ -62,31 +62,60 @@ class LANScanner:
             logger.error(f"Failed to calculate subnet: {e}")
             return []
 
-    async def scan(self, timeout=0.2):
+    async def scan(self, ports=None, timeout=0.2):
         """
-        Scans the local subnet for the target port.
+        Scans the local subnet for the target ports.
         Returns a list of active IPs.
         """
+        if ports is None:
+            ports = [self.port]
+            
         hosts = self.get_subnet_hosts()
         if not hosts:
             return []
             
-        logger.info(f"Starting LAN Scan on {len(hosts)} hosts (Port {self.port})...")
+        logger.info(f"Starting LAN Scan on {len(hosts)} hosts (Ports {ports})...")
         start_time = time.time()
         
-        # Limit concurrency to avoid file descriptor exhaustion (e.g. 50 at a time)
+        # Limit concurrency
         found_peers = []
         batch_size = 50
         
-        for i in range(0, len(hosts), batch_size):
-            batch = hosts[i:i + batch_size]
-            tasks = [self.check_host(ip, self.port, timeout) for ip in batch]
+        # Flatten tasks: (ip, port) combinations
+        scan_targets = []
+        for ip in hosts:
+            for p in ports:
+                scan_targets.append((ip, p))
+                
+        for i in range(0, len(scan_targets), batch_size):
+            batch = scan_targets[i:i + batch_size]
+            tasks = [self.check_host(ip, p, timeout) for ip, p in batch]
+            results = await asyncio.gather(*tasks)
+            
+            for res in results:
+                if res:
+                    # check_host returns just IP. 
+                    # We need to know WHICH port linked.
+                    # Actually check_host returns IP.
+                    # We should probably return (ip, port) from check_host or handle mapping here.
+                    # Let's fix check_host to return (ip, port) tuple or handle it.
+                    pass 
+
+        # RE-IMPLEMENTING with smart result handling
+        async def check_target(ip, port):
+            if await self.check_host(ip, port, timeout):
+                return (ip, port)
+            return None
+
+        for i in range(0, len(scan_targets), batch_size):
+            batch = scan_targets[i:i + batch_size]
+            tasks = [check_target(ip, p) for ip, p in batch]
             results = await asyncio.gather(*tasks)
             
             for res in results:
                 if res:
                     found_peers.append(res)
-                    logger.info(f"LAN Scanner Found Peer: {res}:{self.port}")
+                    logger.info(f"LAN Scanner Found Peer: {res[0]}:{res[1]}")
         
         duration = time.time() - start_time
         logger.info(f"LAN Scan completed in {duration:.2f}s. Found {len(found_peers)} peers.")

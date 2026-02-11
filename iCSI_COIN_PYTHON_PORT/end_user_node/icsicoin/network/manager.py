@@ -1019,9 +1019,12 @@ class NetworkManager:
                          logger.info("Discovery: No peers found. Triggering LAN Subnet Scan...")
                          self.last_lan_scan = time.time()
                          
-                         found_hosts = await self.lan_scanner.scan()
-                         for host in found_hosts:
-                             target = f"{host}:9333"
+                         # Scan self.port (likely 9341) + defaults
+                         scan_ports = list(set([self.port, 9333, 9334, 9335, 9341]))
+                         found_hosts = await self.lan_scanner.scan(ports=scan_ports)
+                         
+                         for host, port in found_hosts:
+                             target = f"{host}:{port}"
                              logger.info(f"Discovery: Auto-Connecting to scanned peer {target}")
                              t = asyncio.create_task(self.connect_to_peer(target))
                              self.tasks.add(t)
