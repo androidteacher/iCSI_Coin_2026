@@ -514,13 +514,17 @@ class NetworkManager:
                 # --- Phase 4: JSON Bridge Handlers ---
                 elif command == 'inv':
                     try:
-                        data = json.loads(payload.decode('utf-8'))
-                        inventory = data.get('inventory', [])
-                        logger.debug(f"Received INV from {addr} with {len(inventory)} items")
+                        # Decode payload
+                        inv_data = json.loads(payload.decode('utf-8'))
+                        items = inv_data.get('inventory', [])
                         
-                        # START FIX: Correct indentation
+                        # LOGGING: Record incoming INV
+                        first_item = items[0]['hash'][:8] if items and 'hash' in items[0] else "EMPTY"
+                        self.log_peer_event(addr, "RECV", "INV", f"Size: {len(items)}, First: {first_item}...")
+                        logger.info(f"Received INV from {addr} with {len(items)} items")
+
                         to_get = []
-                        for item in inventory:
+                        for item in items:
                             if item['type'] == 'block':
                                 # Check if we have it
                                 # Core Logic: If we don't have it in the main index, get it.
@@ -1448,9 +1452,11 @@ class NetworkManager:
                         if best_peer and max_height > current_height:
                              logger.info(f"Sync Watchdog: Requesting blocks from BEST peer {best_peer} (Height {max_height})")
                              writer = self.active_connections[best_peer]
+                             writer = self.active_connections[best_peer]
                              await self.send_getblocks(writer)
-                             # Reset timer (block recv timer, not getblocks timer, though getblocks timer is updated inside send_getblocks)
-                             self.last_block_received_time = time.time()
+                             # Reset timer? NO. If we reset here, we might just loop forever sending requests that yield nothing.
+                             # We should only reset when we RECEIVE blocks.
+                             # self.last_block_received_time = time.time()
                         else:
                              # Fallback: If no one stands out, or all equal, try random?
                              # Or just pick random if max_height <= current_height to probe for side chains?
