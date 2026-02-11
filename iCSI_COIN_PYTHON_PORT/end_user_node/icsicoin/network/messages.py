@@ -350,3 +350,33 @@ class TestMessage(Message):
         length, offset = Message.parse_var_int(payload, 0)
         content = payload[offset:offset+length].decode('utf-8')
         return cls(content)
+
+class PingMessage(Message):
+    def __init__(self, nonce=None):
+        if nonce is None:
+            nonce = random.getrandbits(64)
+        self.nonce = nonce
+        payload = struct.pack('<Q', nonce)
+        super().__init__('ping', payload)
+
+    @classmethod
+    def parse(cls, payload):
+        if len(payload) < 8:
+            nonce = 0
+        else:
+            nonce = struct.unpack('<Q', payload[:8])[0]
+        return cls(nonce)
+
+class PongMessage(Message):
+    def __init__(self, nonce):
+        self.nonce = nonce
+        payload = struct.pack('<Q', nonce)
+        super().__init__('pong', payload)
+
+    @classmethod
+    def parse(cls, payload):
+        if len(payload) < 8:
+            nonce = 0
+        else:
+            nonce = struct.unpack('<Q', payload[:8])[0]
+        return cls(nonce)

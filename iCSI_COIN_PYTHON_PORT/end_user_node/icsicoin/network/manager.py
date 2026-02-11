@@ -7,7 +7,7 @@ import io
 import random
 from icsicoin.network.messages import (
     VersionMessage, VerackMessage, Message, MAGIC_VALUE, GetAddrMessage, AddrMessage,
-    SignalMessage, RelayMessage, TestMessage
+    SignalMessage, RelayMessage, TestMessage, PingMessage, PongMessage
 )
 from icsicoin.storage.blockstore import BlockStore
 from icsicoin.storage.databases import BlockIndexDB, ChainStateDB
@@ -209,6 +209,11 @@ class NetworkManager:
         self.tasks.add(t7)
         t7.add_done_callback(self.tasks.discard)
 
+        # Keepalive Worker (Ping/Pong)
+        t8 = asyncio.create_task(self.keepalive_worker())
+        self.tasks.add(t8)
+        t8.add_done_callback(self.tasks.discard)
+
 
     async def _on_multicast_discover(self, ip, ports, p2p_port):
         """Called when a new peer is discovered via multicast."""
@@ -364,8 +369,23 @@ class NetworkManager:
                     await self.send_getblocks(writer)
 
                 elif command == 'ping':
-                    # TODO: Pong
-                    pass
+                    msg = PingMessage.parse(payload)
+                    # logger.debug(f"Received PING from {addr} (nonce={msg.nonce})")
+                    # Reply with Pong
+                    response = PongMessage(msg.nonce)
+                    writer.write(response.serialize())
+                    await writer.drain()
+                    self.log_peer_event(addr, "SENT", "PONG", f"Nonce: {msg.nonce}")
+
+                elif command == 'pong':
+                    msg = PongMessage.parse(payload)
+                    # Calculate latency if we tracked it
+                    latency = 0
+                    if hasattr(self, 'last_ping_time') and addr in self.last_ping_time:
+                        latency = time.time() - self.last_ping_time[addr]
+                    
+                    # logger.debug(f"Received PONG from {addr} (latency={latency:.3f}s)")
+                    self.log_peer_event(addr, "RECV", "PONG", f"Latency: {latency:.3f}s")
                 
                 elif command == 'getaddr':
                     logger.info(f"Received GETADDR from {addr}")
@@ -731,16 +751,16 @@ class NetworkManager:
                                      # 1. We are approaching the end of a large batch (Streaming).
                                      # 2. We hit the EXACT end of the current batch (Batch-Stop-and-Wait).
                                      
-                                     is_streaming_trigger = self.blocks_since_req >= 400
+                                     is_streaming_trigger = self.blocks_since_req >= 50
                                      
                                      # Check if this block is the last one we expected from the INV
                                      # (Requires saving sync_batch_end in handle_inv)
                                      last_expected = getattr(self, 'sync_batch_end', None)
                                      is_batch_end = (b_hash == last_expected)
                                      
-                                     # Safety Net: If we haven't asked in > 5.0s, ask again.
+                                     # Safety Net: If we haven't asked in > 2.0s, ask again.
                                      # This covers cases where we missed the batch end or INV order was weird.
-                                     is_stall_trigger = (time.time() - self.last_getblocks_time > 5.0)
+                                     is_stall_trigger = (time.time() - self.last_getblocks_time > 2.0)
                                      
                                      if is_streaming_trigger or is_batch_end or is_stall_trigger:
                                          reason_str = "Streaming"
@@ -749,7 +769,7 @@ class NetworkManager:
                                          
                                          # Only log streaming/batch-end as INFO. Stall as DEBUG/INFO if actually needed.
                                          if is_stall_trigger:
-                                              logger.info(f"Sync: Stall Trigger (>5.0s). Requesting next batch...")
+                                              logger.info(f"Sync: Stall Trigger (>2.0s). Requesting next batch...")
                                          else:
                                               logger.info(f"Sync: Triggering next batch ({reason_str})...")
                                               
@@ -1332,6 +1352,29 @@ class NetworkManager:
                 self.forget_peer(peer)
 
             await asyncio.sleep(5) # Poll faster for UI responsiveness
+
+    async def keepalive_worker(self):
+        """Sends periodic PINGs to all peers to prevent timeouts."""
+        logger.info("Starting Keepalive Worker...")
+        self.last_ping_time = {} # Init latency tracker
+        
+        while self.running:
+            await asyncio.sleep(30) # Ping every 30s
+            
+            # Copy keys to avoid modification during iteration
+            for peer in list(self.active_connections.keys()):
+                try:
+                    if peer in self.active_connections:
+                        writer = self.active_connections[peer]
+                        nonce = random.getrandbits(64)
+                        ping = PingMessage(nonce)
+                        writer.write(ping.serialize())
+                        await writer.drain()
+                        
+                        self.last_ping_time[peer] = time.time()
+                        # self.log_peer_event(peer, "SENT", "PING", "Keepalive")
+                except Exception as e:
+                    logger.debug(f"Failed to ping {peer}: {e}")
 
     async def sync_worker(self):
         """
