@@ -748,10 +748,10 @@ class NetworkManager:
                                 if best_info and peer_height > new_height:
                                      # SYNC TRIGGER OPTIMIZATION:
                                      # We want to ask for the next batch when:
-                                     # 1. We are approaching the end of a large batch (Streaming).
+                                     # 1. We are approaching the end of a large batch (Streaming at 70%).
                                      # 2. We hit the EXACT end of the current batch (Batch-Stop-and-Wait).
                                      
-                                     is_streaming_trigger = self.blocks_since_req >= 50
+                                     is_streaming_trigger = self.blocks_since_req >= 350
                                      
                                      # Check if this block is the last one we expected from the INV
                                      # (Requires saving sync_batch_end in handle_inv)
