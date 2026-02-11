@@ -80,60 +80,70 @@ class Wallet:
         return None
 
     def get_address_balance(self, address, chain_state, mempool=None):
-        """Calculate balance for a single address, optionally including mempool pending state."""
+        """Legacy helper: Returns 'Available' balance (Confirmed - Pending Sends)."""
+        info = self.get_balance_info(address, chain_state, mempool)
+        return info['available']
+
+    def get_balance_info(self, address, chain_state, mempool=None):
+        """
+        Calculate detailed balance breakdown for a single address.
+        Returns: {
+            'confirmed': float,         # On-Chain Balance
+            'unconfirmed_pending': float, # Net change in mempool (usually negative for sends)
+            'available': float          # Confirmed + Pending
+        }
+        """
         pubkey_hash = binascii.unhexlify(address)
         script = b'\x76\xa9\x14' + pubkey_hash + b'\x88\xac'
         
-        # 1. Get Confirmed UTXOs
+        # 1. Get Confirmed UTXOs (On-Chain)
         utxos = chain_state.get_utxos_by_script(script)
+        confirmed_balance = sum([u['amount'] for u in utxos])
         
-        balance = 0
+        pending_change = 0
         
         if mempool:
-            # Build set of spent outpoints in mempool
-            # optimized: This should be passed in or cached if calling in loop? 
-            # For now, simplistic iteration.
+            # 2. Calculate Pending Impact
             mempool_spent = set()
-            mempool_outputs = []
             
+            # Scan Mempool
             for tx in mempool.get_all_transactions():
                 tx_hash = tx.get_hash().hex()
-                # Inputs spent
+                
+                # A. Inputs spent by this address (Debit)
                 for vin in tx.vin:
-                    mempool_spent.add((vin.prev_hash.hex(), vin.prev_index))
-                # Outputs created for this addr
-                for i, vout in enumerate(tx.vout):
+                    # We need to know if this input belongs to US.
+                    # We can check if the spent output was ours.
+                    # But vin only has prev_hash/index. 
+                    # We have to see if (prev_hash, prev_index) matches one of our UTXOs.
+                    # OR we can assume if we are calling this function, we probably own the keys signing it?
+                    # No, we must rely on UTXO set.
+                    
+                    # Optimization: We already have 'utxos' list which is our Confirmed UTXOs.
+                    # If vin spends one of 'utxos', it is a pending debit.
+                    
+                    prev_txid = vin.prev_hash.hex()
+                    if isinstance(vin.prev_hash, bytes):
+                         prev_txid = vin.prev_hash.hex() # Standardize
+                    
+                    # Check against our confirmed UTXOs
+                    for u in utxos:
+                        u_txid = u['txid']
+                        if isinstance(u_txid, bytes): u_txid = u_txid.decode('utf-8')
+                        
+                        if u_txid == prev_txid and u['vout'] == vin.prev_index:
+                             pending_change -= u['amount']
+                
+                # B. Outputs created for this address (Credit)
+                for vout in tx.vout:
                     if vout.script_pubkey == script:
-                        balance += vout.amount
+                        pending_change += vout.amount
 
-            # Filter confirmed UTXOs
-            for u in utxos:
-                # Handle types
-                u_txid = u['txid']
-                if isinstance(u_txid, bytes):
-                    u_txid = u_txid.decode('utf-8') # or hex encode depending on DB
-                    # The DB returns hex string usually? 
-                    # databases.py: cursor.execute("SELECT txid, vout..."). txid is TEXT?
-                    # Let's assume hex string.
-                    # Wait, earlier debug prints suggested confusion. 
-                    # If DB returns bytes (blob), we need hex.
-                    # Attempt safe conversion
-                    try:
-                         # verify if it's already hex
-                         binascii.unhexlify(u_txid) 
-                         # It IS hex string
-                    except:
-                         # It is bytes?
-                         u_txid = binascii.hexlify(u_txid).decode('utf-8')
-
-                if (u_txid, u['vout']) in mempool_spent:
-                    continue # Spent in mempool
-                balance += u['amount']
-        else:
-            # Simple sum
-            balance = sum([u['amount'] for u in utxos])
-            
-        return balance
+        return {
+            'confirmed': confirmed_balance,
+            'unconfirmed_pending': pending_change,
+            'available': confirmed_balance + pending_change
+        }
 
     def get_balance(self, chain_state):
         """Calculate total balance by scanning UTXOs for all keys."""

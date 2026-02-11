@@ -96,7 +96,7 @@ def mine(url, user, password, address=None, threads=1):
         header = BlockHeader(version, prev_hash, merkle_root, timestamp, bits, 0)
         
         # Mining Loop
-        logger.info(f"Mining Block {height} with difficulty {bits}...")
+        logger.info(f"Mining Block {height} with difficulty {bits}. Tx Count: {len(template['transactions'])}")
         start_time = time.time()
         last_rpc_check = time.time()
         hashes = 0

@@ -118,7 +118,8 @@ class MinerController:
             
             header = BlockHeader(version, prev_hash, merkle_root, timestamp, bits, 0)
             
-            self._log(f"Mining Block {height}... Block_Difficulty: {bits}")
+            tx_count = len(template.get('transactions', []))
+            self._log(f"Mining Block {height}... Tx Count: {tx_count} | Block_Difficulty: {bits}")
             
             start_time = time.time()
             last_report_time = start_time

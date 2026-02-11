@@ -136,8 +136,11 @@ class RPCServer:
             
             # Mempool txs
             candidate_txs = self.mempool.get_all_transactions()
+            logger.info(f"Block Template: Found {len(candidate_txs)} candidates in mempool.")
+            
             # Sort by fee/priority? For now just FCFS/Arbitrary
             
+            skipped_count = 0
             for tx in candidate_txs:
                 is_conflict = False
                 # Check inputs
@@ -153,7 +156,11 @@ class RPCServer:
                     selected_txs.append(tx)
                     for inp in current_tx_inputs:
                         spent_in_block.add(inp)
+                else:
+                    skipped_count += 1
+                    logger.debug(f"Skipping TX {tx.get_hash().hex()} due to conflict in current block")
             
+            logger.info(f"Block Template: Selected {len(selected_txs)} transactions (Inc. Coinbase). Skipped {skipped_count}.")
             txs = selected_txs
             
             # 4. Build Block Object to calculate Merkle Root

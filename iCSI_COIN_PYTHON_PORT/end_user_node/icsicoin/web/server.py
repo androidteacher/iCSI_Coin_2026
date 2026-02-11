@@ -618,9 +618,21 @@ class WebServer:
             block_hash = chain.get_block_hash(height)
             if block_hash:
                  return web.json_response({'redirect': f'/explorer/block/{block_hash}'})
-            # If not found at height, fallthrough to check if it's a hash starting with numbers
+            if block_hash:
+                 return web.json_response({'redirect': f'/explorer/block/{block_hash}'})
             
-        # 3. Block Hash / Partial Hash Search
+        # 3. Transaction Search (64 chars hex)
+        if len(query) == 64:
+             # Check if it's a transaction
+             # Schema: tx_index (tx_hash, block_hash)
+             # We need a method in block_index to get this. 
+             # databases.py has get_transaction_block_hash(tx_hash)
+             block_hash_of_tx = chain.block_index.get_transaction_block_hash(query)
+             if block_hash_of_tx:
+                  # Redirect to block detail, maybe with anchor if frontend supports it
+                  return web.json_response({'redirect': f'/explorer/block/{block_hash_of_tx}#{query}'})
+
+        # 4. Block Hash / Partial Hash Search
         # Search DB for hashes starting with query
         matches = chain.block_index.search_block_hashes(query)
         
@@ -1065,13 +1077,21 @@ class WebServer:
                  addr = k['addr']
                  # Balance check
                  # Use wallet helper to include Mempool impacts (pending spends/receives)
-                 balance = self.network_manager.wallet.get_address_balance(
+                 balance_info = self.network_manager.wallet.get_balance_info(
                      addr, 
                      self.network_manager.chain_manager.chain_state, 
                      mempool=self.network_manager.mempool
-                 ) / 100000000.0 # Convert satoshi to coin
+                 )
                  
-                 wallets.append({'address': addr, 'name': name, 'balance': balance})
+                 # Convert satoshi to coin
+                 wallets.append({
+                     'address': addr, 
+                     'name': name, 
+                     'balance': balance_info['available'] / 100000000.0,
+                     'confirmed': balance_info['confirmed'] / 100000000.0,
+                     'pending': balance_info['unconfirmed_pending'] / 100000000.0,
+                     'available': balance_info['available'] / 100000000.0
+                 })
                  
         return web.json_response({'wallets': wallets})
 

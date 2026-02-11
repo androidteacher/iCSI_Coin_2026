@@ -421,8 +421,10 @@ async function loadWallets() {
             data.wallets.forEach(w => {
                 const opt = document.createElement('option');
                 opt.value = w.address;
-                opt.innerText = `[${w.balance.toFixed(2)}] ${w.name}`;
-                opt.dataset.balance = w.balance;
+                opt.innerText = `[${w.available.toFixed(2)}] ${w.name}`;
+                opt.dataset.available = w.available;
+                opt.dataset.confirmed = w.confirmed;
+                opt.dataset.pending = w.pending;
                 opt.dataset.name = w.name;
                 select.appendChild(opt);
 
@@ -440,12 +442,14 @@ async function loadWallets() {
             data.wallets.forEach((w, i) => {
                 const opt = select.options[i];
                 if (opt) {
-                    opt.innerText = `[${w.balance.toFixed(2)}] ${w.name}`;
-                    opt.dataset.balance = w.balance;
+                    opt.innerText = `[${w.available.toFixed(2)}] ${w.name}`;
+                    opt.dataset.available = w.available;
+                    opt.dataset.confirmed = w.confirmed;
+                    opt.dataset.pending = w.pending;
 
                     // Update target select too
                     if (targetSelect.options[i]) {
-                        targetSelect.options[i].innerText = `[${w.balance.toFixed(2)}] ${w.name}`;
+                        targetSelect.options[i].innerText = `[${w.available.toFixed(2)}] ${w.name}`;
                     }
                 }
             });
@@ -462,13 +466,38 @@ function updateWalletDisplay() {
 
     const opt = select.selectedOptions[0];
     if (opt) {
-        displayBal.innerText = parseFloat(opt.dataset.balance).toFixed(2);
+        displayBal.innerText = parseFloat(opt.dataset.available).toFixed(2);
         displayAddr.value = opt.value; // Use .value for input
         selectedWallet = opt.value;
+
+        // Add Subtext for Confirmed/Pending
+        // We need to inject this HTML or update an existing element
+        // Since we didn't add a specific element in HTML yet, let's append it purely via JS or modify existing structure
+        // Actually, we should check if we can add a sub-div
+        let detailsEl = document.getElementById('balanceDetails');
+        if (!detailsEl) {
+            detailsEl = document.createElement('div');
+            detailsEl.id = 'balanceDetails';
+            detailsEl.className = "mt-2 text-[10px] font-mono text-zinc-500 flex justify-center gap-4";
+            displayBal.parentNode.appendChild(detailsEl);
+        }
+
+        const conf = parseFloat(opt.dataset.confirmed).toFixed(2);
+        const pend = parseFloat(opt.dataset.pending).toFixed(2);
+        const pendClass = parseFloat(pend) < 0 ? "text-pink-500" : (parseFloat(pend) > 0 ? "text-green-500" : "text-zinc-600");
+
+        detailsEl.innerHTML = `
+                <span>On-Chain: <span class="text-zinc-300">${conf}</span></span>
+                <span>Pending: <span class="${pendClass}">${pend}</span></span>
+            `;
+
     } else {
         displayBal.innerText = "0.00";
         displayAddr.value = "---"; // Use .value for input
         selectedWallet = null;
+
+        let detailsEl = document.getElementById('balanceDetails');
+        if (detailsEl) detailsEl.innerHTML = '';
     }
 }
 
