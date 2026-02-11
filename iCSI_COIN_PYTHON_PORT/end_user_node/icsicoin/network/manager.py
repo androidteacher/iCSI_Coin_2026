@@ -177,6 +177,11 @@ class NetworkManager:
         self.tasks.add(t6)
         t6.add_done_callback(self.tasks.discard)
 
+        # Periodic Peer Pruning based on port check (60s)
+        t7 = asyncio.create_task(self.periodically_prune_peers())
+        self.tasks.add(t7)
+        t7.add_done_callback(self.tasks.discard)
+
         # Sync Watchdog
         t7 = asyncio.create_task(self.sync_worker())
         self.tasks.add(t7)
@@ -1416,6 +1421,43 @@ class NetworkManager:
                 logger.error(f"Auto-Discovery Exception: {e}")
                 
             await asyncio.sleep(retry_delay)
+
+    async def periodically_prune_peers(self):
+        """
+        Periodically checks known peers for connectivity and removes dead ones.
+        Run interval: 60 seconds.
+        """
+        while self.running:
+            await asyncio.sleep(60)
+            
+            if not self.known_peers:
+                continue
+                
+            logger.info("Starting periodic peer pruning scan...")
+            to_remove = set()
+            
+            # Create a copy to iterate safely
+            current_peers = list(self.known_peers)
+            
+            for peer in current_peers:
+                if not self.running: break
+                host, port = peer
+                
+                # Skip if currently connected (don't prune active connections here)
+                if peer in self.active_connections:
+                    continue
+                    
+                is_reachable = await self.quick_connect_check(host, port, timeout=2.0)
+                if not is_reachable:
+                    logger.info(f"Pruning unreachable peer: {host}:{port}")
+                    to_remove.add(peer)
+            
+            # Remove dead peers
+            if to_remove:
+                self.known_peers -= to_remove
+                logger.info(f"Pruned {len(to_remove)} unreachable peers.")
+            else:
+                logger.info("Peer pruning scan complete. No peers removed.")
 
     async def quick_connect_check(self, host, port, timeout=2.0):
         """
