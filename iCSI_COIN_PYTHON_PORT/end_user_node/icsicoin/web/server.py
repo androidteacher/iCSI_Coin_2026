@@ -127,6 +127,9 @@ class WebServer:
 
         self.runner = None
         self.site = None
+        
+        # Cache for peer reachability: {(ip, port): {'status': bool, 'time': float}}
+        self.reachability_cache = {}
 
     async def start(self):
         # Setup Session Middleware
@@ -783,11 +786,49 @@ class WebServer:
                      add_candidate(ip, port, 'ACTIVE (ICE)', False, 1)
 
         # 3. Known Peers (Discovered but not connected)
+        # Filter these by reachability to avoid showing dead nodes from stale gossip
+        candidates_to_check = []
         if hasattr(self.network_manager, 'known_peers'):
              for (ip, port) in list(self.network_manager.known_peers):
                  # Don't overwrite Active/ICE
                  if (ip, port) not in self.network_manager.peers:
-                     add_candidate(ip, port, 'DISCOVERED', True, 0)
+                     # Check Cache
+                     cache = self.reachability_cache.get((ip, port))
+                     if cache and (now - cache['time'] < 60):
+                         if cache['status']:
+                             add_candidate(ip, port, 'DISCOVERED', True, 0)
+                     else:
+                         candidates_to_check.append((ip, port))
+                         
+        # Async Check for Stale/New Candidates
+        if candidates_to_check:
+            # We want to check them but NOT block the UI response too long.
+            # However, if we don't await, we can't show them yet. 
+            # Strategy: Trigger checks in background for next poll? 
+            # Or await with short timeout? User said "Quick port check".
+            # Let's try await with 0.5s timeout for the batch.
+            
+            async def check_port(target_ip, target_port):
+                try:
+                    conn = asyncio.open_connection(target_ip, target_port)
+                    reader, writer = await asyncio.wait_for(conn, timeout=0.5)
+                    writer.close()
+                    await writer.wait_closed()
+                    return (target_ip, target_port, True)
+                except:
+                    return (target_ip, target_port, False)
+
+            # Fire off checks
+            # Limit to 20 checks per poll to prevent explosion
+            tasks = [check_port(ip, port) for (ip, port) in candidates_to_check[:20]]
+            results = await asyncio.gather(*tasks, return_exceptions=True)
+            
+            for res in results:
+                if isinstance(res, tuple):
+                    r_ip, r_port, is_alive = res
+                    self.reachability_cache[(r_ip, r_port)] = {'status': is_alive, 'time': now}
+                    if is_alive:
+                        add_candidate(r_ip, r_port, 'DISCOVERED', True, 0)
 
         # 4. Failed Peers
         if hasattr(self.network_manager, 'failed_peers'):
