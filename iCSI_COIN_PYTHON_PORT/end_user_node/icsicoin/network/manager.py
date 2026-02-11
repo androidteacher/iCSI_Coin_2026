@@ -604,11 +604,11 @@ class NetworkManager:
 
                                 # LOW_DELAY SYNC FIX:
                                 # We request more blocks if:
-                                # 1. We completed a mini-batch (10 blocks) to keep pipeline full.
+                                # 1. We completed a batch check (500 blocks) to keep pipeline full without SPAMMING (DoS protection).
                                 # 2. It's been >2.0s since we last asked (handles "tail" of chain or stalls).
-                                # The old % 50 / 10s check caused stalls on small batches.
+                                # The old % 10 check caused 200 requests/batch -> Ban.
                                 best_info = self.block_index.get_best_block()
-                                if best_info and ((best_info['height'] % 10) == 0 or (time.time() - self.last_getblocks_time > 2.0)):
+                                if best_info and ((best_info['height'] % 500) == 0 or (time.time() - self.last_getblocks_time > 2.0)):
                                      await self.send_getblocks(writer)
 
                                 # Relay logic (simple flood)
