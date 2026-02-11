@@ -675,9 +675,13 @@ class NetworkManager:
                             b_hash = block.get_hash().hex()
                             self.log_peer_event(addr, "RECV", "BLOCK", f"Hash {b_hash[:16]}...")
 
-                            # Update watchdog timer on ANY block receipt (even orphans/duplicates)
-                            # This prevents the Watchdog from killing the connection if we are receiving data but it's not extending the tip immediately.
-                            self.last_block_received_time = time.time()
+                            # Update watchdog timer ONLY on valid block connect or processing start.
+                            # We don't want to reset it for orphans if we are stuck in an orphan loop.
+                            # Actually, we can update it here, but we need the Watchdog to be smarter.
+                            # BETTER FIX: Only update it if the block is NOT an orphan or if it triggers a successful backfill step.
+                            # For now, let's move this update ensuring we don't count endless orphans as "progress".
+                            # logic moved to later in handle_block
+                            pass
 
                             # Process via ChainManager
                             # DEADLOCK FIX: Run in main thread to avoid SQLite threading issues
@@ -763,6 +767,9 @@ class NetworkManager:
                                             await peer_writer.drain()
                                         except: pass
                                 logger.info("Relayed BLOCK INV to peers")
+                                
+                                # Valid block progress -> Reset Watchdog
+                                self.last_block_received_time = time.time()
                             else:
                                 self.log_peer_event(addr, "CONSENSUS", "IGNORED", f"Block {b_hash[:16]}... {reason}")
                                 
