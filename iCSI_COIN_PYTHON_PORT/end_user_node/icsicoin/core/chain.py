@@ -621,6 +621,7 @@ class ChainManager:
             return [self.get_block_hash(0)]
             
         current_height = best['height']
+        # logger.debug(f"Generating locator starting from height {current_height} (Best: {best['block_hash'][:8]})") 
         step = 1
         h = current_height
         

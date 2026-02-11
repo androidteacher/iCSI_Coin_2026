@@ -499,12 +499,13 @@ class NetworkManager:
                                 # Only continue if the batch was substantial (e.g. > 10 items)
                                 # Peer sends up to 500 usually.
                                 if len(inventory) > 10:
-                                     logger.info(f"Continue Sync: Received {len(inventory)} known blocks from {addr}. Requesting next batch starting from {last_hash}...")
-                                     
-                                     # Send getblocks with this hash as locator
-                                     # This tells peer: "I have up to X, give me X+1..."
-                                     # Use standard send_getblocks which generates a full locator
-                                     await self.send_getblocks(writer)
+                                     logger.info(f"Continue Sync: Received {len(inventory)} known blocks from {addr}.")
+                                     # STOP SYNC STORM: 
+                                     # If we have them all, do NOT ask again immediately. 
+                                     # This causes infinite loops if our tip is stuck.
+                                     # rely on Watchdog to pick up if we are truly behind.
+                                     # await self.send_getblocks(writer)
+
 
                     except Exception as e:
                         logger.error(f"INV error: {e}")
@@ -1160,7 +1161,11 @@ class NetworkManager:
                         # Current height for comparison
                         current_height = best_block['height']
                         
+                        # DEBUG: Dump peer stats to see why we think everyone is dead/empty
+                        logger.info(f"Sync Watchdog Debug: Peer Stats: {self.peer_stats}")
+
                         for peer_addr in self.active_connections.keys():
+
                             stats = self.peer_stats.get(peer_addr, {})
                             # Filter Stale Peers (Ghosts)
                             if now - stats.get('last_seen', 0) > 60:
