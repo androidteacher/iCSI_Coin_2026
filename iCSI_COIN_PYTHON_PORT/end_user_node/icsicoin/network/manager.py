@@ -354,13 +354,26 @@ class NetworkManager:
                          peers_list.append({'ip': self.bind_address, 'port': self.port, 'services': 1, 'timestamp': int(time.time())})
                          debug_advertised.append(f"{self.bind_address}:{self.port} (SELF)")
 
-                    for ip, port in self.peers:
+                    # 2. Add connected peers (High Priority)
+                    for ip, port in list(self.peers)[:10]: # Limit connected peers to 10
                         if is_advertisable(ip):
                              peers_list.append({'ip': ip, 'port': port, 'services': 1, 'timestamp': int(time.time())})
                              debug_advertised.append(f"{ip}:{port}")
                              
-                    # Add discovered known peers (limit to 100)
-                    for ip, port in list(self.known_peers)[:100]:
+                    # 3. Add discovered known peers (Lower Priority, Limit Total to 10)
+                    # Filter for recently seen peers (last 3 hours)
+                    now = time.time()
+                    candidates = []
+                    for p in list(self.known_peers):
+                        p_stats = self.peer_stats.get(p, {})
+                        if now - p_stats.get('last_seen', 0) < 10800: # 3 hours
+                            candidates.append(p)
+                            
+                    # Shuffle to rotate through healthy peers
+                    random.shuffle(candidates)
+                    
+                    for ip, port in candidates:
+                         if len(peers_list) >= 10: break
                          if (ip, port) not in self.peers and is_advertisable(ip):
                              peers_list.append({'ip': ip, 'port': port, 'services': 1, 'timestamp': int(time.time())})
                              debug_advertised.append(f"{ip}:{port}")
@@ -500,15 +513,15 @@ class NetworkManager:
                             if last_item['type'] == 'block':
                                 last_hash = last_item['hash']
                                 
-                                # Only continue if the batch was substantial (e.g. > 10 items)
-                                # Peer sends up to 500 usually.
-                                if len(inventory) > 10:
-                                     logger.info(f"Continue Sync: Received {len(inventory)} known blocks from {addr}.")
-                                     # STOP SYNC STORM: 
-                                     # If we have them all, do NOT ask again immediately. 
-                                     # This causes infinite loops if our tip is stuck.
-                                     # rely on Watchdog to pick up if we are truly behind.
-                                     # await self.send_getblocks(writer)
+                                # Check peer height to decide if we should ask for more
+                                peer_height = self.peer_stats.get(addr, {}).get('height', 0)
+                                my_height = self.block_index.get_best_block()['height'] if self.block_index.get_best_block() else 0
+                                
+                                # If peer is ahead, ask for more even if this batch was known
+                                # or if the batch was substantial.
+                                if peer_height > my_height or len(inventory) > 10:
+                                     logger.info(f"Continue Sync: Peer {addr} (H:{peer_height}) is ahead of us (H:{my_height}). Requesting next batch...")
+                                     await self.send_getblocks(writer)
 
 
                     except Exception as e:
