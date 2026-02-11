@@ -532,6 +532,11 @@ class NetworkManager:
                                     to_get.append(item)
                                 else:
                                     pass
+                            elif item['type'] == 'tx':
+                                # Check if we have it in mempool or chain
+                                # Optimization: Bloom filter check could go here
+                                if not self.mempool.get_transaction(item['hash']):
+                                    to_get.append(item)
                         
                         if to_get:
                             # Reverting to standard batch size (driven by peer INV size, typ. 500)
