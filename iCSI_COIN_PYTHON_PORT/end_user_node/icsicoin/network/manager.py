@@ -93,12 +93,12 @@ class NetworkManager:
         self.lan_scanner = LANScanner(port=9333) # Default scanning port
         self.last_lan_scan = 0
 
-        # Beggar system state
-        self.beggar_list = {}  # {address: {first_seen, last_seen, source_ip}}
-        self.active_beg = None  # {address, started_at, task} or None
-        self.last_block_received_time = 0 # Track last block time for sync watchdog
-        self.last_getblocks_time = 0
-        self.blocks_since_req = 0 # Track blocks received since last request for batch monitoring
+        # Debugging / Logging state
+        self.peer_logs = {} # Ring buffer of logs per peer
+        self.peer_last_log_time = {} # For sorting
+        
+        # Debounce state
+        self.requested_orphans = {} # {hash: timestamp} to prevent spamming GETDATA
 
     def configure_stun(self, ip, port):
         self.stun_ip = ip
@@ -139,7 +139,7 @@ class NetworkManager:
             
             for entry in logs:
                 buffer.write(f"[{p_str}] {entry}\n")
-                
+        
         return buffer.getvalue()
 
     async def start(self):
@@ -835,15 +835,24 @@ class NetworkManager:
                                             break
                                             
                                         if target_parent:
-                                             logger.info(f"Orphan Backfill: Found gap at {target_parent[:16]} (Child: {curr_hash[:16]}). Requesting...")
-                                             self.log_peer_event(addr, "OUT", "GETDATA", f"Requesting missing root parent {target_parent[:16]}...")
-                                             
-                                             inv_item = {"type": "block", "hash": target_parent}
-                                             msg = {"type": "getdata", "inventory": [inv_item]}
-                                             payload = json.dumps(msg).encode('utf-8')
-                                             out_m = Message('getdata', payload)
-                                             writer.write(out_m.serialize())
-                                             await writer.drain()
+                                            # Check Debounce
+                                            now = time.time()
+                                            last_req = self.requested_orphans.get(target_parent, 0)
+                                            if now - last_req < 5.0:
+                                                # Debounce: Skip request
+                                                pass
+                                            else:
+                                                self.requested_orphans[target_parent] = now
+                                                
+                                                logger.info(f"Orphan Backfill: Found gap at {target_parent[:16]} (Child: {curr_hash[:16]}). Requesting...")
+                                                self.log_peer_event(addr, "OUT", "GETDATA", f"Requesting missing root parent {target_parent[:16]}...")
+                                                
+                                                inv_item = {"type": "block", "hash": target_parent}
+                                                msg = {"type": "getdata", "inventory": [inv_item]}
+                                                payload = json.dumps(msg).encode('utf-8')
+                                                out_m = Message('getdata', payload)
+                                                writer.write(out_m.serialize())
+                                                await writer.drain()
                                         else:
                                              # No actionable parent found (or loop/limit hit)
                                              pass
