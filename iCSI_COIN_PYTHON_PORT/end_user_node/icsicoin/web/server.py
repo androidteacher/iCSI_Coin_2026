@@ -954,23 +954,38 @@ class WebServer:
             return web.Response(text=f"Error generating logs: {str(e)}", status=500)
 
     async def handle_send_test(self, request):
-        data = await self._get_json(request)
-        target_ip = data.get('ip')
-        target_port = data.get('port')
-        
-        # 1. Send Test Message
-        await self.network_manager.send_test_message(target_ip, target_port, "TEST_PACKET")
-        
-        # 2. TRIGGER SYNC (Manual Kick)
-        # Find the writer for this peer and send getblocks
-        # This helps if the node is stalled.
-        target = (target_ip, int(target_port))
-        if target in self.network_manager.active_connections:
-            writer = self.network_manager.active_connections[target]
-            await self.network_manager.send_getblocks(writer)
-            logger.info(f"Manual Sync Triggered for {target_ip}:{target_port}")
+        try:
+            data = await self._get_json(request)
+            target_ip = data.get('ip')
+            target_port = data.get('port')
             
-        return web.json_response({'status': 'sent', 'message': 'Test message sent & Sync triggered'})
+            if not target_ip or not target_port:
+                return web.json_response({'error': 'Missing IP or Port'}, status=400)
+
+            try:
+                target_port = int(target_port)
+            except ValueError:
+                 return web.json_response({'error': 'Invalid Port format'}, status=400)
+            
+            # 1. Send Test Message
+            await self.network_manager.send_test_message(target_ip, target_port, "TEST_PACKET")
+            
+            # 2. TRIGGER SYNC (Manual Kick)
+            # Find the writer for this peer and send getblocks
+            # This helps if the node is stalled.
+            target = (target_ip, int(target_port))
+            if target in self.network_manager.active_connections:
+                writer = self.network_manager.active_connections[target]
+                await self.network_manager.send_getblocks(writer)
+                logger.info(f"Manual Sync Triggered for {target_ip}:{target_port}")
+            else:
+                logger.warning(f"Manual Sync Skipped: Peer {target_ip}:{target_port} not active")
+                
+            return web.json_response({'status': 'sent', 'message': 'Test message sent & Sync triggered'})
+
+        except Exception as e:
+            logger.error(f"Error sending test message: {e}")
+            return web.json_response({'error': f"Server Error: {str(e)}"}, status=500)
         
     async def handle_get_stats(self, request):
         best_block = self.network_manager.chain_manager.block_index.get_best_block()
