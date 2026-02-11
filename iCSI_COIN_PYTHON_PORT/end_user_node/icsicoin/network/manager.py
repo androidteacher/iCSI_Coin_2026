@@ -98,7 +98,11 @@ class NetworkManager:
         self.peer_last_log_time = {} # For sorting
         
         # Debounce state
-        self.requested_orphans = {} # {hash: timestamp} to prevent spamming GETDATA
+        self.requested_orphans = {} # {parent_hash: timestamp} - Debounce for orphan requests
+        
+        # Sync Optimization: Single Download Peer
+        self.sync_peer = None # (ip, port) of the current primary sync partner
+        self.last_sync_peer_switch = 0
 
     def configure_stun(self, ip, port):
         self.stun_ip = ip
@@ -543,18 +547,35 @@ class NetworkManager:
                         self.log_peer_event(addr, "RECV", "INV", f"Size: {len(items)}, First: {first_item}...")
                         logger.info(f"Received INV from {addr} with {len(items)} items")
 
+                        # Check what we need
+                        # Check what we need
                         to_get = []
+                        
+                        # IBD OPTIMIZATION:
+                        # If we are syncing (far behind), ONLY process INVs from our chosen Sync Peer.
+                        # This prevents CPU spikes from processing 10x duplicate INVs from all 10 peers.
+                        if self.is_initial_block_download() and addr != self.sync_peer:
+                            # logger.debug(f"Ignoring INV from {addr} (Not our Sync Peer {self.sync_peer})")
+                            return
+                        
+                        # IBD OPTIMIZATION:
+                        # If we are syncing (far behind), ONLY process INVs from our chosen Sync Peer.
+                        # This prevents CPU spikes from processing 10x duplicate INVs from all 10 peers.
+                        if self.is_initial_block_download() and addr != self.sync_peer:
+                            # logger.debug(f"Ignoring INV from {addr} (Not our Sync Peer {self.sync_peer})")
+                            return
+
                         for item in items:
                             if item['type'] == 'block':
-                                # Check if we have it
+                                # ... (rest of logic) ...
                                 # Core Logic: If we don't have it in the main index, get it.
                                 if not self.block_index.get_block_info(item['hash']):
-                                    to_get.append(item)
+                                     # Check if already requested/in-flight? associated with sync_peer?
+                                     to_get.append(item)
                                 else:
                                     pass
                             elif item['type'] == 'tx':
-                                # Check if we have it in mempool or chain
-                                # Optimization: Bloom filter check could go here
+                                 # ... (tx logic)
                                 if not self.mempool.get_transaction(item['hash']):
                                     to_get.append(item)
                         
@@ -1491,43 +1512,47 @@ class NetworkManager:
                     
                     # Trigger getblocks to a random peer
                     if self.active_connections:
-                        # 2. TARGETED SYNC: Don't pick random (could be behind). Pick the BEST chain.
+                        # 3. SELECT SYNC PEER (Targeted Sync)
+                        # Pick the best peer and stick to it.
                         best_peer = None
-                        max_height = -1
+                        max_h = -1
                         
-                        # Current height for comparison
-                        current_height = best_block['height']
+                        # Election: Find best candidate
+                        for p, stats in self.peer_stats.items():
+                             if p in self.active_connections:
+                                 h = stats.get('height', 0)
+                                 if h > max_h:
+                                     max_h = h
+                                     best_peer = p
                         
-                        # DEBUG: Dump peer stats to see why we think everyone is dead/empty
-                        logger.info(f"Sync Watchdog Debug: Peer Stats: {self.peer_stats}")
-
-                        for peer_addr in self.active_connections.keys():
-
-                            stats = self.peer_stats.get(peer_addr, {})
-                            # Filter Stale Peers (Ghosts)
-                            if now - stats.get('last_seen', 0) > 60:
-                                continue
-
-                            h = stats.get('height', 0)
-                            if h > max_height:
-                                max_height = h
-                                best_peer = peer_addr
-                                
-                        if best_peer and max_height > current_height:
-                             logger.info(f"Sync Watchdog: Requesting blocks from BEST peer {best_peer} (Height {max_height})")
-                             writer = self.active_connections[best_peer]
-                             writer = self.active_connections[best_peer]
-                             await self.send_getblocks(writer)
-                             # Reset timer? NO. If we reset here, we might just loop forever sending requests that yield nothing.
-                             # We should only reset when we RECEIVE blocks.
-                             # self.last_block_received_time = time.time()
+                        # Switch validity check
+                        if best_peer:
+                            # If we don't have a sync peer, or current one is dead/stalled/worse, switch.
+                            need_switch = False
+                            if not self.sync_peer or self.sync_peer not in self.active_connections:
+                                need_switch = True
+                            elif best_peer != self.sync_peer:
+                                # Only switch if significantly better or current is causing gaps
+                                # Use a small hysteresis or stickiness to avoid flapping
+                                current_h = self.peer_stats.get(self.sync_peer, {}).get('height', 0)
+                                if max_h > current_h + 10: # Only if much better
+                                     need_switch = True
+                            
+                            if need_switch:
+                                logger.info(f"Sync Watchdog: Switching Sync Peer to {best_peer} (Height {max_h})")
+                                self.sync_peer = best_peer
+                                self.last_sync_peer_switch = time.time()
+                            
+                            # Execute Sync Request
+                            if self.sync_peer:
+                                 logger.info(f"Sync Watchdog: Requesting blocks from Sync Peer {self.sync_peer}")
+                                 writer = self.active_connections[self.sync_peer]
+                                 await self.send_getblocks(writer)
                         else:
-                             # Fallback: If no one stands out, or all equal, try random?
-                             # Or just pick random if max_height <= current_height to probe for side chains?
-                             # Let's try random as fallback if we think we are top, just in case stats are stale.
+                             # Fallback if no valid stats
                              import random
                              target_peer = random.choice(list(self.active_connections.keys()))
-                             logger.info(f"Sync Watchdog: targeted sync found nothing better (Max {max_height}), trying random {target_peer}")
+                             logger.info(f"Sync Watchdog: No clear best peer, trying random {target_peer}")
                              writer = self.active_connections[target_peer]
                              await self.send_getblocks(writer)
                              self.last_block_received_time = time.time()
