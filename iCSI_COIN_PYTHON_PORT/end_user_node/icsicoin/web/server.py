@@ -74,6 +74,7 @@ class WebServer:
         self.app.router.add_route('*', '/api/stun/test', self.handle_test_stun)
         self.app.router.add_route('*', '/api/discovery/status', self.handle_discovery_status)
         self.app.router.add_post('/api/integrity_check', self.handle_integrity_check)
+        self.app.router.add_get('/api/debug/mempool', self.handle_debug_mempool)
         
         # API - RPC Config
         # API - RPC Config
@@ -1406,3 +1407,10 @@ class WebServer:
                 'Content-Type': 'application/zip'
             }
         )
+
+    async def handle_debug_mempool(self, request):
+        txs = []
+        for txid, tx in self.network_manager.mempool.transactions.items():
+            txs.append(txid)
+        return web.json_response({'count': len(txs), 'txids': txs})
+

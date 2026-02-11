@@ -949,7 +949,9 @@ class NetworkManager:
                             tx = Transaction.deserialize(f)
                             
                             # Validate & Add to Mempool
-                            if validate_transaction(tx):
+                            # FIX: validate_transaction requires utxo_set and returns (bool, reason)
+                            is_valid, reason = validate_transaction(tx, self.chain_manager.chain_state)
+                            if is_valid:
                                 if self.mempool.add_transaction(tx):
                                     logger.info(f"Received Valid TX: {tx.get_hash().hex()}")
                                     
@@ -968,7 +970,7 @@ class NetworkManager:
                                             except: pass
                                     # Added return to fix logging issue? No.
                             else:
-                                logger.warning(f"Received INVALID TX from {addr}")
+                                logger.warning(f"Received INVALID TX from {addr}: {reason}")
                     except Exception as e:
                         logger.error(f"TX error: {e}")
 
