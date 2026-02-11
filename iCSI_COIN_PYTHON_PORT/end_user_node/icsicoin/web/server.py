@@ -1064,16 +1064,12 @@ class WebServer:
                  name = k.get('name', 'Unnamed Wallet')
                  addr = k['addr']
                  # Balance check
-                 # We need to access chain_state. 
-                 # We can use wallet.get_balance() but that sums ALL.
-                 # We need per-address balance.
-                 # Let's add a helper here or in wallet.
-                 
-                 # Manual balance calc for this addr
-                 pubkey_hash = binascii.unhexlify(addr)
-                 script = b'\x76\xa9\x14' + pubkey_hash + b'\x88\xac'
-                 utxos = self.network_manager.chain_manager.chain_state.get_utxos_by_script(script)
-                 balance = sum([u['amount'] for u in utxos]) / 100000000.0 # Convert satoshi to coin
+                 # Use wallet helper to include Mempool impacts (pending spends/receives)
+                 balance = self.network_manager.wallet.get_address_balance(
+                     addr, 
+                     self.network_manager.chain_manager.chain_state, 
+                     mempool=self.network_manager.mempool
+                 ) / 100000000.0 # Convert satoshi to coin
                  
                  wallets.append({'address': addr, 'name': name, 'balance': balance})
                  

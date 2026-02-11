@@ -79,18 +79,67 @@ class Wallet:
                 return k
         return None
 
+    def get_address_balance(self, address, chain_state, mempool=None):
+        """Calculate balance for a single address, optionally including mempool pending state."""
+        pubkey_hash = binascii.unhexlify(address)
+        script = b'\x76\xa9\x14' + pubkey_hash + b'\x88\xac'
+        
+        # 1. Get Confirmed UTXOs
+        utxos = chain_state.get_utxos_by_script(script)
+        
+        balance = 0
+        
+        if mempool:
+            # Build set of spent outpoints in mempool
+            # optimized: This should be passed in or cached if calling in loop? 
+            # For now, simplistic iteration.
+            mempool_spent = set()
+            mempool_outputs = []
+            
+            for tx in mempool.get_all_transactions():
+                tx_hash = tx.get_hash().hex()
+                # Inputs spent
+                for vin in tx.vin:
+                    mempool_spent.add((vin.prev_hash.hex(), vin.prev_index))
+                # Outputs created for this addr
+                for i, vout in enumerate(tx.vout):
+                    if vout.script_pubkey == script:
+                        balance += vout.amount
+
+            # Filter confirmed UTXOs
+            for u in utxos:
+                # Handle types
+                u_txid = u['txid']
+                if isinstance(u_txid, bytes):
+                    u_txid = u_txid.decode('utf-8') # or hex encode depending on DB
+                    # The DB returns hex string usually? 
+                    # databases.py: cursor.execute("SELECT txid, vout..."). txid is TEXT?
+                    # Let's assume hex string.
+                    # Wait, earlier debug prints suggested confusion. 
+                    # If DB returns bytes (blob), we need hex.
+                    # Attempt safe conversion
+                    try:
+                         # verify if it's already hex
+                         binascii.unhexlify(u_txid) 
+                         # It IS hex string
+                    except:
+                         # It is bytes?
+                         u_txid = binascii.hexlify(u_txid).decode('utf-8')
+
+                if (u_txid, u['vout']) in mempool_spent:
+                    continue # Spent in mempool
+                balance += u['amount']
+        else:
+            # Simple sum
+            balance = sum([u['amount'] for u in utxos])
+            
+        return balance
+
     def get_balance(self, chain_state):
         """Calculate total balance by scanning UTXOs for all keys."""
         total = 0
         for key in self.keys:
-            addr = key['addr']
-            pubkey_hash = binascii.unhexlify(addr)
-            # P2PKH Script: OP_DUP OP_HASH160 <pubKeyHash> OP_EQUALVERIFY OP_CHECKSIG
-            script = b'\x76\xa9\x14' + pubkey_hash + b'\x88\xac'
-            
-            utxos = chain_state.get_utxos_by_script(script)
-            for u in utxos:
-                total += u['amount']
+            total += self.get_address_balance(key['addr'], chain_state)
         return total
 
     def create_transaction(self, to_addr, amount, chain_state, current_height, fee=1000, mempool=None):
