@@ -534,18 +534,24 @@ class NetworkManager:
                                     pass
                         
                         if to_get:
-                            # Send getdata
-                            msg = {
-                                "type": "getdata",
-                                "inventory": to_get
-                            }
-                            json_payload = json.dumps(msg).encode('utf-8')
-                            out_msg = Message('getdata', json_payload)
-                            writer.write(out_msg.serialize())
-                            await writer.drain()
-                            logger.info(f"Sent GETDATA for {len(to_get)} items to {addr}")
-                            self.log_peer_event(addr, "SENT", "GETDATA", f"Requested {len(to_get)} blocks/txs")
-                        
+                            # START FIX: Batch Chunking
+                            # Requesting 500 blocks at once causes connection drops ("0 bytes read").
+                            # We chunk requests into small batches (e.g. 20).
+                            chunk_size = 20
+                            for i in range(0, len(to_get), chunk_size):
+                                chunk = to_get[i:i + chunk_size]
+                                msg = {
+                                    "type": "getdata",
+                                    "inventory": chunk
+                                }
+                                json_payload = json.dumps(msg).encode('utf-8')
+                                out_msg = Message('getdata', json_payload)
+                                writer.write(out_msg.serialize())
+                                await writer.drain()
+                                logger.info(f"Sent GETDATA chunk {i//chunk_size + 1} for {len(chunk)} items to {addr}")
+                                self.log_peer_event(addr, "SENT", "GETDATA", f"Requested chunk of {len(chunk)} blocks/txs")
+                                # Small sleep to let peer breathe?
+                                await asyncio.sleep(0.1)
                         else:
                             # CONTINUE SYNC LOGIC
                             # If to_get is empty, we already have everything in this INV.
