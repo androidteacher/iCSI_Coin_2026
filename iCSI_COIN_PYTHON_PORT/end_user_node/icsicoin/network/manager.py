@@ -518,12 +518,16 @@ class NetworkManager:
                         inventory = data.get('inventory', [])
                         logger.debug(f"Received INV from {addr} with {len(inventory)} items")
                         
+                        # START FIX: Correct indentation
                         to_get = []
                         for item in inventory:
                             if item['type'] == 'block':
                                 # Check if we have it
+                                # Core Logic: If we don't have it in the main index, get it.
                                 if not self.block_index.get_block_info(item['hash']):
                                     to_get.append(item)
+                                else:
+                                    pass
                         
                         if to_get:
                             # Send getdata
@@ -555,10 +559,12 @@ class NetworkManager:
                                 
                                 # If peer is ahead, ask for more even if this batch was known
                                 # or if the batch was substantial.
-                                if peer_height > my_height or len(inventory) > 10:
-                                     logger.info(f"Continue Sync: Peer {addr} (H:{peer_height}) is ahead of us (H:{my_height}). Requesting next batch...")
-                                     await self.send_getblocks(writer)
-
+                                if peer_height > my_height or len(inventory) > 0:
+                                     # Logic update: Always request more if we are not at tip.
+                                     logger.debug(f"INV processing complete. Checking if we need more blocks (Peer H:{peer_height} vs My H:{my_height})...")
+                                     if peer_height > my_height:
+                                          # Trigger getblocks to continue sync
+                                          await self.send_getblocks(writer)
 
                     except Exception as e:
                         logger.error(f"INV error: {e}")
@@ -730,23 +736,37 @@ class NetworkManager:
                                 
                                 # ORPHAN HANDLING
                                 if "Orphan" in reason:
-                                    # Debounce: Don't spam getblocks if we just asked
-                                    stats = self.peer_stats.get(addr, {})
-                                    last_req = stats.get('last_ancestry_req', 0)
-                                    diff = time.time() - last_req
-                                    
-                                    # TEMP DEBUG LOG TO DIAGNOSE
-                                    logger.info(f"DEBUG: Orphan check for {addr}. Reason='{reason}', LastReq={last_req}, Diff={diff:.2f}")
-
-                                    if diff > 5.0:
-                                        logger.info(f"Orphan detected from {addr}. Requesting ancestor chain to bridge fork...")
+                                    self.log_peer_event(addr, "CONSENSUS", "ORPHAN", f"Detected {b_hash[:16]}. Triggering recovery.")
+                                    # REMOVED DEBOUNCE: Always try to fetch if we are confused.
+                                    try:
+                                        self.log_peer_event(addr, "OUT", "GETBLOCKS", "Triggering ancestry fetch for Orphan recovery")
                                         await self.send_getblocks(writer)
-                                        # Update stats timestamp
+                                        
+                                        # BACKFILL STRATEGY: Explicitly request parent
+                                        # This bridges the gap if the peer fails to interpret our locator correctly.
+                                        orphan_block = self.chain_manager.orphan_blocks.get(b_hash)
+                                        if orphan_block:
+                                            prev_hash = orphan_block.header.prev_block.hex()
+                                            # Only request if we don't have it (and it's not already a known orphan)
+                                            # Actually, if it's a known orphan, we might still want to request ITS parent?
+                                            # But that would be handled when we received THAT orphan.
+                                            # So only request if we simply don't have it.
+                                            if not self.block_index.get_block_info(prev_hash) and prev_hash not in self.chain_manager.orphan_blocks:
+                                                 logger.info(f"Orphan Backfill: Requesting missing parent {prev_hash} from {addr}")
+                                                 self.log_peer_event(addr, "OUT", "GETDATA", f"Requesting missing parent {prev_hash[:16]}...")
+                                                 
+                                                 inv_item = {"type": "block", "hash": prev_hash}
+                                                 msg = {"type": "getdata", "inventory": [inv_item]}
+                                                 payload = json.dumps(msg).encode('utf-8')
+                                                 out_m = Message('getdata', payload)
+                                                 writer.write(out_m.serialize())
+                                                 await writer.drain()
+
+                                        # Update stats for tracking
                                         if addr in self.peer_stats:
                                             self.peer_stats[addr]['last_ancestry_req'] = time.time()
-                                    else:
-                                        # Keep this as INFO for now to see it in user logs
-                                        logger.info(f"Orphan from {addr} debounced (sent {diff:.2f}s ago). Skipping.")
+                                    except Exception as e:
+                                        logger.error(f"Failed to send recovery requests: {e}")
                                 else:
                                     pass # Invalid or known
                                 
@@ -1432,6 +1452,10 @@ class NetworkManager:
             # Create locator using dense-then-sparse strategy
             locator = self.chain_manager.get_block_locator()
             
+            if not locator:
+                logger.error("get_block_locator returned empty list! Cannot sync.")
+                return
+
             msg = {
                 "type": "getblocks",
                 "locator": locator
@@ -1443,7 +1467,13 @@ class NetworkManager:
             await peer_writer.drain()
             self.last_getblocks_time = time.time()
             self.blocks_since_req = 0 # Reset batch monitor
-            logger.info(f"Sent GETBLOCKS (Locator: {locator}) to peer")
+            
+            # Use log_peer_event for consistency with user's view
+            try:
+                addr_info = peer_writer.get_extra_info('peername')
+                self.log_peer_event(addr_info, "OUT", "GETBLOCKS", f"Sent locator with {len(locator)} hashes (Tip: {locator[0][:8]}...)")
+            except:
+                logger.info(f"SENT GETBLOCKS (Locator size: {len(locator)}) to peer")
         except Exception as e:
             logger.error(f"Error sending getblocks: {e}")
 
