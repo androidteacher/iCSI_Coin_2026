@@ -794,9 +794,12 @@ class NetworkManager:
                                         # Instead, rely on the BACKFILL STRATEGY below to fetch the specific missing parent.
                                         # self.log_peer_event(addr, "OUT", "GETBLOCKS", "Triggering ancestry fetch for Orphan recovery")
                                         # await self.send_getblocks(writer)
+                                        # self.log_peer_event(addr, "OUT", "GETBLOCKS", "Triggering ancestry fetch for Orphan recovery")
+                                        # await self.send_getblocks(writer)
                                         pass
                                         
                                         # BACKFILL STRATEGY: Iterative Ancestry Lookup
+                                        logger.debug("Orphan Backfill: Starting ancestry lookup...")
                                         # If we have a chain of orphans (A->B->C), receiving C should trigger request for B's parent (if B is known orphan).
                                         # We trace back up to 100 steps to find the "Root Orphan" that needs a parent.
                                         
