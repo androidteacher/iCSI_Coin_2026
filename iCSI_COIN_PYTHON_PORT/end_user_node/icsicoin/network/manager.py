@@ -883,11 +883,15 @@ class NetworkManager:
                     try:
                         data = json.loads(payload.decode('utf-8'))
                         locator = data.get('locator', [])
-                        logger.info(f"Received GETBLOCKS from {addr} with {len(locator)} locators: {locator}")
-
+                        
+                        # LOGGING: Record incoming getblocks request
+                        tip_str = locator[0][:8] if locator else "EMPTY"
+                        self.log_peer_event(addr, "RECV", "GETBLOCKS", f"Locator Size: {len(locator)}, Tip: {tip_str}...")
+                        
                         # Find common ancestor
                         start_hash = None
                         start_info = None
+                        
                         for h in locator:
                             info = self.block_index.get_block_info(h)
                             # RELAXED CHECK: Accept Status 2 (Valid Fork) or 3 (Main Chain)
