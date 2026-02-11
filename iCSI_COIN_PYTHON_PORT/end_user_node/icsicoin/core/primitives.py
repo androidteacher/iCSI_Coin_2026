@@ -131,6 +131,24 @@ class BlockHeader:
     def hash(self):
         return hash_to_hex(self.get_hash())
 
+    @property
+    def difficulty(self):
+        """Calculate difficulty from bits (compact target)."""
+        # Extract 3 most significant bytes as coefficient
+        exponent = self.bits >> 24
+        coefficient = self.bits & 0xffffff
+        target = coefficient * (256**(exponent - 3))
+        
+        # Genesis target (0x1f099996) usually implies Diff 1, but standard Bitcoin/Litecoin uses 0x1d00ffff for Diff 1.
+        # iCSI Coin presumably uses standard Diff 1 for calculation.
+        # Difficulty = (Target_1 / Target_Current)
+        # Target_1 = 0x00000000FFFF0000000000000000000000000000000000000000000000000000
+        # (Compact: 0x1d00ffff)
+        
+        target_1 = 0xffff * (256**(0x1d - 3))
+        if target == 0: return 0
+        return target_1 / target
+
 class Block:
     def __init__(self, header=None, vtx=None):
         self.header = header if header else BlockHeader()

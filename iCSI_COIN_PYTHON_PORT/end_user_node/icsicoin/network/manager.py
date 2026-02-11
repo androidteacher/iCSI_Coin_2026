@@ -582,6 +582,10 @@ class NetworkManager:
                             b_hash = block.get_hash().hex()
                             self.log_peer_event(addr, "RECV", "BLOCK", f"Hash {b_hash[:16]}...")
 
+                            # Update watchdog timer on ANY block receipt (even orphans/duplicates)
+                            # This prevents the Watchdog from killing the connection if we are receiving data but it's not extending the tip immediately.
+                            self.last_block_received_time = time.time()
+
                             # Process via ChainManager
                             # Process via ChainManager
                             # Offload CPU-bound validation to thread to prevent blocking the event loop
@@ -603,8 +607,6 @@ class NetworkManager:
                                     logger.warning(f"Failed to remove tx from mempool: {e}")
 
                                 self.log_peer_event(addr, "CONSENSUS", "ACCEPTED", f"Block {b_hash[:16]}... added to chain")
-                                
-                                self.last_block_received_time = time.time() # Update watchdog timer
 
                                 # PEER HEIGHT UPDATE FIX:
                                 # Update the peer's height so the Watchdog knows it's a good peer.
