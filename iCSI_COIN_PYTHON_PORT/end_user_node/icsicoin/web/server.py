@@ -692,8 +692,11 @@ class WebServer:
         
         # 3. Connect to Seeds
         connected = 0
+        force = data.get('force', False)
+        
         for target in targets:
-            asyncio.create_task(self.network_manager.connect_to_peer(target))
+            # Pass force flag to manager
+            asyncio.create_task(self.network_manager.connect_to_peer(target, force=force))
             connected += 1
             
         return web.json_response({'status': 'initiated', 'connected_count': connected, 'seed_ip': seed_ip})

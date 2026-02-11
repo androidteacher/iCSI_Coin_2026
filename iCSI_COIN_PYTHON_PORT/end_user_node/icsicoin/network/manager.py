@@ -1437,7 +1437,7 @@ class NetworkManager:
             logger.debug(f"Fast-Fail: {host}:{port} error ({e})")
             return False
 
-    async def connect_to_peer(self, node_address):
+    async def connect_to_peer(self, node_address, force=False):
         host = node_address
         port = 9333 # Default port
         
@@ -1453,8 +1453,25 @@ class NetworkManager:
         if host in ('127.0.0.1', 'localhost', '0.0.0.0') and port == self.port:
             logger.info(f"Skipping connection to SELF (Localhost match): {host}:{port}")
             return
+
+        # Force Reconnect Logic
+        if force:
+            logger.info(f"Force-Reconnecting to {host}:{port}...")
+            if target in self.peers:
+                # Close existing connection but don't forget peer data (we want logs)
+                if target in self.active_connections:
+                    writer = self.active_connections[target]
+                    try:
+                        writer.close()
+                        await writer.wait_closed()
+                    except: pass
+                    # Use pop to avoid KeyError if the background task already cleaned it up
+                    self.active_connections.pop(target, None)
+                self.peers.discard(target)
+                # We don't discard pending_peers because we are about to add it back
+        
         # Avoid duplicate connection attempts
-        if target in self.peers or target in self.pending_peers:
+        if not force and (target in self.peers or target in self.pending_peers):
             return 
         
         # Also check if we are connected to this host on any port? 

@@ -261,11 +261,21 @@ async function updatePeers() {
 
             // Status Indicator Logic
             let statusDot = `<span class="inline-block w-2 h-2 rounded-full bg-green-500 mr-2"></span>`;
-            let actionBtn = `<button class="px-3 py-1 bg-zinc-800 hover:bg-zinc-700 text-primary text-[10px] font-bold uppercase rounded-md transition-colors" onclick="showLogs('${p.ip}', ${p.port})">LOG</button>`;
+
+            // ACTION BUTTON LOGIC
+            // Standard action is LOG + TEST (Force Reconnect)
+            let logBtn = `<button class="px-3 py-1 bg-zinc-800 hover:bg-zinc-700 text-primary text-[10px] font-bold uppercase rounded-md transition-colors mr-2" onclick="showLogs('${p.ip}', ${p.port})">LOG</button>`;
+
+            // For ACTIVE peers, "TEST" means Force Reconnect
+            let testBtn = `<button class="px-3 py-1 bg-zinc-800 hover:bg-zinc-700 text-zinc-400 hover:text-white text-[10px] font-bold uppercase rounded-md transition-colors border border-zinc-700" onclick="connectToPeer('${p.ip}', ${p.port}, this, true)">TEST</button>`;
+
+            let actionBtn = logBtn + testBtn;
 
             if (p.status === 'DISCOVERED') {
                 statusDot = `<span class="inline-block w-2 h-2 rounded-full bg-yellow-500 mr-2 animate-pulse"></span>`;
-                actionBtn = `<button class="px-3 py-1 bg-primary text-black hover:bg-white text-[10px] font-bold uppercase rounded-md transition-colors shadow-lg shadow-primary/20" onclick="connectToPeer('${p.ip}', ${p.port}, this)">CONNECT</button>`;
+                // For DISCOVERED, "TEST" is just Connect (but we use force=true to be safe)
+                // We keep the "TEST" label as requested by user
+                actionBtn = `<button class="px-3 py-1 bg-primary text-black hover:bg-white text-[10px] font-bold uppercase rounded-md transition-colors shadow-lg shadow-primary/20" onclick="connectToPeer('${p.ip}', ${p.port}, this, true)">TEST</button>`;
             }
 
             tr.innerHTML = `
@@ -284,8 +294,10 @@ async function updatePeers() {
     } catch (e) { console.error("Peer Update Failed", e); }
 }
 
-async function connectToPeer(ip, port, btn) {
+async function connectToPeer(ip, port, btn, force = false) {
     const originalText = btn.innerText;
+    const originalClass = btn.className;
+
     btn.innerText = "...";
     btn.disabled = true;
 
@@ -293,30 +305,44 @@ async function connectToPeer(ip, port, btn) {
         const res = await fetch(API.connect, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ seed_ip: `${ip}:${port}` })
+            body: JSON.stringify({
+                seed_ip: `${ip}:${port}`,
+                force: force
+            })
         });
         const data = await res.json();
 
         if (res.ok) {
             btn.innerText = "OK";
-            btn.classList.remove('bg-primary', 'text-black');
-            btn.classList.add('bg-green-500', 'text-black');
-            // Peer list update will cycle naturally
+            // Flash Green
+            btn.className = "px-3 py-1 bg-green-500 text-black font-bold uppercase text-[10px] rounded-md transition-colors shadow-[0_0_10px_rgba(34,197,94,0.4)]";
+
+            // Revert after 3 seconds
+            setTimeout(() => {
+                btn.innerText = originalText;
+                btn.className = originalClass; // Restore original look
+                btn.disabled = false;
+            }, 3000);
+
         } else {
             alert("Connection Failed: " + (data.error || res.statusText));
             btn.innerText = "FAIL";
+            btn.className = "px-3 py-1 bg-red-500 text-white font-bold uppercase text-[10px] rounded-md";
             setTimeout(() => {
                 btn.innerText = originalText;
+                btn.className = originalClass;
                 btn.disabled = false;
-            }, 2000);
+            }, 3000);
         }
     } catch (e) {
         alert("Connection Error: " + e);
         btn.innerText = "ERR";
+        btn.className = "px-3 py-1 bg-red-500 text-white font-bold uppercase text-[10px] rounded-md";
         setTimeout(() => {
             btn.innerText = originalText;
+            btn.className = originalClass;
             btn.disabled = false;
-        }, 2000);
+        }, 3000);
     }
 }
 
