@@ -310,6 +310,9 @@ class NetworkManager:
                 
                 magic, command, length, checksum = Message.parse_header(header_data)
                 
+                # LOG EVERY RECEIVED COMMAND (As requested)
+                logger.info(f"[RECV] CMD: {command} (Size: {length}) from {addr}")
+                
                 # Read Payload
                 if length > 0:
                      logger.debug(f"Reading payload of size {length} from {addr}")
@@ -573,7 +576,7 @@ class NetworkManager:
                             # Try decoding JSON
                             data = json.loads(payload.decode('utf-8'))
                         except json.JSONDecodeError as decode_err:
-                            logger.error(f"BLOCK DECODE ERROR: Failed to parse JSON. Raw first 50 chars: {payload[:50]}")
+                            logger.error(f"[ERR] DECODE: Failed to parse JSON for block. Raw first 50 chars: {payload[:50]}")
                             # Try binary fallback or just fail
                             raise decode_err
                         block_hex = data.get('payload')
@@ -814,7 +817,7 @@ class NetworkManager:
             logger.error(f"Error handling client {addr}: {e}")
             self.log_peer_event(addr, "ERR", "EXCEPTION", str(e))
         finally:
-            logger.info(f"Closing connection to {addr}")
+            logger.info(f"[CONN] CLOSED: Connection to {addr} ended.")
             self.log_peer_event(addr, "XXX", "DISCONNECT", "Connection closed")
             try:
                 writer.close()
@@ -1500,6 +1503,7 @@ class NetworkManager:
         # Force Reconnect Logic
         if force:
             logger.info(f"Force-Reconnecting to {host}:{port}...")
+            self.log_peer_event(target, "USER", "TEST", "Manual Test Initiated")
             if target in self.peers:
                 # Close existing connection but don't forget peer data (we want logs)
                 if target in self.active_connections:
