@@ -726,9 +726,21 @@ class NetworkManager:
                                      last_expected = getattr(self, 'sync_batch_end', None)
                                      is_batch_end = (b_hash == last_expected)
                                      
-                                     if is_streaming_trigger or is_batch_end:
-                                         reason_str = "Streaming(400+)" if is_streaming_trigger else "Batch-End"
-                                         logger.info(f"Sync: Triggering next batch ({reason_str})...")
+                                     # Safety Net: If we haven't asked in > 5.0s, ask again.
+                                     # This covers cases where we missed the batch end or INV order was weird.
+                                     is_stall_trigger = (time.time() - self.last_getblocks_time > 5.0)
+                                     
+                                     if is_streaming_trigger or is_batch_end or is_stall_trigger:
+                                         reason_str = "Streaming"
+                                         if is_batch_end: reason_str = "Batch-End"
+                                         if is_stall_trigger: reason_str = "Stall-Timeout"
+                                         
+                                         # Only log streaming/batch-end as INFO. Stall as DEBUG/INFO if actually needed.
+                                         if is_stall_trigger:
+                                              logger.info(f"Sync: Stall Trigger (>5.0s). Requesting next batch...")
+                                         else:
+                                              logger.info(f"Sync: Triggering next batch ({reason_str})...")
+                                              
                                          await self.send_getblocks(writer)
                                          
                                          # Reset triggers
