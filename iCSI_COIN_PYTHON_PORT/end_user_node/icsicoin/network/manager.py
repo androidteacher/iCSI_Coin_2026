@@ -616,18 +616,11 @@ class NetworkManager:
                             self.last_block_received_time = time.time()
 
                             # Process via ChainManager
-                            # Process via ChainManager
-                            # Offload CPU-bound validation to thread to prevent blocking the event loop
-                            loop = asyncio.get_running_loop()
-                            t0 = time.time()
-                            # Fix: Unpack tuple (success, reason)
-                            success, reason = await loop.run_in_executor(None, self.chain_manager.process_block, block)
-                            dt = time.time() - t0
-                            if dt > 0.5:
-                                logger.warning(f"SLOW BLOCK PROCESS: {b_hash[:16]} took {dt:.2f}s")
+                            # DEADLOCK FIX: Run in main thread to avoid SQLite threading issues
+                            # (SQLite objects created in main thread cannot be shared with executor)
+                            success, reason = self.chain_manager.process_block(block)
                             
                             if success:
-                                # Remove received transactions from mempool
                                 # Remove received transactions from mempool
                                 try:
                                     for tx in block.vtx:
@@ -646,19 +639,18 @@ class NetworkManager:
                                         current_peer_height = self.peer_stats.get(addr, {}).get('height', 0)
                                         if new_height > current_peer_height:
                                             self.peer_stats.setdefault(addr, {})['height'] = new_height
-                                            # Optional: Log rarely to avoid spam, or just rely on 'Accepted' logs
-                                            # logger.debug(f"Updated peer {addr} height to {new_height}")
                                 except Exception as e:
                                     logger.warning(f"Failed to update peer height stats: {e}")
 
                                 # LOW_DELAY SYNC FIX:
-                                # We request more blocks if:
-                                # 1. We completed a batch check (500 blocks) to keep pipeline full without SPAMMING (DoS protection).
-                                # 2. It's been >2.0s since we last asked (handles "tail" of chain or stalls).
-                                # The old % 10 check caused 200 requests/batch -> Ban.
-                                best_info = self.block_index.get_best_block()
-                                if best_info and ((best_info['height'] % 500) == 0 or (time.time() - self.last_getblocks_time > 2.0)):
-                                     await self.send_getblocks(writer)
+                                # We request more blocks if the peer has more blocks than we do.
+                                # logic: if peer_height > new_height, keep asking.
+                                # Only ask if we haven't asked recently (> 0.5s) to avoid flooding if processing is super fast.
+                                peer_height = self.peer_stats.get(addr, {}).get('height', 0)
+                                if best_info and peer_height > new_height:
+                                     # Debounce slightly
+                                     if time.time() - self.last_getblocks_time > 0.1:
+                                         await self.send_getblocks(writer)
 
                                 # Relay logic (simple flood)
                                 inv_msg = {
