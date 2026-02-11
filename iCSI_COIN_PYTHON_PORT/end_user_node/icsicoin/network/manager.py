@@ -645,11 +645,16 @@ class NetworkManager:
                                 # LOW_DELAY SYNC FIX:
                                 # We request more blocks if the peer has more blocks than we do.
                                 # logic: if peer_height > new_height, keep asking.
-                                # Only ask if we haven't asked recently (> 0.5s) to avoid flooding if processing is super fast.
+                                # Use a combination of streaming (every 100 blocks) and timeout (stall recovery)
                                 peer_height = self.peer_stats.get(addr, {}).get('height', 0)
                                 if best_info and peer_height > new_height:
-                                     # Debounce slightly
-                                     if time.time() - self.last_getblocks_time > 0.1:
+                                     # Streaming Trigger: Every 100th block (less spammy), ask for more to keep pipeline full
+                                     is_streaming_trigger = (new_height % 100) == 0
+                                     
+                                     # Stall Trigger: If we haven't asked in > 1.0s, ask again
+                                     is_stall_trigger = (time.time() - self.last_getblocks_time > 1.0)
+                                     
+                                     if is_streaming_trigger or is_stall_trigger:
                                          await self.send_getblocks(writer)
 
                                 # Relay logic (simple flood)
@@ -863,6 +868,10 @@ class NetworkManager:
         
         # Temp var to store the actual listening port if provided
         remote_listening_port = addr[1]
+        
+        # Initialize variables to prevent UnboundLocalError if parsing fails
+        remote_height = 0
+        remote_agent = "Unknown"
 
         try:
             # 1. Expect Version Message
@@ -1615,7 +1624,7 @@ class NetworkManager:
                 except Exception as e:
                     logger.error(f"Failed to parse Version from {addr}: {e}")
 
-                self.log_peer_event(addr, "RECV", "VERSION", "")
+                self.log_peer_event(addr, "RECV", "VERSION", f"Handshake initiated (Port {remote_listening_port if 'remote_listening_port' in locals() else '?'}, Height {remote_height})")
                 
                 # Send Verack
                 writer.write(VerackMessage().serialize())
