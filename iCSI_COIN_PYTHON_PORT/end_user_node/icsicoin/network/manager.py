@@ -300,13 +300,19 @@ class NetworkManager:
                 # Read Header
                 header_data = await reader.readexactly(24)
                 if not header_data: break
-                # logger.debug(f"Raw Header from {addr}: {binascii.hexlify(header_data)}")
+                # UNCOMMENTED FOR DEBUGGING SYNC ISSUES
+                logger.debug(f"Raw Header from {addr}: {binascii.hexlify(header_data)}")
                 
                 magic, command, length, checksum = Message.parse_header(header_data)
                 
                 # Read Payload
                 if length > 0:
-                     payload = await reader.readexactly(length)
+                     logger.debug(f"Reading payload of size {length} from {addr}")
+                     try:
+                         payload = await reader.readexactly(length)
+                     except asyncio.IncompleteReadError as e:
+                         logger.error(f"Incomplete Read from {addr}: Expected {length}, got {len(e.partial)}")
+                         break
                 else:
                      payload = b''
                 
@@ -558,7 +564,13 @@ class NetworkManager:
 
                 elif command == 'block':
                     try:
-                        data = json.loads(payload.decode('utf-8'))
+                        try:
+                            # Try decoding JSON
+                            data = json.loads(payload.decode('utf-8'))
+                        except json.JSONDecodeError as decode_err:
+                            logger.error(f"BLOCK DECODE ERROR: Failed to parse JSON. Raw first 50 chars: {payload[:50]}")
+                            # Try binary fallback or just fail
+                            raise decode_err
                         block_hex = data.get('payload')
                         if block_hex:
                             block_bytes = binascii.unhexlify(block_hex)
