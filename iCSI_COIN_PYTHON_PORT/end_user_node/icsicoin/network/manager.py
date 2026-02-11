@@ -860,7 +860,9 @@ class NetworkManager:
                     self.peer_stats[addr]['user_agent'] = remote_agent
                 
                 # 2. Send Version
-                my_version = VersionMessage()
+                best = self.chain_manager.block_index.get_best_block()
+                my_height = best['height'] if best else 0
+                my_version = VersionMessage(addr_from_port=self.port, start_height=my_height)
                 writer.write(my_version.serialize())
                 await writer.drain()
                 self.log_peer_event(addr, "SENT", "VERSION", "")
@@ -1471,7 +1473,12 @@ class NetworkManager:
             # We must advertise our own listening port so the remote node knows how to dial us back.
             # Using external_ip if available, otherwise 127.0.0.1 placeholder
             my_ip = self.external_ip if self.external_ip else '127.0.0.1'
-            version_msg = VersionMessage(addr_from_port=self.port, addr_from_ip=my_ip)
+            
+            # Get current height for accurate handshake
+            best = self.chain_manager.block_index.get_best_block()
+            my_height = best['height'] if best else 0
+            
+            version_msg = VersionMessage(addr_from_port=self.port, addr_from_ip=my_ip, start_height=my_height)
             writer.write(version_msg.serialize())
             await writer.drain()
             logger.info(f"Sent VERSION to {addr}")
