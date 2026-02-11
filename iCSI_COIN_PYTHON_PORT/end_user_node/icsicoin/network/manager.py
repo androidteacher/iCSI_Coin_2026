@@ -16,6 +16,7 @@ from icsicoin.consensus.validation import validate_block, validate_transaction
 from icsicoin.core.chain import ChainManager
 from icsicoin.core.mempool import Mempool
 from icsicoin.network.multicast import MulticastBeacon, get_local_ip
+from icsicoin.network.scanner import LANScanner
 import binascii
 
 try:
@@ -88,6 +89,9 @@ class NetworkManager:
             seed_ports=seed_ports,
             on_discover=self._on_multicast_discover
         )
+        
+        self.lan_scanner = LANScanner(port=9333) # Default scanning port
+        self.last_lan_scan = 0
 
         # Beggar system state
         self.beggar_list = {}  # {address: {first_seen, last_seen, source_ip}}
@@ -997,16 +1001,31 @@ class NetworkManager:
         """Background task to discovery and connect to new peers"""
         while self.running:
             # If we have few peers and known peers available
-            if len(self.peers) < 8 and self.known_peers:
-                 # Try to connect to a random known peer
-                 peer = random.choice(list(self.known_peers))
-                 
-                 # Check if already connected
-                 if peer not in self.peers:
-                      logger.info(f"Discovery: Attempting to connect to {peer}")
-                      t = asyncio.create_task(self.connect_to_peer(f"{peer[0]}:{peer[1]}"))
-                      self.tasks.add(t)
-                      t.add_done_callback(self.tasks.discard)
+            if len(self.peers) < 8:
+                if self.known_peers:
+                     # Try to connect to a random known peer
+                     peer = random.choice(list(self.known_peers))
+                     
+                     # Check if already connected
+                     if peer not in self.peers:
+                          logger.info(f"Discovery: Attempting to connect to {peer}")
+                          t = asyncio.create_task(self.connect_to_peer(f"{peer[0]}:{peer[1]}"))
+                          self.tasks.add(t)
+                          t.add_done_callback(self.tasks.discard)
+                else:
+                     # NO KNOWN PEERS AND FEW PEERS CONNECTED
+                     # Trigger LAN Scanner if enough time passed
+                     if time.time() - self.last_lan_scan > 60:
+                         logger.info("Discovery: No peers found. Triggering LAN Subnet Scan...")
+                         self.last_lan_scan = time.time()
+                         
+                         found_hosts = await self.lan_scanner.scan()
+                         for host in found_hosts:
+                             target = f"{host}:9333"
+                             logger.info(f"Discovery: Auto-Connecting to scanned peer {target}")
+                             t = asyncio.create_task(self.connect_to_peer(target))
+                             self.tasks.add(t)
+                             t.add_done_callback(self.tasks.discard)
             
             await asyncio.sleep(10)
 

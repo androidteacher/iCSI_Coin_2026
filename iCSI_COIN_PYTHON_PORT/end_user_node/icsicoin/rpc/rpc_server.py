@@ -232,6 +232,25 @@ class RPCServer:
             # Let's add 'get_balance' to ChainStateDB/Manager later.
             # For now, return "Not Implemented" or 0.
             result = 0 
+            
+        elif method == 'addnode':
+             params = data.get('params', [])
+             if not params:
+                 return web.json_response({"result": None, "error": "Missing node address (usage: addnode <ip>:<port>)", "id": req_id})
+             
+             target = params[0]
+             try:
+                 if ':' in target:
+                     ip, port_str = target.split(':')
+                     port = int(port_str)
+                 else:
+                      return web.json_response({"result": None, "error": "Invalid format. Use <ip>:<port>", "id": req_id})
+                 
+                 # Attempt connection (fire and forget task)
+                 asyncio.create_task(self.network_manager.connect_to_peer(ip, port))
+                 result = f"Attempting connection to {ip}:{port}"
+             except Exception as e:
+                 error = {"code": -1, "message": f"Failed to add node: {e}"}
 
 
         response = {
