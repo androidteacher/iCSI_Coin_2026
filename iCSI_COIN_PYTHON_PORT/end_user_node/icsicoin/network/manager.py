@@ -103,6 +103,7 @@ class NetworkManager:
         # Sync Optimization: Single Download Peer
         self.sync_peer = None # (ip, port) of the current primary sync partner
         self.last_sync_peer_switch = 0
+        self.last_block_received_time = 0 # Initialize to 0
 
     def configure_stun(self, ip, port):
         self.stun_ip = ip
@@ -145,6 +146,38 @@ class NetworkManager:
                 buffer.write(f"[{p_str}] {entry}\n")
         
         return buffer.getvalue()
+
+    def is_initial_block_download(self):
+        """
+        Returns true if we are currently in Initial Block Download mode.
+        Heuristic: 
+        1. If we have no peers, we are not downloading (technically).
+        2. If the best peer's height is significantly > our height (e.g. 100 blocks), we are in IBD.
+        3. If our best block is very old (24h+), we are in IBD (unless we are at genesis).
+        """
+        if not self.peers:
+            return False
+            
+        best_peer_height = 0
+        for stats in self.peer_stats.values():
+            h = stats.get('height', 0)
+            if h > best_peer_height:
+                best_peer_height = h
+                
+        my_height = 0
+        best_block = self.block_index.get_best_block()
+        if best_block:
+            my_height = best_block['height']
+            
+        # If we are effectively at 0 (genesis), assume IBD if anyone has blocks
+        if my_height <= 1 and best_peer_height > 10:
+            return True
+            
+        # Standard check: 100 blocks behind
+        if best_peer_height - my_height > 100:
+            return True
+            
+        return False
 
     async def start(self):
         self.running = True
@@ -554,14 +587,8 @@ class NetworkManager:
                         # IBD OPTIMIZATION:
                         # If we are syncing (far behind), ONLY process INVs from our chosen Sync Peer.
                         # This prevents CPU spikes from processing 10x duplicate INVs from all 10 peers.
-                        if self.is_initial_block_download() and addr != self.sync_peer:
-                            # logger.debug(f"Ignoring INV from {addr} (Not our Sync Peer {self.sync_peer})")
-                            return
-                        
-                        # IBD OPTIMIZATION:
-                        # If we are syncing (far behind), ONLY process INVs from our chosen Sync Peer.
-                        # This prevents CPU spikes from processing 10x duplicate INVs from all 10 peers.
-                        if self.is_initial_block_download() and addr != self.sync_peer:
+                        # FIX: Only enforce this if we actually HAVE a sync peer selected.
+                        if self.is_initial_block_download() and self.sync_peer and addr != self.sync_peer:
                             # logger.debug(f"Ignoring INV from {addr} (Not our Sync Peer {self.sync_peer})")
                             return
 
