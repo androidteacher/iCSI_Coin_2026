@@ -740,8 +740,9 @@ class NetworkManager:
                             inv_items = []
                             # Lock to prevent race condition during sync
                             # (Optional, but good practice)
-                            # Changed from 500 to 2000 to speed up initial sync
-                            end_height = min(current_height, start_height + 2000)
+                            # Limit to 500 blocks per batch (Standard) to prevent huge getdata bursts
+                            # Changed back from 2000 to 500
+                            end_height = min(current_height, start_height + 500)
                             for h_idx in range(start_height + 1, end_height + 1):
                                 b_hash = self.chain_manager.get_block_hash(h_idx)
                                 if b_hash:
