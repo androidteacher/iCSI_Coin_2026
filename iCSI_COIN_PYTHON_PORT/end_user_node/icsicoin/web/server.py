@@ -1,5 +1,6 @@
 import logging
 import asyncio
+import time
 import aiohttp
 from aiohttp import web
 import os
@@ -67,6 +68,7 @@ class WebServer:
         self.app.router.add_route('*', '/api/peers/delete', self.handle_delete_peer)
         self.app.router.add_route('*', '/api/reset', self.handle_reset)
         self.app.router.add_route('*', '/api/logs', self.handle_get_logs)
+        self.app.router.add_route('*', '/api/logs/debug', self.handle_get_debug_logs)
         self.app.router.add_route('*', '/api/test/send', self.handle_send_test)
         self.app.router.add_route('*', '/api/stats', self.handle_get_stats)
         self.app.router.add_route('*', '/api/stun/test', self.handle_test_stun)
@@ -922,21 +924,34 @@ class WebServer:
         return web.json_response({'status': 'ok'})
         
     async def handle_get_logs(self, request):
-        ip = request.query.get('ip')
-        # port = int(request.query.get('port')) # We ignore specific port now and merge all for this IP
+        peer_ip = request.query.get('ip')
+        peer_port = request.query.get('port')
         
-        merged_logs = []
-        for (peer_ip, peer_port), logs in self.network_manager.peer_logs.items():
-            if peer_ip == ip:
-                merged_logs.extend(logs)
-                
-        # Sort logs by timestamp string [HH:MM:SS]
-        # This is a simple string sort, which works given 24h format, 
-        # but might mix days if logs span midnight. 
-        # Given the 50-entry ring buffer and short lifespans, this is acceptable.
-        merged_logs.sort()
-        
-        return web.json_response({'logs': merged_logs})
+        if not peer_ip or not peer_port:
+             return web.json_response({'error': 'Missing ip/port'}, status=400)
+             
+        try:
+            target = (peer_ip, int(peer_port))
+            logs = self.network_manager.peer_logs.get(target, [])
+            return web.json_response({'logs': logs})
+        except Exception as e:
+             return web.json_response({'error': str(e)}, status=500)
+
+    async def handle_get_debug_logs(self, request):
+        """Download all peer logs as a text file."""
+        try:
+            content = await self.network_manager.get_all_peer_logs()
+            filename = f"icsi_debug_logs_{int(time.time())}.txt"
+            
+            return web.Response(
+                body=content,
+                content_type='text/plain',
+                headers={
+                    'Content-Disposition': f'attachment; filename="{filename}"'
+                }
+            )
+        except Exception as e:
+            return web.Response(text=f"Error generating logs: {str(e)}", status=500)
 
     async def handle_send_test(self, request):
         data = await self._get_json(request)

@@ -1,9 +1,9 @@
 import asyncio
 import logging
-print("DEBUG: MANAGER.PY LOADED WITH CHANGES v10-client-fix")
 import json
 import time
 import os
+import io
 import random
 from icsicoin.network.messages import (
     VersionMessage, VerackMessage, Message, MAGIC_VALUE, GetAddrMessage, AddrMessage,
@@ -119,6 +119,27 @@ class NetworkManager:
         # Keep ring buffer of last 50 entries
         if len(self.peer_logs[peer]) > 50:
              self.peer_logs[peer].pop(0)
+
+    async def get_all_peer_logs(self):
+        """Aggregate all peer logs into a single string."""
+        buffer = io.StringIO()
+        header = f"--- iCSI Coin Node Debug Logs ---\nGenerated: {time.ctime()}\n\n"
+        buffer.write(header)
+        
+        # Sort peers by last log time (most recent first)
+        sorted_peers = sorted(self.peer_logs.keys(), key=lambda p: self.peer_last_log_time.get(p, 0), reverse=True)
+        
+        for peer in sorted_peers:
+            logs = self.peer_logs.get(peer, [])
+            if not logs: continue
+            
+            p_str = f"{peer[0]}:{peer[1]}" if isinstance(peer, tuple) else str(peer)
+            buffer.write(f"\n{'='*60}\nPEER: {p_str}\n{'='*60}\n")
+            
+            for entry in logs:
+                buffer.write(f"[{p_str}] {entry}\n")
+                
+        return buffer.getvalue()
 
     async def start(self):
         self.running = True
