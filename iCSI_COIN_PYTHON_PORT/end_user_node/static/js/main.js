@@ -98,7 +98,9 @@ async function connectToNetwork() {
     const finalAddress = `${ipInput}:${portInput}`;
 
     const btn = document.getElementById('connectBtn');
+    const originalText = btn.innerText;
     btn.innerText = "CONNECTING...";
+    btn.disabled = true;
 
     try {
         const res = await fetch(API.connect, {
@@ -107,15 +109,29 @@ async function connectToNetwork() {
             body: JSON.stringify({ seed_ip: finalAddress })
         });
         const data = await res.json();
+
         if (res.ok) {
             btn.innerText = `INITIATED (${data.connected_count})`;
-            // Status update handled by polling
+            setTimeout(() => {
+                btn.innerText = originalText;
+                btn.disabled = false;
+            }, 3000);
+        } else {
+            alert("Connection Failed: " + (data.error || res.statusText));
+            btn.innerText = "FAILED";
+            setTimeout(() => {
+                btn.innerText = originalText;
+                btn.disabled = false;
+            }, 3000);
         }
     } catch (e) {
-        alert("Connection Failed");
-        btn.innerText = "[ ADD NODE ]";
+        alert("Connection Error: " + e);
+        btn.innerText = "ERROR";
+        setTimeout(() => {
+            btn.innerText = originalText;
+            btn.disabled = false;
+        }, 3000);
     }
-
 }
 
 async function checkDiscovery() {
