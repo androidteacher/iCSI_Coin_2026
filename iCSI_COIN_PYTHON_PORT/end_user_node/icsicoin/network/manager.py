@@ -733,14 +733,20 @@ class NetworkManager:
                                     # Debounce: Don't spam getblocks if we just asked
                                     stats = self.peer_stats.get(addr, {})
                                     last_req = stats.get('last_ancestry_req', 0)
-                                    if time.time() - last_req > 5.0:
+                                    diff = time.time() - last_req
+                                    
+                                    # TEMP DEBUG LOG TO DIAGNOSE
+                                    logger.info(f"DEBUG: Orphan check for {addr}. Reason='{reason}', LastReq={last_req}, Diff={diff:.2f}")
+
+                                    if diff > 5.0:
                                         logger.info(f"Orphan detected from {addr}. Requesting ancestor chain to bridge fork...")
                                         await self.send_getblocks(writer)
                                         # Update stats timestamp
                                         if addr in self.peer_stats:
                                             self.peer_stats[addr]['last_ancestry_req'] = time.time()
                                     else:
-                                        logger.debug(f"Orphan from {addr}, but ancestry request sent recently. Skipping.")
+                                        # Keep this as INFO for now to see it in user logs
+                                        logger.info(f"Orphan from {addr} debounced (sent {diff:.2f}s ago). Skipping.")
                                 else:
                                     pass # Invalid or known
                                 
