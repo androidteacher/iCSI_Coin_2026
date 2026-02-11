@@ -1,0 +1,395 @@
+--- iCSI Coin Node Debug Logs ---
+Generated: Wed Feb 11 14:36:31 2026
+
+
+============================================================
+PEER: 192.168.228.69:9341
+============================================================
+[192.168.228.69:9341] [14:33:15] [CONSENSUS] IGNORED: Block bec6f7b23b1d53de... Already known
+[192.168.228.69:9341] [14:33:15] [RECV] BLOCK: Hash 6f090f111d3b4a15...
+[192.168.228.69:9341] [14:33:15] [CONSENSUS] IGNORED: Block 6f090f111d3b4a15... Already known
+[192.168.228.69:9341] [14:33:15] [RECV] BLOCK: Hash 57573fdf8ec9f3b1...
+[192.168.228.69:9341] [14:33:15] [CONSENSUS] IGNORED: Block 57573fdf8ec9f3b1... Already known
+[192.168.228.69:9341] [14:33:15] [RECV] BLOCK: Hash 7d6e06abd9465304...
+[192.168.228.69:9341] [14:33:15] [CONSENSUS] IGNORED: Block 7d6e06abd9465304... Already known
+[192.168.228.69:9341] [14:33:15] [RECV] BLOCK: Hash b273310d7bfbb6da...
+[192.168.228.69:9341] [14:33:15] [CONSENSUS] IGNORED: Block b273310d7bfbb6da... Already known
+[192.168.228.69:9341] [14:33:15] [RECV] BLOCK: Hash d2618c137bf46a90...
+[192.168.228.69:9341] [14:33:15] [CONSENSUS] IGNORED: Block d2618c137bf46a90... Already known
+[192.168.228.69:9341] [14:33:15] [RECV] BLOCK: Hash 5c5b7ae691c8db7d...
+[192.168.228.69:9341] [14:33:15] [CONSENSUS] IGNORED: Block 5c5b7ae691c8db7d... Already known
+[192.168.228.69:9341] [14:33:15] [RECV] BLOCK: Hash ae1fba7577879a40...
+[192.168.228.69:9341] [14:33:15] [CONSENSUS] IGNORED: Block ae1fba7577879a40... Already known
+[192.168.228.69:9341] [14:33:15] [RECV] BLOCK: Hash 93fc2a65d65891f5...
+[192.168.228.69:9341] [14:33:15] [CONSENSUS] IGNORED: Block 93fc2a65d65891f5... Already known
+[192.168.228.69:9341] [14:33:17] [RECV] ADDR: Received 4 nodes
+[192.168.228.69:9341] [14:33:17] [RECV] ADDR: Received 4 nodes
+[192.168.228.69:9341] [14:33:19] [RECV] ADDR: Received 4 nodes
+[192.168.228.69:9341] [14:33:19] [RECV] ADDR: Received 4 nodes
+[192.168.228.69:9341] [14:33:24] [RECV] ADDR: Received 4 nodes
+[192.168.228.69:9341] [14:33:24] [RECV] ADDR: Received 4 nodes
+[192.168.228.69:9341] [14:33:31] [RECV] ADDR: Received 4 nodes
+[192.168.228.69:9341] [14:33:31] [RECV] ADDR: Received 4 nodes
+[192.168.228.69:9341] [14:33:38] [RECV] ADDR: Received 4 nodes
+[192.168.228.69:9341] [14:33:38] [RECV] ADDR: Received 4 nodes
+[192.168.228.69:9341] [14:33:44] [RECV] ADDR: Received 4 nodes
+[192.168.228.69:9341] [14:33:44] [RECV] ADDR: Received 4 nodes
+[192.168.228.69:9341] [14:33:52] [RECV] ADDR: Received 4 nodes
+[192.168.228.69:9341] [14:33:52] [RECV] ADDR: Received 4 nodes
+[192.168.228.69:9341] [14:33:57] [RECV] ADDR: Received 4 nodes
+[192.168.228.69:9341] [14:33:57] [RECV] ADDR: Received 4 nodes
+[192.168.228.69:9341] [14:34:14] [SENT] GETDATA: Requested 500 blocks/txs
+[192.168.228.69:9341] [14:34:14] [RECV] BLOCK: Hash db413b60eaa88ddb...
+[192.168.228.69:9341] [14:34:14] [CONSENSUS] ACCEPTED: Block db413b60eaa88ddb... added to chain
+[192.168.228.69:9341] [14:36:24] [USER] TEST: Manual Test Initiated
+[192.168.228.69:9341] [14:36:24] [OUT] CONNECT: Attempting connection...
+[192.168.228.69:9341] [14:36:24] [OUT] CONNECT: TCP Connection Established
+[192.168.228.69:9341] [14:36:24] [SENT] VERSION: Handshake initiated
+[192.168.228.69:9341] [14:36:24] [RECV] VERSION: Handshake initiated (Port ?, Height 10870)
+[192.168.228.69:9341] [14:36:24] [SENT] VERACK: 
+[192.168.228.69:9341] [14:36:24] [RECV] VERACK: Handshake COMPLETE
+[192.168.228.69:9341] [14:36:24] [SENT] GETADDR: Initiating discovery
+[192.168.228.69:9341] [14:36:24] [RECV] GETADDR: Peer requested node list
+[192.168.228.69:9341] [14:36:24] [SENT] ADDR: Sent nodes: ['192.168.229.31:9341', '192.168.228.204:9341', '192.168.229.149:9341', '192.168.228.27:9341', '192.168.228.23:9341', '192.168.228.158:9341', '192.168.228.69:9341']
+[192.168.228.69:9341] [14:36:24] [RECV] ADDR: Received 6 nodes
+[192.168.228.69:9341] [14:36:24] [SENT] GETDATA: Requested 500 blocks/txs
+[192.168.228.69:9341] [14:36:24] [RECV] BLOCK: Hash ea001f1539943462...
+[192.168.228.69:9341] [14:36:24] [CONSENSUS] ACCEPTED: Block ea001f1539943462... added to chain
+
+============================================================
+PEER: 192.168.231.32:9334
+============================================================
+[192.168.231.32:9334] [14:36:14] [USER] TEST: Manual Test Initiated
+[192.168.231.32:9334] [14:36:19] [USER] TEST: Manual Test Initiated
+
+============================================================
+PEER: 192.168.228.158:9341
+============================================================
+[192.168.228.158:9341] [14:36:15] [OUT] CONNECT: Attempting connection...
+[192.168.228.158:9341] [14:36:15] [OUT] CONNECT: TCP Connection Established
+[192.168.228.158:9341] [14:36:15] [SENT] VERSION: Handshake initiated
+[192.168.228.158:9341] [14:36:15] [RECV] VERSION: Handshake initiated (Port ?, Height 10365)
+[192.168.228.158:9341] [14:36:15] [SENT] VERACK: 
+[192.168.228.158:9341] [14:36:15] [RECV] VERACK: Handshake COMPLETE
+[192.168.228.158:9341] [14:36:15] [SENT] GETADDR: Initiating discovery
+[192.168.228.158:9341] [14:36:15] [RECV] VERACK: Handshake COMPLETE
+[192.168.228.158:9341] [14:36:15] [SENT] GETADDR: Initiating discovery
+[192.168.228.158:9341] [14:36:15] [RECV] GETADDR: Peer requested node list
+[192.168.228.158:9341] [14:36:15] [SENT] ADDR: Sent nodes: ['192.168.229.31:9341', '192.168.228.204:9341', '192.168.229.149:9341', '192.168.228.27:9341', '192.168.228.23:9341', '192.168.228.158:9341', '192.168.228.69:9341']
+[192.168.228.158:9341] [14:36:15] [RECV] GETADDR: Peer requested node list
+[192.168.228.158:9341] [14:36:15] [SENT] ADDR: Sent nodes: ['192.168.229.31:9341', '192.168.228.204:9341', '192.168.229.149:9341', '192.168.228.27:9341', '192.168.228.23:9341', '192.168.228.158:9341', '192.168.228.69:9341']
+[192.168.228.158:9341] [14:36:15] [RECV] ADDR: Received 7 nodes
+[192.168.228.158:9341] [14:36:15] [RECV] ADDR: Received 7 nodes
+
+============================================================
+PEER: 192.168.228.158:45592
+============================================================
+[192.168.228.158:45592] [14:36:15] [IN] CONNECTION: Established incoming connection
+[192.168.228.158:45592] [14:36:15] [RECV] VERSION: Handshake initiated (Port 9341, Height 10365)
+[192.168.228.158:45592] [14:36:15] [SENT] VERSION: 
+[192.168.228.158:45592] [14:36:15] [SENT] VERACK: 
+
+============================================================
+PEER: 192.168.228.158:45586
+============================================================
+[192.168.228.158:45586] [14:36:15] [IN] CONNECTION: Established incoming connection
+[192.168.228.158:45586] [14:36:15] [XXX] DISCONNECT: Connection closed
+
+============================================================
+PEER: 192.168.229.31:9341
+============================================================
+[192.168.229.31:9341] [14:36:09] [RECV] VERACK: Handshake COMPLETE
+[192.168.229.31:9341] [14:36:09] [SENT] GETADDR: Initiating discovery
+[192.168.229.31:9341] [14:36:09] [RECV] GETADDR: Peer requested node list
+[192.168.229.31:9341] [14:36:09] [SENT] ADDR: Sent nodes: ['192.168.229.31:9341', '192.168.228.204:9341', '192.168.229.149:9341', '192.168.228.27:9341', '192.168.228.23:9341', '192.168.228.69:9341']
+[192.168.229.31:9341] [14:36:09] [RECV] ADDR: Received 6 nodes
+[192.168.229.31:9341] [14:36:09] [SENT] GETDATA: Requested 500 blocks/txs
+[192.168.229.31:9341] [14:36:09] [RECV] BLOCK: Hash f7b90e98fe90c7b5...
+[192.168.229.31:9341] [14:36:09] [CONSENSUS] ACCEPTED: Block f7b90e98fe90c7b5... added to chain
+
+============================================================
+PEER: 192.168.229.31:33732
+============================================================
+[192.168.229.31:33732] [14:36:09] [IN] CONNECTION: Established incoming connection
+[192.168.229.31:33732] [14:36:09] [RECV] VERSION: Handshake initiated (Port 9341, Height 10869)
+[192.168.229.31:33732] [14:36:09] [SENT] VERSION: 
+[192.168.229.31:33732] [14:36:09] [SENT] VERACK: 
+
+============================================================
+PEER: 192.168.229.31:33718
+============================================================
+[192.168.229.31:33718] [14:36:09] [IN] CONNECTION: Established incoming connection
+[192.168.229.31:33718] [14:36:09] [XXX] DISCONNECT: Connection closed
+
+============================================================
+PEER: 192.168.229.31:36964
+============================================================
+[192.168.229.31:36964] [14:36:02] [IN] CONNECTION: Established incoming connection
+[192.168.229.31:36964] [14:36:02] [XXX] DISCONNECT: Connection closed
+
+============================================================
+PEER: 192.168.229.149:9341
+============================================================
+[192.168.229.149:9341] [14:35:45] [OUT] CONNECT: Attempting connection...
+[192.168.229.149:9341] [14:35:45] [OUT] CONNECT: TCP Connection Established
+[192.168.229.149:9341] [14:35:45] [SENT] VERSION: Handshake initiated
+[192.168.229.149:9341] [14:35:45] [RECV] VERSION: Handshake initiated (Port ?, Height 10869)
+[192.168.229.149:9341] [14:35:45] [SENT] VERACK: 
+[192.168.229.149:9341] [14:35:45] [RECV] VERACK: Handshake COMPLETE
+[192.168.229.149:9341] [14:35:45] [SENT] GETADDR: Initiating discovery
+[192.168.229.149:9341] [14:35:45] [RECV] GETADDR: Peer requested node list
+[192.168.229.149:9341] [14:35:45] [SENT] ADDR: Sent nodes: ['192.168.228.204:9341', '192.168.229.149:9341', '192.168.228.27:9341', '192.168.228.23:9341', '192.168.228.69:9341']
+[192.168.229.149:9341] [14:35:45] [RECV] ADDR: Received 4 nodes
+[192.168.229.149:9341] [14:35:45] [SENT] GETDATA: Requested 500 blocks/txs
+[192.168.229.149:9341] [14:35:45] [RECV] BLOCK: Hash fd313affe4e66505...
+[192.168.229.149:9341] [14:35:45] [CONSENSUS] ACCEPTED: Block fd313affe4e66505... added to chain
+
+============================================================
+PEER: 192.168.228.158:37240
+============================================================
+[192.168.228.158:37240] [14:35:28] [IN] CONNECTION: Established incoming connection
+[192.168.228.158:37240] [14:35:28] [XXX] DISCONNECT: Connection closed
+
+============================================================
+PEER: 192.168.228.158:55652
+============================================================
+[192.168.228.158:55652] [14:35:05] [IN] CONNECTION: Established incoming connection
+[192.168.228.158:55652] [14:35:05] [XXX] DISCONNECT: Connection closed
+
+============================================================
+PEER: 192.168.229.31:37330
+============================================================
+[192.168.229.31:37330] [14:35:02] [IN] CONNECTION: Established incoming connection
+[192.168.229.31:37330] [14:35:02] [XXX] DISCONNECT: Connection closed
+
+============================================================
+PEER: 192.168.229.149:52884
+============================================================
+[192.168.229.149:52884] [14:34:51] [IN] CONNECTION: Established incoming connection
+[192.168.229.149:52884] [14:34:51] [XXX] DISCONNECT: Connection closed
+
+============================================================
+PEER: 192.168.229.31:38440
+============================================================
+[192.168.229.31:38440] [14:34:02] [IN] CONNECTION: Established incoming connection
+[192.168.229.31:38440] [14:34:02] [XXX] DISCONNECT: Connection closed
+
+============================================================
+PEER: 192.168.229.31:38424
+============================================================
+[192.168.229.31:38424] [14:33:57] [IN] CONNECTION: Established incoming connection
+[192.168.229.31:38424] [14:33:57] [XXX] DISCONNECT: Connection closed
+
+============================================================
+PEER: 192.168.228.204:9341
+============================================================
+[192.168.228.204:9341] [14:33:16] [CONSENSUS] ACCEPTED: Block e4a60fd55deb2943... added to chain
+[192.168.228.204:9341] [14:33:16] [RECV] BLOCK: Hash 80629ec30dec9d27...
+[192.168.228.204:9341] [14:33:16] [CONSENSUS] ACCEPTED: Block 80629ec30dec9d27... added to chain
+[192.168.228.204:9341] [14:33:16] [RECV] BLOCK: Hash 47ba48f19e5c16e2...
+[192.168.228.204:9341] [14:33:16] [CONSENSUS] ACCEPTED: Block 47ba48f19e5c16e2... added to chain
+[192.168.228.204:9341] [14:33:16] [RECV] BLOCK: Hash ca5275f2ce74ec35...
+[192.168.228.204:9341] [14:33:16] [CONSENSUS] ACCEPTED: Block ca5275f2ce74ec35... added to chain
+[192.168.228.204:9341] [14:33:16] [RECV] BLOCK: Hash 9039f862156db54e...
+[192.168.228.204:9341] [14:33:16] [CONSENSUS] ACCEPTED: Block 9039f862156db54e... added to chain
+[192.168.228.204:9341] [14:33:16] [RECV] BLOCK: Hash fdaa6fd514fd17ee...
+[192.168.228.204:9341] [14:33:16] [CONSENSUS] ACCEPTED: Block fdaa6fd514fd17ee... added to chain
+[192.168.228.204:9341] [14:33:16] [RECV] BLOCK: Hash e28987ff6b65a3a8...
+[192.168.228.204:9341] [14:33:16] [CONSENSUS] ACCEPTED: Block e28987ff6b65a3a8... added to chain
+[192.168.228.204:9341] [14:33:16] [RECV] BLOCK: Hash 7202927f4376cec0...
+[192.168.228.204:9341] [14:33:16] [CONSENSUS] ACCEPTED: Block 7202927f4376cec0... added to chain
+[192.168.228.204:9341] [14:33:16] [RECV] BLOCK: Hash 412e98b656bf987d...
+[192.168.228.204:9341] [14:33:16] [CONSENSUS] ACCEPTED: Block 412e98b656bf987d... added to chain
+[192.168.228.204:9341] [14:33:16] [RECV] BLOCK: Hash b616e5adc13ec56a...
+[192.168.228.204:9341] [14:33:16] [CONSENSUS] ACCEPTED: Block b616e5adc13ec56a... added to chain
+[192.168.228.204:9341] [14:33:16] [RECV] BLOCK: Hash 955672154cd07708...
+[192.168.228.204:9341] [14:33:16] [CONSENSUS] ACCEPTED: Block 955672154cd07708... added to chain
+[192.168.228.204:9341] [14:33:16] [RECV] BLOCK: Hash 04faaf9a6ecdf9c8...
+[192.168.228.204:9341] [14:33:16] [CONSENSUS] ACCEPTED: Block 04faaf9a6ecdf9c8... added to chain
+[192.168.228.204:9341] [14:33:16] [RECV] BLOCK: Hash e87ac3a641068f54...
+[192.168.228.204:9341] [14:33:16] [CONSENSUS] ACCEPTED: Block e87ac3a641068f54... added to chain
+[192.168.228.204:9341] [14:33:16] [RECV] BLOCK: Hash 1807337654d264a1...
+[192.168.228.204:9341] [14:33:16] [CONSENSUS] ACCEPTED: Block 1807337654d264a1... added to chain
+[192.168.228.204:9341] [14:33:16] [RECV] BLOCK: Hash c08cdc0ad6b98ff7...
+[192.168.228.204:9341] [14:33:16] [CONSENSUS] ACCEPTED: Block c08cdc0ad6b98ff7... added to chain
+[192.168.228.204:9341] [14:33:16] [RECV] BLOCK: Hash e8d83b37ee2bf120...
+[192.168.228.204:9341] [14:33:16] [CONSENSUS] ACCEPTED: Block e8d83b37ee2bf120... added to chain
+[192.168.228.204:9341] [14:33:16] [RECV] BLOCK: Hash 2ac19c6427ebabe4...
+[192.168.228.204:9341] [14:33:16] [CONSENSUS] ACCEPTED: Block 2ac19c6427ebabe4... added to chain
+[192.168.228.204:9341] [14:33:16] [RECV] BLOCK: Hash d18b098b8fd54117...
+[192.168.228.204:9341] [14:33:16] [CONSENSUS] ACCEPTED: Block d18b098b8fd54117... added to chain
+[192.168.228.204:9341] [14:33:16] [RECV] BLOCK: Hash 175ff340a58cd5d8...
+[192.168.228.204:9341] [14:33:16] [CONSENSUS] ACCEPTED: Block 175ff340a58cd5d8... added to chain
+[192.168.228.204:9341] [14:33:16] [RECV] BLOCK: Hash beb8a69f3d69c3a2...
+[192.168.228.204:9341] [14:33:16] [CONSENSUS] ACCEPTED: Block beb8a69f3d69c3a2... added to chain
+[192.168.228.204:9341] [14:33:16] [RECV] BLOCK: Hash a5bcc56ce3caa320...
+[192.168.228.204:9341] [14:33:16] [CONSENSUS] ACCEPTED: Block a5bcc56ce3caa320... added to chain
+[192.168.228.204:9341] [14:33:16] [RECV] BLOCK: Hash b87b22d2dbbfbcd6...
+[192.168.228.204:9341] [14:33:16] [CONSENSUS] ACCEPTED: Block b87b22d2dbbfbcd6... added to chain
+[192.168.228.204:9341] [14:33:18] [RECV] ADDR: Received 75 nodes
+[192.168.228.204:9341] [14:33:24] [RECV] ADDR: Received 75 nodes
+[192.168.228.204:9341] [14:33:31] [RECV] ADDR: Received 75 nodes
+[192.168.228.204:9341] [14:33:38] [RECV] ADDR: Received 75 nodes
+[192.168.228.204:9341] [14:33:44] [RECV] ADDR: Received 75 nodes
+[192.168.228.204:9341] [14:33:52] [RECV] ADDR: Received 75 nodes
+[192.168.228.204:9341] [14:33:57] [RECV] ADDR: Received 75 nodes
+
+============================================================
+PEER: 192.168.228.23:9341
+============================================================
+[192.168.228.23:9341] [14:33:51] [RECV] BLOCK: Hash 0ed5b278f0a47836...
+[192.168.228.23:9341] [14:33:51] [CONSENSUS] IGNORED: Block 0ed5b278f0a47836... Already known
+[192.168.228.23:9341] [14:33:51] [RECV] BLOCK: Hash 100158611751e3ce...
+[192.168.228.23:9341] [14:33:51] [CONSENSUS] IGNORED: Block 100158611751e3ce... Already known
+[192.168.228.23:9341] [14:33:51] [RECV] BLOCK: Hash a782a3dc57d0acad...
+[192.168.228.23:9341] [14:33:51] [CONSENSUS] IGNORED: Block a782a3dc57d0acad... Already known
+[192.168.228.23:9341] [14:33:51] [RECV] BLOCK: Hash ea2c5ee2f1b8ca4c...
+[192.168.228.23:9341] [14:33:51] [CONSENSUS] IGNORED: Block ea2c5ee2f1b8ca4c... Already known
+[192.168.228.23:9341] [14:33:51] [RECV] BLOCK: Hash a13acd79afc40304...
+[192.168.228.23:9341] [14:33:51] [CONSENSUS] IGNORED: Block a13acd79afc40304... Already known
+[192.168.228.23:9341] [14:33:51] [RECV] BLOCK: Hash 59f966c792484319...
+[192.168.228.23:9341] [14:33:51] [CONSENSUS] IGNORED: Block 59f966c792484319... Already known
+[192.168.228.23:9341] [14:33:51] [RECV] BLOCK: Hash 965297acb6ece5ed...
+[192.168.228.23:9341] [14:33:51] [CONSENSUS] IGNORED: Block 965297acb6ece5ed... Already known
+[192.168.228.23:9341] [14:33:51] [RECV] BLOCK: Hash b2cf61ecacf22eb9...
+[192.168.228.23:9341] [14:33:51] [CONSENSUS] IGNORED: Block b2cf61ecacf22eb9... Already known
+[192.168.228.23:9341] [14:33:51] [RECV] BLOCK: Hash 126aaca101c7d810...
+[192.168.228.23:9341] [14:33:51] [CONSENSUS] IGNORED: Block 126aaca101c7d810... Already known
+[192.168.228.23:9341] [14:33:51] [RECV] BLOCK: Hash c7481ce5498a04ab...
+[192.168.228.23:9341] [14:33:51] [CONSENSUS] IGNORED: Block c7481ce5498a04ab... Already known
+[192.168.228.23:9341] [14:33:51] [RECV] BLOCK: Hash 7eb49d01089873fd...
+[192.168.228.23:9341] [14:33:51] [CONSENSUS] IGNORED: Block 7eb49d01089873fd... Already known
+[192.168.228.23:9341] [14:33:51] [RECV] BLOCK: Hash 8b72792f3c02395d...
+[192.168.228.23:9341] [14:33:51] [CONSENSUS] IGNORED: Block 8b72792f3c02395d... Already known
+[192.168.228.23:9341] [14:33:51] [RECV] BLOCK: Hash 9adbf431427a84b7...
+[192.168.228.23:9341] [14:33:51] [CONSENSUS] IGNORED: Block 9adbf431427a84b7... Already known
+[192.168.228.23:9341] [14:33:51] [RECV] BLOCK: Hash 2d0a910bf3a2f5d9...
+[192.168.228.23:9341] [14:33:51] [CONSENSUS] IGNORED: Block 2d0a910bf3a2f5d9... Already known
+[192.168.228.23:9341] [14:33:51] [RECV] BLOCK: Hash 222c0feec9a1e11b...
+[192.168.228.23:9341] [14:33:51] [CONSENSUS] ACCEPTED: Block 222c0feec9a1e11b... added to chain
+[192.168.228.23:9341] [14:33:51] [RECV] BLOCK: Hash 222c0feec9a1e11b...
+[192.168.228.23:9341] [14:33:51] [CONSENSUS] IGNORED: Block 222c0feec9a1e11b... Already known
+[192.168.228.23:9341] [14:33:51] [RECV] BLOCK: Hash 791dc1d4e3992c9f...
+[192.168.228.23:9341] [14:33:51] [CONSENSUS] ACCEPTED: Block 791dc1d4e3992c9f... added to chain
+[192.168.228.23:9341] [14:33:52] [RECV] BLOCK: Hash 791dc1d4e3992c9f...
+[192.168.228.23:9341] [14:33:52] [CONSENSUS] IGNORED: Block 791dc1d4e3992c9f... Already known
+[192.168.228.23:9341] [14:33:52] [RECV] BLOCK: Hash 76d4bb6cc20b0474...
+[192.168.228.23:9341] [14:33:52] [CONSENSUS] ACCEPTED: Block 76d4bb6cc20b0474... added to chain
+[192.168.228.23:9341] [14:33:52] [RECV] BLOCK: Hash 76d4bb6cc20b0474...
+[192.168.228.23:9341] [14:33:52] [CONSENSUS] IGNORED: Block 76d4bb6cc20b0474... Already known
+[192.168.228.23:9341] [14:33:52] [RECV] BLOCK: Hash daf415d9d91ac321...
+[192.168.228.23:9341] [14:33:52] [CONSENSUS] ACCEPTED: Block daf415d9d91ac321... added to chain
+[192.168.228.23:9341] [14:33:52] [RECV] BLOCK: Hash daf415d9d91ac321...
+[192.168.228.23:9341] [14:33:52] [CONSENSUS] IGNORED: Block daf415d9d91ac321... Already known
+[192.168.228.23:9341] [14:33:52] [RECV] BLOCK: Hash 70bbcb60e6cad4b1...
+[192.168.228.23:9341] [14:33:52] [CONSENSUS] ACCEPTED: Block 70bbcb60e6cad4b1... added to chain
+[192.168.228.23:9341] [14:33:52] [RECV] BLOCK: Hash 70bbcb60e6cad4b1...
+[192.168.228.23:9341] [14:33:52] [CONSENSUS] IGNORED: Block 70bbcb60e6cad4b1... Already known
+[192.168.228.23:9341] [14:33:52] [RECV] BLOCK: Hash 5f19ae431fffc30b...
+[192.168.228.23:9341] [14:33:52] [CONSENSUS] ACCEPTED: Block 5f19ae431fffc30b... added to chain
+
+============================================================
+PEER: 192.168.229.149:45346
+============================================================
+[192.168.229.149:45346] [14:33:52] [IN] CONNECTION: Established incoming connection
+[192.168.229.149:45346] [14:33:52] [XXX] DISCONNECT: Connection closed
+
+============================================================
+PEER: 192.168.228.27:9341
+============================================================
+[192.168.228.27:9341] [14:33:46] [RECV] GETDATA: Peer requested 1 items
+[192.168.228.27:9341] [14:33:46] [SENT] BLOCK: Hash e81a00c435856750...
+[192.168.228.27:9341] [14:33:46] [RECV] GETDATA: Peer requested 1 items
+[192.168.228.27:9341] [14:33:46] [SENT] BLOCK: Hash 48d721f71bf80e89...
+[192.168.228.27:9341] [14:33:46] [RECV] GETDATA: Peer requested 1 items
+[192.168.228.27:9341] [14:33:46] [SENT] BLOCK: Hash afeb6d6e883e9bc6...
+[192.168.228.27:9341] [14:33:46] [RECV] GETDATA: Peer requested 1 items
+[192.168.228.27:9341] [14:33:46] [SENT] BLOCK: Hash 7f8bf45552b93606...
+[192.168.228.27:9341] [14:33:46] [RECV] GETDATA: Peer requested 1 items
+[192.168.228.27:9341] [14:33:46] [SENT] BLOCK: Hash 099d162376d12368...
+[192.168.228.27:9341] [14:33:46] [RECV] GETDATA: Peer requested 1 items
+[192.168.228.27:9341] [14:33:46] [SENT] BLOCK: Hash 2c7c682741c56a12...
+[192.168.228.27:9341] [14:33:46] [RECV] GETDATA: Peer requested 1 items
+[192.168.228.27:9341] [14:33:46] [SENT] BLOCK: Hash 5ab40a5fbb2c33cb...
+[192.168.228.27:9341] [14:33:46] [RECV] GETDATA: Peer requested 1 items
+[192.168.228.27:9341] [14:33:46] [SENT] BLOCK: Hash cb2f476586e41058...
+[192.168.228.27:9341] [14:33:46] [RECV] GETDATA: Peer requested 1 items
+[192.168.228.27:9341] [14:33:46] [SENT] BLOCK: Hash f4897fcc4423818d...
+[192.168.228.27:9341] [14:33:46] [RECV] GETDATA: Peer requested 1 items
+[192.168.228.27:9341] [14:33:46] [SENT] BLOCK: Hash 477f7a7dd846cbbf...
+[192.168.228.27:9341] [14:33:46] [RECV] GETDATA: Peer requested 1 items
+[192.168.228.27:9341] [14:33:46] [SENT] BLOCK: Hash 0ce60bd38948fe1c...
+[192.168.228.27:9341] [14:33:46] [RECV] GETDATA: Peer requested 1 items
+[192.168.228.27:9341] [14:33:46] [SENT] BLOCK: Hash cacfb712235156d5...
+[192.168.228.27:9341] [14:33:46] [RECV] GETDATA: Peer requested 1 items
+[192.168.228.27:9341] [14:33:46] [SENT] BLOCK: Hash 73c4a144e1df11ff...
+[192.168.228.27:9341] [14:33:46] [RECV] GETDATA: Peer requested 1 items
+[192.168.228.27:9341] [14:33:46] [SENT] BLOCK: Hash 05b119c4fd2d38a9...
+[192.168.228.27:9341] [14:33:46] [RECV] GETDATA: Peer requested 1 items
+[192.168.228.27:9341] [14:33:46] [SENT] BLOCK: Hash f79bdbee93a79e84...
+[192.168.228.27:9341] [14:33:46] [RECV] GETDATA: Peer requested 1 items
+[192.168.228.27:9341] [14:33:46] [SENT] BLOCK: Hash fdfba367cff6ef61...
+[192.168.228.27:9341] [14:33:46] [RECV] GETDATA: Peer requested 1 items
+[192.168.228.27:9341] [14:33:46] [SENT] BLOCK: Hash e14bdaabca2b8e52...
+[192.168.228.27:9341] [14:33:46] [RECV] GETDATA: Peer requested 1 items
+[192.168.228.27:9341] [14:33:46] [SENT] BLOCK: Hash e57231fa6550d9e6...
+[192.168.228.27:9341] [14:33:46] [RECV] GETDATA: Peer requested 1 items
+[192.168.228.27:9341] [14:33:46] [SENT] BLOCK: Hash d560fc3fe69da803...
+[192.168.228.27:9341] [14:33:46] [RECV] GETDATA: Peer requested 1 items
+[192.168.228.27:9341] [14:33:46] [SENT] BLOCK: Hash 45a593b08b499352...
+[192.168.228.27:9341] [14:33:46] [RECV] GETDATA: Peer requested 1 items
+[192.168.228.27:9341] [14:33:46] [SENT] BLOCK: Hash c02573d0f6080cf8...
+[192.168.228.27:9341] [14:33:46] [RECV] GETDATA: Peer requested 1 items
+[192.168.228.27:9341] [14:33:46] [SENT] BLOCK: Hash d887bb18b34e2a54...
+[192.168.228.27:9341] [14:33:46] [RECV] GETDATA: Peer requested 1 items
+[192.168.228.27:9341] [14:33:46] [SENT] BLOCK: Hash c8f694385cf6faa5...
+[192.168.228.27:9341] [14:33:46] [RECV] GETDATA: Peer requested 1 items
+[192.168.228.27:9341] [14:33:46] [SENT] BLOCK: Hash 3ed247eb7544368b...
+[192.168.228.27:9341] [14:33:46] [RECV] GETDATA: Peer requested 1 items
+[192.168.228.27:9341] [14:33:46] [SENT] BLOCK: Hash fed9e5526a977062...
+
+============================================================
+PEER: 192.168.229.149:34976
+============================================================
+[192.168.229.149:34976] [14:33:08] [IN] CONNECTION: Established incoming connection
+[192.168.229.149:34976] [14:33:09] [XXX] DISCONNECT: Connection closed
+
+============================================================
+PEER: 192.168.228.23:48654
+============================================================
+[192.168.228.23:48654] [14:33:06] [IN] CONNECTION: Established incoming connection
+[192.168.228.23:48654] [14:33:08] [XXX] DISCONNECT: Connection closed
+
+============================================================
+PEER: 192.168.228.23:48648
+============================================================
+[192.168.228.23:48648] [14:33:01] [IN] CONNECTION: Established incoming connection
+[192.168.228.23:48648] [14:33:01] [RECV] VERSION: Handshake initiated (Port 9341, Height 10649)
+[192.168.228.23:48648] [14:33:01] [SENT] VERSION: 
+[192.168.228.23:48648] [14:33:01] [SENT] VERACK: 
+
+============================================================
+PEER: 192.168.228.23:48642
+============================================================
+[192.168.228.23:48642] [14:33:01] [IN] CONNECTION: Established incoming connection
+[192.168.228.23:48642] [14:33:01] [XXX] DISCONNECT: Connection closed
+
+============================================================
+PEER: 192.168.229.31:41158
+============================================================
+[192.168.229.31:41158] [14:33:01] [IN] CONNECTION: Established incoming connection
+[192.168.229.31:41158] [14:33:01] [XXX] DISCONNECT: Connection closed
+
+============================================================
+PEER: 192.168.228.69:44056
+============================================================
+[192.168.228.69:44056] [14:32:59] [IN] CONNECTION: Established incoming connection
+[192.168.228.69:44056] [14:32:59] [RECV] VERSION: Handshake initiated (Port 9341, Height 10869)
+[192.168.228.69:44056] [14:32:59] [SENT] VERSION: 
+[192.168.228.69:44056] [14:32:59] [SENT] VERACK: 
+
+============================================================
+PEER: 192.168.228.69:44042
+============================================================
+[192.168.228.69:44042] [14:32:59] [IN] CONNECTION: Established incoming connection
+[192.168.228.69:44042] [14:32:59] [XXX] DISCONNECT: Connection closed

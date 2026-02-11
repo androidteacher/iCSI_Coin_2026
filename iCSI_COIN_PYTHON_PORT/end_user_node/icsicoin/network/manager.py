@@ -98,6 +98,7 @@ class NetworkManager:
         self.active_beg = None  # {address, started_at, task} or None
         self.last_block_received_time = 0 # Track last block time for sync watchdog
         self.last_getblocks_time = 0
+        self.blocks_since_req = 0 # Track blocks received since last request for batch monitoring
 
     def configure_stun(self, ip, port):
         self.stun_ip = ip
@@ -644,17 +645,26 @@ class NetworkManager:
 
                                 # LOW_DELAY SYNC FIX:
                                 # We request more blocks if the peer has more blocks than we do.
-                                # logic: if peer_height > new_height, keep asking.
-                                # Use a combination of streaming (every 100 blocks) and timeout (stall recovery)
+                                
+                                # Batch Monitor Logic:
+                                self.blocks_since_req += 1
+                                
                                 peer_height = self.peer_stats.get(addr, {}).get('height', 0)
                                 if best_info and peer_height > new_height:
-                                     # Streaming Trigger: Every 100th block (less spammy), ask for more to keep pipeline full
-                                     is_streaming_trigger = (new_height % 100) == 0
+                                     # Streaming Trigger: Approaching end of 500-block batch (400/500)
+                                     # This ensures we ask BEFORE we run dry, regardless of specific height alignment.
+                                     is_batch_trigger = self.blocks_since_req >= 400
                                      
-                                     # Stall Trigger: If we haven't asked in > 1.0s, ask again
+                                     # Stall Trigger: If we haven't asked in > 1.0s, ask again (covers slow batches or short tails)
                                      is_stall_trigger = (time.time() - self.last_getblocks_time > 1.0)
                                      
-                                     if is_streaming_trigger or is_stall_trigger:
+                                     if is_batch_trigger or is_stall_trigger:
+                                         if is_batch_trigger:
+                                             logger.info(f"Sync: Batch Trigger (Received {self.blocks_since_req} blocks). Requesting next batch...")
+                                         elif is_stall_trigger:
+                                              # logger.debug("Sync: Stall Trigger (>1.0s). Requesting more...")
+                                              pass
+                                         
                                          await self.send_getblocks(writer)
 
                                 # Relay logic (simple flood)
@@ -1384,6 +1394,7 @@ class NetworkManager:
             peer_writer.write(out_msg.serialize())
             await peer_writer.drain()
             self.last_getblocks_time = time.time()
+            self.blocks_since_req = 0 # Reset batch monitor
             logger.info(f"Sent GETBLOCKS (Locator: {locator}) to peer")
         except Exception as e:
             logger.error(f"Error sending getblocks: {e}")
@@ -1624,7 +1635,7 @@ class NetworkManager:
                 except Exception as e:
                     logger.error(f"Failed to parse Version from {addr}: {e}")
 
-                self.log_peer_event(addr, "RECV", "VERSION", f"Handshake initiated (Port {remote_listening_port if 'remote_listening_port' in locals() else '?'}, Height {remote_height})")
+                self.log_peer_event(addr, "RECV", "VERSION", f"Handshake initiated (Port {remote_listening_port if 'remote_listening_port' in locals() else '?'}, Height {remote_height if 'remote_height' in locals() else '?'})")
                 
                 # Send Verack
                 writer.write(VerackMessage().serialize())
