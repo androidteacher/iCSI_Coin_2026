@@ -873,9 +873,12 @@ class NetworkManager:
                 
                 self.log_peer_event(addr, "RECV", "VERSION", f"Handshake initiated (Port {remote_listening_port}, Height {remote_height})")
                 
-                if addr in self.peer_stats:
-                    self.peer_stats[addr]['height'] = remote_height
-                    self.peer_stats[addr]['user_agent'] = remote_agent
+                # BUG FIX: Initialize stats if missing so we don't lose the height
+                if addr not in self.peer_stats:
+                    self.peer_stats[addr] = {'connected_at': int(time.time()), 'last_seen': int(time.time())}
+                
+                self.peer_stats[addr]['height'] = remote_height
+                self.peer_stats[addr]['user_agent'] = remote_agent
                 
                 # 2. Send Version
                 best = self.chain_manager.block_index.get_best_block()

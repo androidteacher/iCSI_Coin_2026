@@ -11,7 +11,11 @@ from icsicoin.rpc.rpc_server import RPCServer
 # Configure logging
 logging.basicConfig(
     level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    handlers=[
+        logging.StreamHandler(),
+        logging.FileHandler("/app/wallet_data/debug.log")
+    ]
 )
 logger = logging.getLogger("iCSICoinNode")
 
