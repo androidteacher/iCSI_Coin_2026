@@ -1,4 +1,4 @@
-# Blockchain in a Box (Crypto Nodes for the Classroom)
+# Blockchain in a Box (Dockerized Crypto Nodes for the Classroom)
 <p align="center">AKA: iCSI Coin</p>
 <p align="center">
   <img src="pics/Banner.png" width="80%">

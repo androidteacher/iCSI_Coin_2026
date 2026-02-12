@@ -403,7 +403,6 @@ async function loadWallets() {
         const res = await fetch(API.walletList);
         const data = await res.json();
         const select = document.getElementById('walletSelect');
-        const targetSelect = document.getElementById('miningTargetSelect');
 
         // Smart Update: Check if we need to full rebuild
         const currentOptions = Array.from(select.options);
@@ -414,7 +413,6 @@ async function loadWallets() {
             // Save current selection
             const currentVal = select.value;
             select.innerHTML = '';
-            targetSelect.innerHTML = '';
 
             data.wallets.forEach(w => {
                 const opt = document.createElement('option');
@@ -425,9 +423,6 @@ async function loadWallets() {
                 opt.dataset.pending = w.pending;
                 opt.dataset.name = w.name;
                 select.appendChild(opt);
-
-                const targetOpt = opt.cloneNode(true);
-                targetSelect.appendChild(targetOpt);
             });
 
             if (currentVal && Array.from(select.options).some(o => o.value === currentVal)) {
@@ -444,11 +439,6 @@ async function loadWallets() {
                     opt.dataset.available = w.available;
                     opt.dataset.confirmed = w.confirmed;
                     opt.dataset.pending = w.pending;
-
-                    // Update target select too
-                    if (targetSelect.options[i]) {
-                        targetSelect.options[i].innerText = `[${w.available.toFixed(2)}] ${w.name}`;
-                    }
                 }
             });
         }
@@ -650,9 +640,13 @@ async function saveWalletName() {
 /* --- MINING --- */
 
 async function startMining() {
-    const target = document.getElementById('miningTargetSelect').value;
+    // miningTargetSelect removed. Use selectedWallet or let backend default.
+    // If user has a wallet selected, use that.
+    const target = selectedWallet;
+
     await fetch(API.minerStart, {
         method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ target_address: target })
     });
 }

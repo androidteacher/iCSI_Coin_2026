@@ -162,9 +162,14 @@
                             </button>
                             <!-- 9. Network Uplink -->
                             <button onclick="openNetworkUplinkModal()"
-                                class="block w-full text-left px-4 py-3 text-sm text-zinc-300 hover:bg-zinc-800 hover:text-white">
+                                class="block w-full text-left px-4 py-3 text-sm text-zinc-300 hover:bg-zinc-800 hover:text-white border-b border-zinc-800">
                                 📡 Network Uplink
                             </button>
+                            <!-- 10. CyberLessons101 -->
+                            <a href="https://cyberlessons101.com" target="_blank"
+                                class="block w-full text-left px-4 py-3 text-sm text-zinc-300 hover:bg-zinc-800 hover:text-white">
+                                🎓 CyberLessons101.com
+                            </a>
                         </div>
                     </div>
                 </div>
@@ -348,16 +353,14 @@
                     Operations
                 </h2>
 
-                <div class="flex flex-col md:flex-row gap-4 mb-6">
-                    <select id="miningTargetSelect"
-                        class="flex-1 bg-black border border-border rounded-lg px-4 py-3 text-sm focus:outline-none focus:border-purple-500 text-white">
-                        <!-- Options -->
-                    </select>
-                    <div class="flex gap-2">
+                <div class="flex gap-4 mb-6 justify-center">
+                    <div class="flex gap-4 w-full">
                         <button id="startMineBtn" onclick="startMining()"
-                            class="px-6 py-2 bg-primary hover:bg-primary/80 text-black font-bold uppercase text-xs rounded-full transition-colors disabled:opacity-50 disabled:cursor-not-allowed shadow-[0_0_15px_rgba(var(--color-primary),0.3)]">Start</button>
+                            class="flex-1 py-3 bg-primary hover:bg-primary/80 text-black font-bold uppercase text-sm rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed shadow-[0_0_15px_rgba(var(--color-primary),0.3)]">Start
+                            Mining</button>
                         <button id="stopMineBtn" onclick="stopMining()" disabled
-                            class="px-6 py-2 bg-red-500/10 border border-red-500/50 text-red-500 hover:bg-red-500/20 font-bold uppercase text-xs rounded-full transition-colors disabled:opacity-50 disabled:cursor-not-allowed">Stop</button>
+                            class="flex-1 py-3 bg-red-500/10 border border-red-500/50 text-red-500 hover:bg-red-500/20 font-bold uppercase text-sm rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed">Stop
+                            Mining</button>
                     </div>
                 </div>
                 <div class="mb-4 text-right">
@@ -692,6 +695,14 @@ pip install -r requirements.txt</code></pre>
             </div>
         </div>
     </div>
+
+    <!-- Footer -->
+    <footer class="max-w-[1400px] mx-auto px-6 py-8 text-center bg-black border-t border-zinc-900 mt-12">
+        <a href="https://cyberlessons101.com" target="_blank"
+            class="text-zinc-600 hover:text-primary transition-colors text-sm font-bold uppercase tracking-widest font-heading">
+            CyberLessons101.com
+        </a>
+    </footer>
 
     <!-- Network Uplink Modal (Moved from Dashboard Card) -->
     <div id="networkUplinkModal"

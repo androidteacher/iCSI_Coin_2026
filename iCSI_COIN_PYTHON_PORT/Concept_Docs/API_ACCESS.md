@@ -1,6 +1,6 @@
 # iCSI Coin API Access Guide 🔐
 
-To enhance security, the iCSI Coin node requires strict authentication for **ALL** API interactions.
+These nodes require authentication for **ALL** API interactions.
 **Base URL:** `http://localhost:8080` (or your configured port)
 
 ## Authentication Method
