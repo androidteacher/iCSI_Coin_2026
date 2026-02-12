@@ -1,4 +1,4 @@
-# Blockchain in a Box
+<h1 align="center">Blockchain in a Box</h1>
 <p align="center">(Dockerized Crypto Nodes for the Classroom)</p>
 <p align="center">AKA: iCSI Coin</p>
 <p align="center">
