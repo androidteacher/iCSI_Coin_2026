@@ -104,6 +104,10 @@ class NetworkManager:
         self.sync_peer = None # (ip, port) of the current primary sync partner
         self.last_sync_peer_switch = 0
         self.last_block_received_time = 0 # Initialize to 0
+        
+        # Beggar System
+        self.beggar_list = {} # {address: {'first_seen': ts, 'last_seen': ts, 'source_ip': ip}}
+        self.active_beg = None
 
     def configure_stun(self, ip, port):
         self.stun_ip = ip
