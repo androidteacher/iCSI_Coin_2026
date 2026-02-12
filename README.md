@@ -15,7 +15,7 @@ Students will learn to:
 *   Understand Block Halving and Difficulty shifts as key economic controls.
 *   Observe Peer-to-Peer network discovery and blockchain synchronization.
 
-*(See the `Concept_Docs` folder for in-depth explanations of how this blockchain is constructed.)*
+*(See the [`Concept_Docs`](https://github.com/androidteacher/iCSI_Coin_2026/tree/main/iCSI_COIN_PYTHON_PORT/Concept_Docs) folder for in-depth explanations of how this blockchain is constructed.)*
 
 ---
 
