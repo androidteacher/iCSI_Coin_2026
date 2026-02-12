@@ -95,5 +95,19 @@ While the Magic Value isolates the network, your blockchain will still look for 
 
 **Note**: If you change the Genesis Block parameters, the **Genesis Hash** will change. You must mine a valid nonce that meets the `bits` target, or your node will reject its own genesis block!
 
+### 5. Change the Difficulty Settings (Optional)
+Want faster blocks? Want difficulty to adjust less often?
+
+1.  **File**: `iCSI_COIN_PYTHON_PORT/end_user_node/icsicoin/consensus/validation.py`
+2.  **Line**: ~62
+3.  **Code**:
+    ```python
+    DIFFICULTY_ADJUSTMENT_INTERVAL = 2016      # Retarget every 2016 blocks
+    TARGET_BLOCK_TIME_SECONDS = 30             # Target: 30 seconds per block
+    ```
+4.  **Action**:
+    *   Change `DIFFICULTY_ADJUSTMENT_INTERVAL` to `20000` (or any number) to change how often the network difficulty updates.
+    *   Change `TARGET_BLOCK_TIME_SECONDS` to change how fast you want blocks to be mined on average.
+
 ---
 **Reference**: See `Concept_Docs/VersionMessage.md` for technical details on the handshake protocol.
