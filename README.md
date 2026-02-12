@@ -1,6 +1,6 @@
 <h1 align="center">Blockchain in a Box</h1>
 <p align="center">(Dockerized Crypto Nodes for the Classroom)</p>
-<p align="center">AKA: iCSI Coin</p>
+<p align="center"><i><span style="color: #00008B;">AKA: iCSI Coin</span></i></p>
 <p align="center">
   <img src="pics/Banner.png" width="80%">
   <br>
