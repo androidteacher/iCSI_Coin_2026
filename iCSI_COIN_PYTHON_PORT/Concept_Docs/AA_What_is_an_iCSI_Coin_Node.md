@@ -17,10 +17,10 @@ The **End User Node** provides a comprehensive suite of tools for interacting wi
     *   Import/Export wallets for backup or transfer.
     *   Send and receive real transactions across the network.
 
-*   **Mining Operations:**
+*   **Integrated and External Mining::**
     *   **Web Interface Mining:** Mine coins directly from your browser for ease of use.
-    *   **RPC Client:** Connect external, high-performance miners via the remote procedure call (RPC) interface.
-    *   **Real-Time Stats:** Monitor hashrate, difficulty, and block rewards in real-time.
+    *   **RPC Client:** Connect external, high-performance miners via the remote procedure call (RPC) interface. (External Miner Provided as Well)
+    *   **Real-Time Stats:** Monitor difficulty, halvings, and block rewards in real-time.
 
 *   **Blockchain Exploration:**
     *   Inspect individual blocks and verify transactions.
@@ -31,4 +31,5 @@ The **End User Node** provides a comprehensive suite of tools for interacting wi
     *   View active peers and connection status.
     *   Monitor network difficulty adjustments and halving events.
 
-In essence, running an iCSI Coin Node is running a piece of the live network infrastructure, giving you hands-on experience with the engine that drives the crypto economy.
+
+### Remember: Friends don't let friends become crypto bros! (Remember that. It's important.
