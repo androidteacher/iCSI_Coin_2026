@@ -32,4 +32,5 @@ The **End User Node** provides a comprehensive suite of tools for interacting wi
     *   Monitor network difficulty adjustments and halving events.
 
 
-### Remember: Friends don't let friends become crypto bros! (Remember that. It's important.
+## Friends don't let friends become crypto bros! 
+###(Remember that. It's important.)
