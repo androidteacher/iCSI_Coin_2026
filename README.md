@@ -97,3 +97,11 @@ Log in at **http://localhost:8080** and create a username and password.
 ## Lesson Plan/Teacher Guide
 For a comprehensive lesson plan and teacher guide, please visit:
 [Blockchain in a Box: Dockerized Crypto Nodes for the Classroom](https://www.notion.so/Blockchain-in-a-Box-Dockerized-Crypto-Nodes-for-the-Classroom-3024c8e52376808c9fa8dddcce5dddd5)
+
+## License
+
+**This software is Open Source.**
+
+This program is free software: you can redistribute it and/or modify it under the terms of the **GNU General Public License** as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
+
+This program is distributed in the hope that it will be useful, but **WITHOUT ANY WARRANTY**; without even the implied warranty of **MERCHANTABILITY** or **FITNESS FOR A PARTICULAR PURPOSE**. See the GNU General Public License for more details.
