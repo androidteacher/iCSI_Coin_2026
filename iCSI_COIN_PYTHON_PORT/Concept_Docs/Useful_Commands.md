@@ -14,14 +14,16 @@ If your node is not automatically discovering a specific peer, or if you need to
 You can now add a peer **without restarting** by using the new `addnode` RPC command.
 
 ```bash
-curl --data-binary '{"jsonrpc": "1.0", "id":"curltest", "method": "addnode", "params": ["<target_ip>:<port>"]}' -H 'content-type: text/plain;' http://user:password@127.0.0.1:9332/
+# Default RPC port is 9342 for User Node
+# Auth is optional unless configured. Example assumes no auth or default.
+curl --data-binary '{"jsonrpc": "1.0", "id":"curltest", "method": "addnode", "params": ["<target_ip>:<port>"]}' -H 'content-type: text/plain;' http://127.0.0.1:9342/
 ```
 
 **Example:**
 To connect to `192.168.229.149:9333` from *within* the container (or from host mapped port):
 
 ```bash
-docker exec -it <container_id> curl --data-binary '{"jsonrpc": "1.0", "id":"curltest", "method": "addnode", "params": ["192.168.229.149:9333"]}' -H 'content-type: text/plain;' http://user:password@127.0.0.1:9332/
+docker exec -it <container_id> curl --data-binary '{"jsonrpc": "1.0", "id":"curltest", "method": "addnode", "params": ["192.168.229.149:9333"]}' -H 'content-type: text/plain;' http://127.0.0.1:9342/
 ```
 
 **What this does:**

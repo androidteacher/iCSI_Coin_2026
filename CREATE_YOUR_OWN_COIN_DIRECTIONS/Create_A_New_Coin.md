@@ -95,6 +95,8 @@ While the Magic Value isolates the network, your blockchain will still look for 
 
 **Note**: If you change the Genesis Block parameters, the **Genesis Hash** will change. You must mine a valid nonce that meets the `bits` target, or your node will reject its own genesis block!
 
+[Click Here for A script that will hash your new genesis block](../iCSI_COIN_PYTHON_PORT/Concept_Docs/Hash_Your_New_Genesis_Block.md)
+
 ### 5. Change the Difficulty Settings (Optional)
 Want faster blocks? Want difficulty to adjust less often?
 
