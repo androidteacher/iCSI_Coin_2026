@@ -1,1 +1,0 @@
-# iCSI Coin Core Module
