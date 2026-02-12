@@ -390,13 +390,65 @@ curl -X POST http://localhost:8080/api/explorer/balance/1CheckingBalanceAddress.
                     </div>
                 </section>
 
+                </section>
+
                 <!-- Utilities -->
                 <section id="utils" class="scroll-mt-24">
                     <h2 class="text-2xl font-heading font-bold text-white mb-6 flex items-center gap-3">
                         <span class="w-8 h-8 rounded bg-zinc-900 flex items-center justify-center text-lg">🛠️</span>
-                        Utilities
+                        Utilities & Extras
                     </h2>
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <!-- Hashrate -->
+                        <div
+                            class="bg-surface border border-border hover:border-primary/50 group rounded-xl p-6 transition-all">
+                            <div class="flex justify-between items-start mb-1">
+                                <h3 class="font-bold text-white group-hover:text-primary mb-1">Network Hashrate</h3>
+                                <div class="flex gap-2">
+                                    <span
+                                        class="px-1.5 py-0.5 rounded text-[10px] font-bold bg-purple-900/30 text-purple-400 border border-purple-900/50">AUTH</span>
+                                    <span
+                                        class="px-2 py-1 bg-green-900/30 text-green-400 text-xs font-mono font-bold rounded">GET</span>
+                                </div>
+                            </div>
+                            <code class="text-xs font-mono text-muted">/api/stats/hashrate</code>
+                            <p class="text-xs text-muted mt-2">Returns checking estimated network hashrate based on last
+                                10 blocks.</p>
+                        </div>
+
+                        <!-- Miner Status -->
+                        <div
+                            class="bg-surface border border-border hover:border-primary/50 group rounded-xl p-6 transition-all">
+                            <div class="flex justify-between items-start mb-1">
+                                <h3 class="font-bold text-white group-hover:text-primary mb-1">Miner Status</h3>
+                                <div class="flex gap-2">
+                                    <span
+                                        class="px-1.5 py-0.5 rounded text-[10px] font-bold bg-purple-900/30 text-purple-400 border border-purple-900/50">AUTH</span>
+                                    <span
+                                        class="px-2 py-1 bg-green-900/30 text-green-400 text-xs font-mono font-bold rounded">GET</span>
+                                </div>
+                            </div>
+                            <code class="text-xs font-mono text-muted">/api/miner/status</code>
+                            <p class="text-xs text-muted mt-2">Check if the internal miner is running.</p>
+                        </div>
+
+                        <!-- Beggar List -->
+                        <div
+                            class="bg-surface border border-border hover:border-primary/50 group rounded-xl p-6 transition-all">
+                            <div class="flex justify-between items-start mb-1">
+                                <h3 class="font-bold text-white group-hover:text-primary mb-1">Beggar List</h3>
+                                <div class="flex gap-2">
+                                    <span
+                                        class="px-1.5 py-0.5 rounded text-[10px] font-bold bg-purple-900/30 text-purple-400 border border-purple-900/50">AUTH</span>
+                                    <span
+                                        class="px-2 py-1 bg-green-900/30 text-green-400 text-xs font-mono font-bold rounded">GET</span>
+                                </div>
+                            </div>
+                            <code class="text-xs font-mono text-muted">/api/beggar/list</code>
+                            <p class="text-xs text-muted mt-2">List known beggars and current active begging status.</p>
+                        </div>
+
+                        <!-- Download Miner -->
                         <div
                             class="bg-surface border border-border hover:border-primary/50 group rounded-xl p-6 transition-all">
                             <div class="flex justify-between items-start mb-1">
