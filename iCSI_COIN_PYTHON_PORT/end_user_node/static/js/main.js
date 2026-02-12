@@ -270,9 +270,8 @@ async function updatePeers() {
             let logBtn = `<button class="px-3 py-1 bg-zinc-800 hover:bg-zinc-700 text-primary text-[10px] font-bold uppercase rounded-md transition-colors mr-2" onclick="showLogs('${p.ip}', ${p.port})">LOG</button>`;
 
             // For ACTIVE peers, "TEST" means Force Reconnect
-            let testBtn = `<button class="px-3 py-1 bg-zinc-800 hover:bg-zinc-700 text-zinc-400 hover:text-white text-[10px] font-bold uppercase rounded-md transition-colors border border-zinc-700" onclick="connectToPeer('${p.ip}', ${p.port}, this, true)">TEST</button>`;
-
-            let actionBtn = logBtn + testBtn;
+            // let testBtn = `<button class="px-3 py-1 bg-zinc-800 hover:bg-zinc-700 text-zinc-400 hover:text-white text-[10px] font-bold uppercase rounded-md transition-colors border border-zinc-700" onclick="connectToPeer('${p.ip}', ${p.port}, this, true)">TEST</button>`;
+            let actionBtn = logBtn;
 
             // Status coloring removed for manual test feedback only
             /*
