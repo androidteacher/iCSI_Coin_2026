@@ -288,10 +288,9 @@ async function updatePeers() {
                     ${p.ip}
                 </td>
                 <td class="py-3 text-zinc-500 font-mono">${p.port}</td>
-                <td class="py-3 pr-2 text-right">
                     ${actionBtn}
-                    ${p.can_delete ? `<button class="ml-2 text-pink-500 hover:text-pink-400 font-bold" onclick="deletePeer('${p.ip}', ${p.port})">×</button>` : ''}
                 </td>
+
             `;
             tbody.appendChild(tr);
         });

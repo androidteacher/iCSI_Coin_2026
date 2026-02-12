@@ -47,3 +47,7 @@ turnserver.conf
 # OS
 .DS_Store
 OLD_PROJECT_FOR_COMPARISON/
+
+# Assessments
+Assessments/
+
