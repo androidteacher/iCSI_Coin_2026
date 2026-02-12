@@ -1,4 +1,4 @@
-# iCSI_Coin (Docker)
+# Blockchain in a Box (Crypto Nodes for the Classroom) AKA: iCSI Coin
 <p align="center">
   <img src="pics/Banner.png" width="80%">
   <br>
