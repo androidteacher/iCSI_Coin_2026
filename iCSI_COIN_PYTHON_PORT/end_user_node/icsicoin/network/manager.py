@@ -113,6 +113,7 @@ class NetworkManager:
         self.wanted_blocks = set()        # Hashes of blocks we know exist but failed to download
         self.banned_peers = {}            # {ip: expiry_timestamp}
         self.peer_disconnect_counts = {} # IP -> count
+        self.peer_bulk_sync_requests = {} # IP -> timestamp (Sprint 4)
         self.consecutive_orphan_backfills = 0 # Track depth of recursive backfill: N, last_fail: time}}
 
     def ban_peer(self, ip, duration=60):
@@ -458,6 +459,16 @@ class NetworkManager:
 
         try:
             while self.running:
+                # KICK PEER LOGIC (Sprint 4)
+                if addr in self.peer_bulk_sync_requests:
+                    req_time = self.peer_bulk_sync_requests[addr]
+                    if time.time() - req_time > 5.0:
+                        logger.warning(f"Peer {addr} failed to respond to Forced Bulk Sync (5s timeout). Disconnecting.")
+                        self.log_peer_event(addr, "XXX", "TIMEOUT", "Failed to respond to Bulk Sync")
+                        writer.close()
+                        # Clean up is handled by finally block
+                        return
+
                 # Read Header
                 try:
                      # CLIENT-SIDE STALL FIX (Sprint 2):
@@ -672,6 +683,10 @@ class NetworkManager:
 
                 # --- Phase 4: JSON Bridge Handlers ---
                 elif command == 'inv':
+                    # KICK PEER LOGIC (Sprint 4): Clear timeout flag
+                    if addr in self.peer_bulk_sync_requests:
+                        del self.peer_bulk_sync_requests[addr]
+
                     try:
                         # Decode payload
                         inv_data = json.loads(payload.decode('utf-8'))
@@ -985,6 +1000,10 @@ class NetworkManager:
                                         if self.consecutive_orphan_backfills > 10:
                                             logger.warning(f"Deep Orphan Gap detected ({self.consecutive_orphan_backfills} steps). Aborting backfill and forcing Bulk Sync.")
                                             self.log_peer_event(addr, "OUT", "GETBLOCKS", "Forcing Bulk Sync due to deep orphan chain")
+                                            
+                                            # KICK PEER LOGIC (Sprint 4): Expect response or die
+                                            self.peer_bulk_sync_requests[addr] = time.time()
+                                            
                                             await self.send_getblocks(writer)
                                             self.consecutive_orphan_backfills = 0
                                             # Do NOT proceed to backfill strategy

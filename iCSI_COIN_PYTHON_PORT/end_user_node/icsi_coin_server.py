@@ -8,15 +8,23 @@ from icsicoin.network.manager import NetworkManager
 from icsicoin.wallet.wallet import Wallet
 from icsicoin.rpc.rpc_server import RPCServer
 
+from logging.handlers import RotatingFileHandler
+
 # Configure logging
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
     handlers=[
         logging.StreamHandler(),
-        logging.FileHandler("/app/wallet_data/debug.log")
+        # STALL FIX: Rotate logs at 10MB (keep 5 backups) to prevent disk fill-up
+        RotatingFileHandler("/app/wallet_data/debug.log", maxBytes=10*1024*1024, backupCount=5)
     ]
 )
+# SILENCE NOISY LOGGERS
+# Reduce aiohttp access logs to WARNING to prevent "GET /api/miner/status" spam
+logging.getLogger("aiohttp.access").setLevel(logging.WARNING)
+logging.getLogger("aiohttp.server").setLevel(logging.WARNING)
+
 logger = logging.getLogger("iCSICoinNode")
 
 async def main():
