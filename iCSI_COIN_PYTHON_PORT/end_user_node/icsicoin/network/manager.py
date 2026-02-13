@@ -458,8 +458,18 @@ class NetworkManager:
         try:
             while self.running:
                 # Read Header
-                header_data = await reader.readexactly(24)
-                if not header_data: break
+                try:
+                     # CLIENT-SIDE STALL FIX (Sprint 2):
+                     # Wait for header with timeout to catch stalled connections (30s inactivity)
+                     header_data = await asyncio.wait_for(reader.readexactly(24), timeout=30.0)
+                except asyncio.TimeoutError:
+                     logger.warning(f"Connection to {addr} timed out (30s inactivity). Disconnecting.")
+                     break
+                except asyncio.IncompleteReadError:
+                     break
+                except Exception as e:
+                     raise e
+
                 # UNCOMMENTED FOR DEBUGGING SYNC ISSUES
                 logger.debug(f"Raw Header from {addr}: {binascii.hexlify(header_data)}")
                 
@@ -786,8 +796,17 @@ class NetworkManager:
                                             self.log_peer_event(addr, "SENT", "BLOCK", f"Hash {item['hash'][:16]}...")
                                         except Exception as e:
                                             logger.error(f"Failed to read/send block {item['hash']}: {e}")
+                                            # DISCONNECT FIX (Sprint 2):
+                                            # If we can't read a block we advertised, our index is out of sync with store.
+                                            # We must disconnect to prevent the peer from waiting indefinitely.
+                                            logger.warning(f"Disconnecting peer {addr} due to missing block data {item['hash']}")
+                                            writer.close()
+                                            return
                                     else:
                                         logger.warning(f"Requested block {item['hash']} not found in index")
+                                        # Also disconnect here as we advertised it (presumably)
+                                        writer.close()
+                                        return
                                 
                                 elif item['type'] == 'tx':
                                     # Retrieve tx from mempool
