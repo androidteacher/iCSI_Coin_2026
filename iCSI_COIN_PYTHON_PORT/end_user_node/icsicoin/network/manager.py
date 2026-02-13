@@ -2071,7 +2071,7 @@ class NetworkManager:
                 except Exception as e:
                     logger.error(f"Failed to parse Version from {addr}: {e}")
 
-                self.log_peer_event(addr, "RECV", "VERSION", f"Handshake initiated (Port {version_msg.addr_from_port if 'version_msg' in locals() else '?'}, Height {remote_height if 'remote_height' in locals() else '?'})")
+                self.log_peer_event(addr, "RECV", "VERSION", f"Handshake initiated (Port {version_msg.addr_from[2] if 'version_msg' in locals() else '?'}, Height {remote_height if 'remote_height' in locals() else '?'})")
                 
                 # CRITICAL FIX (Sprint 5): Start the message processing loop for this OUTGOING connection
                 # Without this, we send requests but never read the responses!
