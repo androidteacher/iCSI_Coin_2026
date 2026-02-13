@@ -712,7 +712,7 @@ class NetworkManager:
                         # FIX: Only enforce this if we actually HAVE a sync peer selected.
                         if self.is_initial_block_download() and self.sync_peer and addr != self.sync_peer:
                             # logger.debug(f"Ignoring INV from {addr} (Not our Sync Peer {self.sync_peer})")
-                            return
+                            pass
 
                         for item in items:
                             if item['type'] == 'block':
