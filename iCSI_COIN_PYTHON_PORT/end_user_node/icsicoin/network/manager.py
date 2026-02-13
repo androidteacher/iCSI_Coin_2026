@@ -112,7 +112,8 @@ class NetworkManager:
         # BULLDOG SPRINT 1: Tracking Collections
         self.wanted_blocks = set()        # Hashes of blocks we know exist but failed to download
         self.banned_peers = {}            # {ip: expiry_timestamp}
-        self.peer_disconnect_counts = {}  # {ip: {count: N, last_fail: time}}
+        self.peer_disconnect_counts = {} # IP -> count
+        self.consecutive_orphan_backfills = 0 # Track depth of recursive backfill: N, last_fail: time}}
 
     def ban_peer(self, ip, duration=60):
         """Bans a peer IP for a specified duration (default 60s)."""
@@ -963,8 +964,9 @@ class NetworkManager:
                                         except: pass
                                 logger.info("Relayed BLOCK INV to peers")
                                 
-                                # Valid block progress -> Reset Watchdog
+                                # Valid block progress -> Reset Watchdog AND Backfill Counter
                                 self.last_block_received_time = time.time()
+                                self.consecutive_orphan_backfills = 0
                             else:
                                 self.log_peer_event(addr, "CONSENSUS", "IGNORED", f"Block {b_hash[:16]}... {reason}")
                                 
@@ -977,6 +979,17 @@ class NetworkManager:
                                         # OLD LOGIC: Trigger full sync.
                                         # New Logic: Wait! Sending getblocks here causes the Peer to dump 500 blocks we likely already have or can't connect.
                                         # Instead, rely on the BACKFILL STRATEGY below to fetch the specific missing parent.
+                                        
+                                        # DEEP ORPHAN DETECTION (Sprint 3)
+                                        self.consecutive_orphan_backfills += 1
+                                        if self.consecutive_orphan_backfills > 10:
+                                            logger.warning(f"Deep Orphan Gap detected ({self.consecutive_orphan_backfills} steps). Aborting backfill and forcing Bulk Sync.")
+                                            self.log_peer_event(addr, "OUT", "GETBLOCKS", "Forcing Bulk Sync due to deep orphan chain")
+                                            await self.send_getblocks(writer)
+                                            self.consecutive_orphan_backfills = 0
+                                            # Do NOT proceed to backfill strategy
+                                            continue
+
                                         # self.log_peer_event(addr, "OUT", "GETBLOCKS", "Triggering ancestry fetch for Orphan recovery")
                                         # await self.send_getblocks(writer)
                                         # self.log_peer_event(addr, "OUT", "GETBLOCKS", "Triggering ancestry fetch for Orphan recovery")
