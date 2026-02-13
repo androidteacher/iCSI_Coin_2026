@@ -109,6 +109,85 @@ class NetworkManager:
         self.beggar_list = {} # {address: {'first_seen': ts, 'last_seen': ts, 'source_ip': ip}}
         self.active_beg = None
 
+        # BULLDOG SPRINT 1: Tracking Collections
+        self.wanted_blocks = set()        # Hashes of blocks we know exist but failed to download
+        self.banned_peers = {}            # {ip: expiry_timestamp}
+        self.peer_disconnect_counts = {}  # {ip: {count: N, last_fail: time}}
+
+    def ban_peer(self, ip, duration=60):
+        """Bans a peer IP for a specified duration (default 60s)."""
+        logger.warning(f"BULLDOG: Banning peer {ip} for {duration} seconds due to instability.")
+        self.banned_peers[ip] = int(time.time()) + duration
+        # Disconnect if active
+        for p in list(self.active_connections):
+            if p[0] == ip:
+                self.forget_peer(p)
+
+    def is_banned(self, ip):
+        """Checks if an IP is currently banned."""
+        if ip in self.banned_peers:
+            if time.time() > self.banned_peers[ip]:
+                del self.banned_peers[ip] # Expired
+                return False
+            return True
+        return False
+
+    def track_disconnect(self, ip):
+        """Tracks frequent disconnects to trigger bans."""
+        now = time.time()
+        stats = self.peer_disconnect_counts.get(ip, {'count': 0, 'last_fail': 0})
+        
+        # If last fail was recent (< 10s), increment count
+        if now - stats['last_fail'] < 10:
+            stats['count'] += 1
+        else:
+            stats['count'] = 1 # Reset if it's been a while
+            
+        stats['last_fail'] = now
+        self.peer_disconnect_counts[ip] = stats
+        
+        if stats['count'] >= 3:
+            logger.error(f"Peer {ip} failed 3 times in rapid succession. Incurring 1m BAN.")
+            self.ban_peer(ip, duration=60)
+
+    async def retry_wanted_blocks(self):
+        """Immediately asks ANY other connected peer for blocks we missed."""
+        if not self.wanted_blocks:
+            return
+
+        # Sanity check limit
+        if len(self.wanted_blocks) > 500:
+             # Prevent memory leak if we get desynced
+             self.wanted_blocks.clear()
+             return
+
+        logger.info(f"BULLDOG: Retrying download of {len(self.wanted_blocks)} wanted blocks from available peers...")
+        
+        # Create inventory request
+        inv = [{"type": "block", "hash": h} for h in list(self.wanted_blocks)]
+        
+        # Create GETDATA message
+        entry = {
+            "type": "getdata",
+            "inventory": inv
+        }
+        payload = json.dumps(entry).encode('utf-8')
+        msg = Message('getdata', payload)
+        serialized = msg.serialize()
+        
+        sent_count = 0
+        for peer, writer in self.active_connections.items():
+            try:
+                writer.write(serialized)
+                await writer.drain()
+                sent_count += 1
+            except: pass
+        
+        if sent_count > 0:
+            logger.info(f"BULLDOG: Sent GETDATA for wanted blocks to {sent_count} peers.")
+        else:
+            logger.warning("BULLDOG: No peers available to retry wanted blocks! Waiting for new connection...")
+
     def configure_stun(self, ip, port):
         self.stun_ip = ip
         self.stun_port = int(port)
@@ -368,6 +447,14 @@ class NetworkManager:
 
     async def process_message_loop(self, reader, writer, addr):
         """Unified message processing loop for both inbound and outbound connections."""
+        peer_ip = addr[0]
+
+        # Check ban before starting
+        if self.is_banned(peer_ip):
+            logger.info(f"Dropping connection to banned peer {addr}")
+            writer.close()
+            return
+
         try:
             while self.running:
                 # Read Header
@@ -584,6 +671,11 @@ class NetworkManager:
                         self.log_peer_event(addr, "RECV", "INV", f"Size: {len(items)}, First: {first_item}...")
                         logger.info(f"Received INV from {addr} with {len(items)} items")
 
+                        # BULLDOG: Track wanted blocks
+                        for item in items:
+                            if item['type'] == 'block':
+                                self.wanted_blocks.add(item['hash'])
+
                         # Check what we need
                         # Check what we need
                         to_get = []
@@ -754,6 +846,10 @@ class NetworkManager:
                             
                             b_hash = block.get_hash().hex()
                             self.log_peer_event(addr, "RECV", "BLOCK", f"Hash {b_hash[:16]}...")
+
+                            # BULLDOG: Remove from wanted list
+                            if b_hash in self.wanted_blocks:
+                                self.wanted_blocks.discard(b_hash)
 
                             # Update watchdog timer ONLY on valid block connect or processing start.
                             # We don't want to reset it for orphans if we are stuck in an orphan loop.
@@ -1086,6 +1182,14 @@ class NetworkManager:
             logger.error(f"Error handling client {addr}: {e}")
             self.log_peer_event(addr, "ERR", "EXCEPTION", str(e))
         finally:
+            # BULLDOG: Logic for disconnect tracking
+            # peer_ip is defined at start of function
+            self.track_disconnect(peer_ip)
+            
+            # BULLDOG: Trigger immediate retry for any pending blocks
+            # (Wanted blocks persist until explicitly cleared or received)
+            asyncio.create_task(self.retry_wanted_blocks())
+
             logger.info(f"[CONN] CLOSED: Connection to {addr} ended.")
             self.log_peer_event(addr, "XXX", "DISCONNECT", "Connection closed")
             try:
@@ -1100,15 +1204,6 @@ class NetworkManager:
             if addr in self.active_connections:
                  del self.active_connections[addr]
             
-            # If we tracked it with a different port (e.g. listening port), we might need to clean that too.
-            # But process_message_loop takes 'addr' as the primary key.
-            # In handle_client, 'addr' is the ephemeral socket address.
-            # In connect_to_peer, 'addr' is the target address (listening port).
-            
-            # If handle_client passed ephemeral addr, we should clean up the mapped listening port too if known.
-            # But handle_client logic did that in its finally block. 
-            # We can leave that specific cleanup to the caller if needed, or try to be smart here.
-            # For now, let's keep it simple: cleanup passed 'addr'.
             pass
 
     async def handle_client(self, reader, writer):
