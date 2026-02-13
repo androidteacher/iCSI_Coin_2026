@@ -472,10 +472,10 @@ class NetworkManager:
                 # Read Header
                 try:
                      # CLIENT-SIDE STALL FIX (Sprint 2):
-                     # Wait for header with timeout to catch stalled connections (30s inactivity)
-                     header_data = await asyncio.wait_for(reader.readexactly(24), timeout=30.0)
+                     # Wait for header with timeout to catch stalled connections (120s inactivity for large batches)
+                     header_data = await asyncio.wait_for(reader.readexactly(24), timeout=120.0)
                 except asyncio.TimeoutError:
-                     logger.warning(f"Connection to {addr} timed out (30s inactivity). Disconnecting.")
+                     logger.warning(f"Connection to {addr} timed out (120s inactivity). Disconnecting.")
                      break
                 except asyncio.IncompleteReadError:
                      break
@@ -1258,6 +1258,7 @@ class NetworkManager:
             pass
 
     async def handle_client(self, reader, writer):
+        # FIX APPLIED: ReadExactly & Active IBD
         addr = writer.get_extra_info('peername')
         logger.info(f"New incoming connection from {addr}")
         self.peer_stats[addr] = {'connected_at': int(time.time()), 'last_seen': int(time.time())}
@@ -1272,9 +1273,10 @@ class NetworkManager:
 
         try:
             # 1. Expect Version Message
-            # Read Header
-            header_data = await reader.read(24)
-            if len(header_data) < 24:
+            # Read Header (Use readexactly to prevent partial reads)
+            try:
+                header_data = await reader.readexactly(24)
+            except asyncio.IncompleteReadError:
                 return
 
             magic, command, length, checksum = Message.parse_header(header_data)
@@ -1323,6 +1325,10 @@ class NetworkManager:
                 writer.write(my_verack.serialize())
                 await writer.drain()
                 self.log_peer_event(addr, "SENT", "VERACK", "")
+                
+                # SPRINT 5 FIX: Trigger Initial Block Download (IBD)
+                # Force getblocks here to ensure we active sync immediately
+                await self.send_getblocks(writer)
                 
             # 4. Expect Verack
             # (Simplification: We expect the next message to be verack, but tcp stream might bundle it)
@@ -1425,6 +1431,26 @@ class NetworkManager:
         
         if peer in self.peer_last_log_time:
             del self.peer_last_log_time[peer]
+
+    def disconnect_all_peers(self):
+        """Sprint 5: Soft Reset - Disconnect all peers to force fresh connections."""
+        logger.warning("SOFT RESET: Disconnecting ALL peers...")
+        for peer, writer in list(self.active_connections.items()):
+            try:
+                writer.close()
+            except: pass
+        self.active_connections.clear()
+        self.peers.clear()
+        self.known_peers.clear()
+        self.pending_peers.clear()
+        self.peer_stats.clear()
+        self.peer_disconnect_counts.clear()
+        
+        # CRITICAL FIX: Clear sync peer validation to prevent Deadlock
+        self.sync_peer = None
+        self.last_sync_peer_switch = 0
+        
+        logger.info("SOFT RESET: All peers disconnected and stats cleared.")
 
     def reset_data(self):
         self.peers.clear()
@@ -1664,29 +1690,13 @@ class NetworkManager:
                 if time_since_last_block > 20: 
                     logger.warning(f"Sync Watchdog: Silence detected! (Last Recv: {time_since_last_block:.1f}s ago). Requesting blocks...")
                     
-                    # STALL RECOVERY: Force Reconnect if stuck > 45s
-                    # This replicates the "Restart" wakeup effect.
-                    if time_since_last_block > 45 and self.active_connections:
-                        if time.time() - getattr(self, 'last_stall_recovery', 0) > 60:
-                            logger.error("🚨 Sync Watchdog: STALL DETECTED (>45s). Force-reconnecting best peer to trigger wakeup!")
-                            self.last_stall_recovery = time.time()
-                            
-                            # Find the most likely culprit (Best Peer)
-                            victim = None
-                            max_h = -1
-                            for p, stats in self.peer_stats.items():
-                                if p in self.active_connections and stats.get('height', 0) > max_h:
-                                    max_h = stats.get('height', 0)
-                                    victim = p
-                            
-                            # If no clear best, kill random
-                            if not victim:
-                                victim = random.choice(list(self.active_connections.keys()))
-                                
-                            logger.info(f"Refeshing connection to {victim}...")
-                            self.forget_peer(victim)
-                            # Discovery/Maintain Nodes will pick it up again
-                            continue 
+                    # SPRINT 5: SOFT RESET (60s Stall Detection)
+                    if time_since_last_block > 60:
+                        logger.error(f"🚨 Sync Watchdog: STALL DETECTED (>60s). Triggering Network Soft Reset.")
+                        self.disconnect_all_peers()
+                        # Reset timer to prevent loop
+                        self.last_block_received_time = time.time()
+                        continue 
 
                     
                     # Trigger getblocks to a random peer
