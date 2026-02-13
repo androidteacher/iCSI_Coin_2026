@@ -2071,7 +2071,13 @@ class NetworkManager:
                 except Exception as e:
                     logger.error(f"Failed to parse Version from {addr}: {e}")
 
-                self.log_peer_event(addr, "RECV", "VERSION", f"Handshake initiated (Port {remote_listening_port if 'remote_listening_port' in locals() else '?'}, Height {remote_height if 'remote_height' in locals() else '?'})")
+                self.log_peer_event(addr, "RECV", "VERSION", f"Handshake initiated (Port {version_msg.addr_from_port if 'version_msg' in locals() else '?'}, Height {remote_height if 'remote_height' in locals() else '?'})")
+                
+                # CRITICAL FIX (Sprint 5): Start the message processing loop for this OUTGOING connection
+                # Without this, we send requests but never read the responses!
+                task = asyncio.create_task(self.process_message_loop(reader, writer, addr))
+                self.tasks.add(task)
+                task.add_done_callback(self.tasks.discard)
                 
                 # Send Verack
                 writer.write(VerackMessage().serialize())
@@ -2105,7 +2111,8 @@ class NetworkManager:
             
             # Delegate to unified loop in background task
             # Here 'target' is (ip, port) of the listener, which is what we want for stats/logs.
-            asyncio.create_task(self.process_message_loop(reader, writer, target))
+            # DUPLICATE REMOVAL: We already started the loop above in the version handler
+            # asyncio.create_task(self.process_message_loop(reader, writer, target))
             return True
 
         except Exception as e:
