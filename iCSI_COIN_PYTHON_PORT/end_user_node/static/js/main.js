@@ -845,6 +845,7 @@ function openDataModal() {
 
 // --- Download Miner Logic ---
 
+
 function openDownloadMinerModal() {
     openModal('downloadMinerModal');
 
@@ -867,6 +868,10 @@ function openDownloadMinerModal() {
             const cmd = `python3 miner.py --url http://${host}:${rpcPort} --user user --pass pass`;
             document.getElementById('minerCommand').innerText = cmd;
         });
+}
+
+function openGpuMinerModal() {
+    openModal('gpuMinerModal');
 }
 
 // --- RPC Auth Logic ---

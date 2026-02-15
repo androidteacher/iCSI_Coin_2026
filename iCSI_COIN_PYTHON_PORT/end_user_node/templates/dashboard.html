@@ -140,10 +140,15 @@
                                 class="block w-full text-left px-4 py-3 text-sm text-zinc-300 hover:bg-zinc-800 hover:text-white border-b border-zinc-800">
                                 📚 API Info
                             </a>
-                            <!-- 5. Download Miner -->
+                            <!-- 5. Download CPU Miner -->
                             <button onclick="openDownloadMinerModal()"
                                 class="block w-full text-left px-4 py-3 text-sm text-zinc-300 hover:bg-zinc-800 hover:text-white border-b border-zinc-800">
-                                ⛏ Download Miner
+                                ⛏ Download CPU Miner
+                            </button>
+                            <!-- 6. Download GPU Miner -->
+                            <button onclick="openGpuMinerModal()"
+                                class="block w-full text-left px-4 py-3 text-sm text-zinc-300 hover:bg-zinc-800 hover:text-white border-b border-zinc-800">
+                                🚀 Download GPU Miner
                             </button>
                             <!-- 6. Node Data -->
                             <button onclick="openDataModal()"
@@ -855,6 +860,104 @@ pip install -r requirements.txt</code></pre>
                     class="block w-full py-3 bg-blue-600 hover:bg-blue-500 text-white font-bold text-center rounded-lg transition-colors">
                     Download Archive (.zip)
                 </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- GPU Miner Modal -->
+    <div id="gpuMinerModal" class="fixed inset-0 bg-black/80 backdrop-blur-sm hidden items-center justify-center z-50">
+        <div
+            class="bg-zinc-900 border border-zinc-700 rounded-xl p-8 w-[95%] max-w-3xl h-[85vh] flex flex-col shadow-2xl animate-[slideUp_0.3s_ease-out]">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="font-heading font-bold text-xl uppercase text-white">Download GPU Miner</h3>
+                <button onclick="closeModal('gpuMinerModal')" class="text-zinc-500 hover:text-white text-xl">✕</button>
+            </div>
+
+            <div class="overflow-y-auto pr-2 space-y-6">
+                <!-- WARNING SECTION -->
+                <div class="bg-red-900/20 border border-red-500/50 p-4 rounded-lg flex gap-4 items-start">
+                    <span class="text-3xl">⚠️</span>
+                    <div>
+                        <h4 class="text-red-400 font-bold uppercase tracking-wider text-sm mb-1">Warning: Extreme
+                            Hashrate</h4>
+                        <p class="text-xs text-red-200 leading-relaxed">
+                            This miner will chew through <strong>thousands of blocks per minute</strong>.
+                            The standalone CPU web miner will quickly become useless due to difficulty increases if you
+                            let this bad boy off the chain.
+                        </p>
+                    </div>
+                </div>
+
+                <!-- TITLE -->
+                <div class="border-b border-zinc-800 pb-2">
+                    <h1 class="text-2xl font-bold text-white">iCSI_Coin GPU Miner (Proxy Edition)</h1>
+                    <p class="text-zinc-400 text-sm mt-1">
+                        High-performance mining using <code>ccminer</code> with a Python proxy for accurate reward
+                        tracking.
+                    </p>
+                </div>
+
+                <!-- DOWNLOAD BUTTON -->
+                <div class="text-center py-2">
+                    <a href="/static/GPU_MINER.zip"
+                        class="inline-flex items-center gap-2 px-8 py-4 bg-primary hover:bg-purple-500 text-black font-bold uppercase rounded-lg transition-all shadow-[0_0_20px_rgba(168,85,247,0.3)]">
+                        <span class="text-xl">📥</span> Download GPU Miner Package
+                    </a>
+                </div>
+
+                <!-- PREREQUISITES -->
+                <div class="space-y-2">
+                    <h2 class="text-lg font-bold text-white border-l-4 border-primary pl-3">Prerequisites</h2>
+                    <ul class="list-disc list-inside text-sm text-zinc-300 space-y-1 ml-2">
+                        <li><strong class="text-primary">WINDOWS OS ONLY</strong> (The miner executable is for Windows).
+                        </li>
+                        <li><strong>Python 3.x Installed</strong> (Required for the proxy script).</li>
+                        <li><strong>NVIDIA GPU</strong> with up-to-date drivers.</li>
+                        <li><strong>iCSI_Coin Node</strong> running locally on port 9342 (RPC).</li>
+                    </ul>
+                </div>
+
+                <!-- SETUP -->
+                <div class="space-y-2">
+                    <h2 class="text-lg font-bold text-white border-l-4 border-primary pl-3">Setup Instructions</h2>
+                    <div class="bg-black/50 border border-zinc-800 rounded-lg p-4 text-sm text-zinc-300 space-y-3">
+                        <p>1. <strong>Edit `run_miner.bat`</strong>:</p>
+                        <ul class="list-disc list-inside ml-4 space-y-1 text-zinc-400">
+                            <li>Right-click <code>run_miner.bat</code> and select <strong>Edit</strong>.</li>
+                            <li>Find the line: <code>set ADDRESS=&lt;YOUR_WALLET_ADDRESS&gt;</code></li>
+                            <li>Replace <code>&lt;YOUR_WALLET_ADDRESS&gt;</code> with your actual wallet address.</li>
+                            <li>Save the file.</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- USAGE -->
+                <div class="space-y-2">
+                    <h2 class="text-lg font-bold text-white border-l-4 border-primary pl-3">Usage</h2>
+                    <p class="text-sm text-zinc-300">Double-click <code>run_miner.bat</code> to start.</p>
+
+                    <div class="bg-zinc-800/50 p-3 rounded border-l-2 border-zinc-600">
+                        <h4 class="text-xs font-bold text-zinc-400 uppercase mb-1">What happens?</h4>
+                        <ol class="list-decimal list-inside text-xs text-zinc-500 space-y-1">
+                            <li>Launches <strong>Mining Proxy</strong> (Port 9340 -> Node 9342). Injects your wallet
+                                address.</li>
+                            <li>Launches <strong>ccminer</strong> to connect to the proxy and start hashing.</li>
+                        </ol>
+                    </div>
+                </div>
+
+                <!-- TROUBLESHOOTING -->
+                <div class="space-y-2">
+                    <h2 class="text-lg font-bold text-white border-l-4 border-red-500 pl-3">Troubleshooting</h2>
+                    <ul class="space-y-2 text-sm text-zinc-400">
+                        <li><span class="text-red-400 font-bold">"python is not recognized"</span>: Install Python and
+                            check "Add to PATH" during installation.</li>
+                        <li><span class="text-red-400 font-bold">"Connection refused"</span>: Ensure your Node is
+                            running and fully synced.</li>
+                        <li><span class="text-red-400 font-bold">"Hashrate shows 0"</span>: Wait 10-20 seconds for the
+                            first job to be processed.</li>
+                    </ul>
+                </div>
             </div>
         </div>
     </div>
