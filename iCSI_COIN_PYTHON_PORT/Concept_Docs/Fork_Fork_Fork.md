@@ -50,18 +50,6 @@ The blockchain cannot split forever; everyone needs to agree on a single history
 4.  The entire network switches to the "A-Chain".
 5.  **Block B** becomes an **Orphan** (or Stale Block). It remains in your database (`block_index`), but it is not part of the active chain (`chainstate`).
 
-### 4. Analysis of Your Data (Heights 5490-5492)
-Your data shows a **sustained fork** or a very competitive period:
-*   Height 5490: 2 blocks
-*   Height 5491: 2 blocks
-*   Height 5492: 2 blocks
-
-This suggests that for 3 blocks in a row, the network was split or highly competitive.
-1.  **Possibility A (Latency):** Your node is well-connected and hearing "chatter" from distant parts of the network where propagation delay causes frequent overlaps.
-2.  **Possibility B (Difficulty):** The mining difficulty might be too low, causing blocks to be found too frequently (e.g., every few seconds instead of minutes), increasing the chance of collisions.
-3.  **Possibility C (Attack/Testing):** Someone might be intentionally mining a side-chain or testing reorg logic.
-
-## Conclusion
 
 **This is normal behavior.**
 

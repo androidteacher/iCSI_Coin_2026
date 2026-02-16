@@ -6,7 +6,7 @@
 *   When a coin is mined or received, it is **added** to this list.
 *   When a coin is spent, it is **subtracted** (deleted) from the sender's list and **added** (as a new coin) to the receiver's list.
 
-By keeping this list of only the "Active/Unspent" coins, the node can instantly answer "How much money do I have?" by simply summing up your active coins in this database, rather than re-reading thousands of old blocks.
+By keeping this list, the node can instantly answer "How much money does X wallet have?" by simply summing up your active coins in this database, rather than re-reading thousands of old blocks.
 
 ## 1. Overview
 The **Chainstate Database** (`chainstate.sqlite`) is the "brain" of the iCSI Coin node. While the blockchain (blocks 0 to 10,000+) is the *history* of every transaction that ever happened, the **Chainstate** is a snapshot of *right now*.

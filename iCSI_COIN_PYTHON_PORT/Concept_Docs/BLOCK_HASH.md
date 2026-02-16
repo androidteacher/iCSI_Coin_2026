@@ -2,29 +2,26 @@
 
 ## What is the Block Hash?
 
-The **Block Hash** you see in the explorer (e.g., `68...`) is the unique digital fingerprint of a block. It is the result of the "Proof of Work" puzzle that miners must solve to add a block to the blockchain.
+The **Block Hash** you see in the explorer (e.g., `9dfc7a1e9c2057bf2a8de8cc70964a4469aca94be0a759efc89a2ce1da1edfa5`) is the unique digital fingerprint of a block. It is the result of the "Proof of Work" puzzle that miners must solve to add a block to the blockchain.
 
 ## How is it produced?
 
-The miner constructs a candidate block by gathering pending transactions and creating a **Block Header**. This header contains:
-1.  **Version**: Block version number.
-2.  **Previous Block Hash**: The ID of the block before this one (chaining them together).
-3.  **Merkle Root**: A summary hash of all transactions in the block.
-4.  **Timestamp**: Current time.
-5.  **Bits (Difficulty)**: The encoded "Target" the miner must beat.
-6.  **Nonce**: A random number the miner can change.
+The miner constructs a candidate block by gathering pending transactions and creating a **Block Header**. 
+- A Block Header is a valid data structure that can be hashed repeatedly.
 
 The miner runs the following formula repeatedly, changing the **Nonce** each time:
 
 ```
-Block Hash = SHA256(SHA256(Block Header + Nonce))
+SHA256(SHA256(Block Header + Nonce)) = Candidate Block Hash
 ```
 
-This process is what happens when a miner requests "work" (often called `getwork` or `getblocktemplate` in technical terms) and starts hashing.
+This process is what happens when a miner requests "work" (often called `getwork` or `getblocktemplate` in technical terms) and starts hashing a valid **block header**.
 
-## Reading the Hash: The "Leading Zeros"
+##  How many leading zeros are required?
 
 The rule of mining is simple: **The resulting Hash must be numerically smaller than the Target.**
+- If the **Target** is `0000ffff...`, (The first 4 bits must be zeros) then a hash starting with `00006788...` is valid.
+- If the **Target** is `00000000...`, (Seven zeros) then a hash starting with `00006788...` is **invalid**.
 
 The easiest way to visualize this is by looking at the **leading zeros** of the hash.
 *   **Hard Difficulty**: The hash must start with many zeros (e.g., `00000000...`).

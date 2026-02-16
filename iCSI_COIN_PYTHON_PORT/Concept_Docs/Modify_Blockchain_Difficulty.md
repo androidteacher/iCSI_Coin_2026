@@ -2,7 +2,7 @@
 
 ## How Difficulty Works
 
-Mining difficulty controls **how hard it is to find a valid block**. The miner repeatedly hashes a block header with different nonce values until the resulting hash is **below a target number**. A lower target = harder mining = longer block times.
+Mining difficulty controls **how hard it is to find a valid block**. The miner repeatedly hashes a block header with different nonce values until the resulting hash is **has a certain number of leading zeros**. More Zeros = harder mining = longer block times.
 
 ## The `bits` Value (Compact Target Format)
 
@@ -28,7 +28,7 @@ Target = Coefficient × 256^(Exponent - 3)
 
 ---
 
-## Where to Change Difficulty
+## Where to Change Difficulty (You would need to do this before running your first node)
 
 You must update **all 3 files** and then wipe blockchain data with `clear_stack.sh`.
 

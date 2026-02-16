@@ -1,4 +1,4 @@
-# The Miner — How iCSI Coin Mining Works
+# The CPU Miner — How iCSI Coin Mining Works
 
 ## Overview
 

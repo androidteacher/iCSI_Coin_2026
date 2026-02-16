@@ -1,7 +1,7 @@
 # SQLite Blockchain Queries
 
 This document contains a collection of useful SQLite queries for inspecting the `iCSI Coin` blockchain state directly from the database files.
-These commands are intended to be run from the project root directory, assuming the standard node data location: `end_user_node/wallet_data/`.
+These commands are intended to be run from the project root directory, assuming the standard node data l`ocation: `end_user_node/wallet_data/`.
 
 ## Database Files
 
