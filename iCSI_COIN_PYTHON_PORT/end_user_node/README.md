@@ -22,14 +22,4 @@ docker compose up -d --build
 Once running, access the configuration panel at:
 **http://localhost:8080**
 
-### connecting to the Network
-1.  Open the Web Interface.
-2.  Enter the `IP:Port` of the Seed Nodes you wish to connect to.
-    *   *Default*: `192.168.231.32:9333` (This is likely the host IP if running seeds on the same machine).
-3.  Click **Initialize Connection**.
-4.  View effective connections by clicking **[ DISCOVERED NODES ]**.
 
-## Features
-*   **Dynamic Peering**: Connect to any node via the web UI.
-*   **Real-time Monitoring**: View active connections and status updates live.
-*   **Persistent Identity**: The node generates a unique identity on startup.
