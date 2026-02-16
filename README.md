@@ -10,12 +10,13 @@
 ## Disclaimer
 > **Although this is a working peer-to-peer blockchain application, it is designed for educational purposes.**
 
-Students will learn to:
-*   Import/Export Public/Private Wallet Addresses.
-*   Mine Coin using a web interface and RPC client (examining the mining process).
-*   Understand Block Halving and Difficulty shifts as key economic controls.
-*   Observe Peer-to-Peer network discovery and blockchain synchronization.
-
+Students will learn:
+*   Fundamentals of Blockchain Technology by following [this Lesson Plan](https://www.notion.so/Blockchain-in-a-Box-Dockerized-Crypto-Nodes-for-the-Classroom-3024c8e52376808c9fa8dddcce5dddd5).
+*   To work with/recognize/analyze public and private keys and wallet addresses.
+*   To mine coin using the web interface, standalone Python script or downloadable **GPU Miner**.
+*   To understand Block Halving and Difficulty.
+*   To observe Peer-to-Peer network discovery and blockchain synchronization.
+*   
 *(See the [`Concept_Docs`](https://github.com/androidteacher/iCSI_Coin_2026/tree/main/iCSI_COIN_PYTHON_PORT/Concept_Docs) folder for in-depth explanations of how this blockchain is constructed.)*
 
 ---
