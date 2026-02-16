@@ -49,11 +49,13 @@ To start the environment, navigate to the `STARTUP_SCRIPTS` folder and verify yo
 
 ```bash
 cd STARTUP_SCRIPTS
-# Launch a full 4-node cluster with STUN server
-./start_full_stack.sh
 
-# OR launch a single end-user node
+# Launch a single end-user node
 ./start_user_node.sh
+
+# Optional: Launch a full 4-node cluster with STUN server
+./start_full_stack.sh
+#If you have more than 1-2 end user nodes on a LAN, you won't need to do this
 ```
 
 *Do the `docker run` commands/startup scripts seem broken?*
