@@ -16,7 +16,7 @@
 
 * **Validate Data Integrity**: Use SHA-256 hashing to demonstrate how the "chain" is formed and why changing one bit of data invalidates all subsequent blocks.
     
-* **Mine Blocks!**: Start with a CPU miner (slow), but it won't be long before your super star students discover and deploy the GPU miner.
+* **Mine Blocks!**: Start with a CPU miner (slow), but it won't be long before your super star students discover and deploy the GPU miner. (If you have NVIDIA or RADEON GPUs available on the host operating system, the GPU miner will very quicky render the integrated CPU miner useless. It's awesome!)
 
 * **Discover the supply/demand nature of the Bitcoin blockchain**: Analyze the "Halving" mechanism to understand how programmatic scarcity affects the supply and value of **iCSI Coin**.
 
