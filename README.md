@@ -12,14 +12,15 @@
 
 ### Students will:
 
-* **Generate Digital Identities**: Create Private/Public keypairs to understand how asymmetric encryption serves as a tamper-proof digital signature.
+* **Work with Wallet Addresses here and on the Bitcoin blockchain**: Create Private/Public keypairs to understand how asymmetric encryption serves as a tamper-proof digital signature.
+
 * **Validate Data Integrity**: Use SHA-256 hashing to demonstrate how the "chain" is formed and why changing one bit of data invalidates all subsequent blocks.
     
-* **Compete for Consensus**: Deploy a GPU miner to solve the "Proof of Work" puzzle, adjusting difficulty to see how the network maintains a consistent block time.
-* **Synchronize a Distributed Ledger**: Interconnect Docker nodes to observe how a Peer-to-Peer (P2P) network reaches agreement without a central server.
-    
-* **Manage Tokenomics**: Analyze the "Halving" mechanism to understand how programmatic scarcity affects the supply and value of **iCSI Coin**.
-* **Audit Public Transactions**: Use a Block Explorer to trace wallet balances and verify that the ledger is transparent and immutable.
+* **Mine Blocks!**: Start with a CPU miner (slow), but it won't be long before your super star students discover and deploy the GPU miner.
+
+* **Discover the supply/demand nature of the Bitcoin blockchain**: Analyze the "Halving" mechanism to understand how programmatic scarcity affects the supply and value of **iCSI Coin**.
+
+* **Audit Public Transactions**: Use a Block Explorer to trace wallet balances and verify that the ledger is transparent and immutable. **(It's anything but anonymous!)**
  
 *(See the [`Concept_Docs`](https://github.com/androidteacher/iCSI_Coin_2026/tree/main/iCSI_COIN_PYTHON_PORT/Concept_Docs) folder for in-depth explanations of how this blockchain is constructed.)*
 
