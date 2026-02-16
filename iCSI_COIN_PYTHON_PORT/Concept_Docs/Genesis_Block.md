@@ -22,29 +22,6 @@ Specifically, look for the `_create_genesis_block` method within the `ChainManag
 31:         )
 ```
 
-## How to Edit
+## Create Your Own Coin (Custom Genesis Block)
 
-1.  Open `end_user_node/icsicoin/core/chain.py`.
-2.  Find the string inside the `TxIn` constructor (starts with `b'...'`).
-3.  Replace the text with your desired message.
-    - **Note:** The message must be bytes (prefixed with `b`) or encoded to bytes.
-
-## ⚠️ CRITICAL: Reset Required
-
-Changing the Genesis Block changes its hash. Since every subsequent block builds upon the previous hash, **modifying the Genesis Block invalidates the entire existing blockchain.**
-
-To make your changes take effect, you **MUST start a new blockchain**:
-
-1.  **Stop your node**: `docker compose down`
-2.  **Delete existing data**:
-    ```bash
-    # WARNING: This deletes your wallet too! Back up wallet.dat if you have funds.
-    sudo rm -rf end_user_node/wallet_data/*
-    ```
-3.  **Rebuild and Start**:
-    ```bash
-    cd end_user_node
-    docker compose up -d --build
-    ```
-
-The node will automatically generate the new Genesis Block with your custom message upon startup.
+To learn how to spawn a new chain with a custom genesis block, please refer to the [Blockchain Reset Scripts Documentation](https://github.com/androidteacher/iCSI_Coin_2026/blob/main/iCSI_COIN_PYTHON_PORT/BLOCKCHAIN_RESET_SCRIPTS/README.md).

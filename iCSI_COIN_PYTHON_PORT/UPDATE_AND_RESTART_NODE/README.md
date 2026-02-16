@@ -15,5 +15,4 @@ This directory contains utility scripts to update and restart the node.
   ```
 
 ## Important Notes
-- **WARNING:** This process involves stopping and starting the node containers. Service will be interrupted.
-- Ensure you have git configured to pull changes.
+- **Good News:** This script --will not-- destroy any data. (Back up that wallet anyway!)
