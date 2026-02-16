@@ -28,8 +28,7 @@
 
 ### A Word to the Wise
 > "Placing this node on the public internet unleashes its peer-to-peer nature, potentially causing your blockchain to take on a life of its own. Once public, you will own the chain as much as Satoshi Nakamoto owns Bitcoin—which is to say, not at all."
-
-<p align="center"><strong>Just don't point it at or host it directly on a 'public' IP and you'll be fine. (Node owners would have to manually enter the IP of at least one 'public' node, so it's unlikely to spread like wildfire or anything, but once these things start talking, they tend to keep talking!)</strong></p>
+<p align="center"><strong>Just don't point it at or host it directly on a 'public' IP and you'll be fine. (Node owners would have to manually enter the IP of at least one 'public' facing node. So it's unlikely to spread like wildfire or anything, but once these things start talking, they tend to keep talking!)</strong></p>
 
 <p align="center"><em>Hosting this in a LAN is the best way to not 'accidentally' become the creator of the next big crypto breakout coin.<br>Remember, friends don't let friends become crypto bros!</em></p>
 
