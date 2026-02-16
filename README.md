@@ -12,7 +12,7 @@
 
 ### Students will:
 
-* **Work with Wallet Addresses here and on the Bitcoin blockchain**: Create Private/Public keypairs to understand how asymmetric encryption serves as a tamper-proof digital signature.
+* **Work with Wallet Addresses: Both iCSI_Coin and Bitcoin**: Create Private/Public keypairs to understand how asymmetric encryption provides a secure mechanism for proving ownership of assets.
 
 * **Validate Data Integrity**: Use SHA-256 hashing to demonstrate how the "chain" is formed and why changing one bit of data invalidates all subsequent blocks.
     
