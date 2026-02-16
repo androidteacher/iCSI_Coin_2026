@@ -10,12 +10,16 @@
 ## Disclaimer
 > **Although this is a working peer-to-peer blockchain application, it is designed for educational purposes.**
 
-Students will learn:
-*   Fundamentals of Blockchain Technology by following [this Lesson Plan](https://www.notion.so/Blockchain-in-a-Box-Dockerized-Crypto-Nodes-for-the-Classroom-3024c8e52376808c9fa8dddcce5dddd5).
-*   To work with/recognize/analyze public and private keys and wallet addresses.
-*   To mine coin using the web interface, standalone Python script or downloadable **GPU Miner**.
-*   To understand Block Halving and Difficulty.
-*   To observe Peer-to-Peer network discovery and blockchain synchronization.
+### Students will:
+
+* **Generate Digital Identities**: Create Private/Public keypairs to understand how asymmetric encryption serves as a tamper-proof digital signature.
+* **Validate Data Integrity**: Use SHA-256 hashing to demonstrate how the "chain" is formed and why changing one bit of data invalidates all subsequent blocks.
+    
+* **Compete for Consensus**: Deploy a GPU miner to solve the "Proof of Work" puzzle, adjusting difficulty to see how the network maintains a consistent block time.
+* **Synchronize a Distributed Ledger**: Interconnect Docker nodes to observe how a Peer-to-Peer (P2P) network reaches agreement without a central server.
+    
+* **Manage Tokenomics**: Analyze the "Halving" mechanism to understand how programmatic scarcity affects the supply and value of **iCSI Coin**.
+* **Audit Public Transactions**: Use a Block Explorer to trace wallet balances and verify that the ledger is transparent and immutable.
  
 *(See the [`Concept_Docs`](https://github.com/androidteacher/iCSI_Coin_2026/tree/main/iCSI_COIN_PYTHON_PORT/Concept_Docs) folder for in-depth explanations of how this blockchain is constructed.)*
 
