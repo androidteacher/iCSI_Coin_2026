@@ -7,7 +7,7 @@
   <em>iCSI Coin Miner</em>
 </p>
 
-## Crypto Currency Education
+## Real CryptoCurrency/Blockchain Education
 > **Although this is a working peer-to-peer blockchain application, it is designed for educational purposes.**
 
 ### Students will:
