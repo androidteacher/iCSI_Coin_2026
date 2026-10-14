@@ -34,7 +34,7 @@
 
 ---
 
-## 🚀 Quick Start (End Users)
+## Quick Start (End Users)
 
 Running your own node takes a **single command**. Open a terminal and run:
 
