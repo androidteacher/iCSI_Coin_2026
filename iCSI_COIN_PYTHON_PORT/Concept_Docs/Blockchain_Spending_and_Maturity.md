@@ -2,13 +2,13 @@
 
 In traditional banking, when a deposit shows up in your account, it's usually considered "final" immediately or within a few business days. In a decentralized blockchain like iCSI Coin (and Bitcoin/Litecoin), the concept of "finality" is probabilistic. This leads to an important rule known as **Coinbase Maturity**.
 
-## The 100-Block Rule
+## The Maturity Rule
 
 If you are a miner and you successfully mine a block, you are rewarded with newly created coins (the "Coinbase Transaction"). However, you cannot spend these coins immediately.
 
-**Rule:** Coinbase transaction outputs can only be spent after they have received at least **100 confirmations**.
+**Rule:** Coinbase transaction outputs can only be spent after they have received at least **20 confirmations** (iCSI Coin's `COINBASE_MATURITY`, configurable via the `ICSI_COINBASE_MATURITY` environment variable; Bitcoin uses 100).
 
-This means if you mine Block #500, you cannot use the reward from that block until the blockchain reaches Block #600.
+This means if you mine Block #500, you cannot use the reward from that block until the blockchain reaches Block #520.
 
 ## Why is this important?
 
@@ -36,9 +36,9 @@ If there was **no maturity rule**, here is how an attacker (or an unlucky accide
     - The transaction paying the merchant **never happened**.
     - The merchant has lost the goods (gift card) and received **zero payment**.
 
-By enforcing a **100-block buffer**, we ensure that by the time the coins are spendable, the block is so deep in the chain history that the probability of it being "reorged" out is effectively zero. A reorg of 100 blocks would require immense computational power, making it economically infeasible for typical attacks.
+By enforcing a **20-block buffer**, we ensure that by the time the coins are spendable, the block is deep enough in the chain history that the probability of it being "reorged" out is very low. A reorg of 20 blocks would require immense computational power, making it economically infeasible for typical attacks. (Bitcoin uses a larger 100-block buffer for even stronger guarantees; iCSI Coin uses 20 so students can spend mined coins within a class.)
 
 ## Summary for Cyber Students
 - **Immutability is built over time.** A block isn't truly set in stone until many other blocks are built on top of it.
 - **Maturity prevents "phantom" value.** It stops coins that might disappear from entering the economy.
-- **Confirmations matter.** For high-value transactions, always wait for multiple confirmations (usually 6 for regular transactions, 100 for mining rewards).
+- **Confirmations matter.** For high-value transactions, always wait for multiple confirmations (commonly 6 for regular transactions; iCSI Coin requires 20 for mining rewards, Bitcoin 100).

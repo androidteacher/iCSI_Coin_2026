@@ -109,10 +109,10 @@ Want faster blocks? Want difficulty to adjust less often?
 3.  **Code**:
     ```python
     DIFFICULTY_ADJUSTMENT_INTERVAL = 20000     # Retarget every 20,000 blocks
-    TARGET_BLOCK_TIME_SECONDS = 30             # Target: 30 seconds per block
+    TARGET_BLOCK_TIME_SECONDS = 60             # Target: 60 seconds per block
     ```
 4.  **Action**:
-    *   Change `DIFFICULTY_ADJUSTMENT_INTERVAL` to `20000` (or any number) to change how often the network difficulty updates.
+    *   Change `DIFFICULTY_ADJUSTMENT_INTERVAL` to a larger/smaller number to change how often the network difficulty updates.
     *   Change `TARGET_BLOCK_TIME_SECONDS` to change how fast you want blocks to be mined on average.
 
 ### 6. Change the Economics: Halving & Coinbase Maturity (Optional)

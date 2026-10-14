@@ -2,9 +2,7 @@
 
 The iCSI Coin Node RPC interface supports HTTP Basic Authentication.
 
-By default, the node is configured with:
-- **Username**: `user`
-- **Password**: `pass`
+Authentication is **off by default** (see below), so no credentials are required out of the box. If you enforce it and don't set your own, the examples below use the placeholder credentials `user` / `pass`.
 
 ## Enforcing Authentication
 By default, the node **ignores** authentication to maintain backward compatibility. You can enforce authentication via the "RPC Auth" menu in the dashboard.
@@ -23,12 +21,12 @@ If authentication is enforced, your miner must provide the correct credentials.
 Use the `--user` and `--pass` arguments:
 
 ```bash
-python3 miner.py --url http://127.0.0.1:9340 --user myuser --pass mypassword
+python3 miner.py --url http://127.0.0.1:9342 --user myuser --pass mypassword
 ```
 
 ### cURL Example
 To manually interact with the RPC interface using `curl`, use the `-u` flag:
 
 ```bash
-curl -u myuser:mypassword --data-binary '{"jsonrpc": "1.0", "id": "curltest", "method": "getinfo", "params": []}' -H 'content-type: text/plain;' http://127.0.0.1:9340/
+curl -u myuser:mypassword --data-binary '{"jsonrpc": "1.0", "id": "curltest", "method": "getinfo", "params": []}' -H 'content-type: text/plain;' http://127.0.0.1:9342/
 ```

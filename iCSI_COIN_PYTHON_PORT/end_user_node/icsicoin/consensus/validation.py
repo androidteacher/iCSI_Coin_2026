@@ -56,8 +56,8 @@ def target_to_bits(target):
 
 # ────── Difficulty Adjustment Constants ──────
 DIFFICULTY_ADJUSTMENT_INTERVAL = 20000     # Retarget every 20,000 blocks (rare, so difficulty stays stable for a long classroom session)
-TARGET_BLOCK_TIME_SECONDS = 30             # Target: 30 seconds per block
-EXPECTED_TIMESPAN = DIFFICULTY_ADJUSTMENT_INTERVAL * TARGET_BLOCK_TIME_SECONDS  # 600,000s
+TARGET_BLOCK_TIME_SECONDS = 60             # Target: 60 seconds per block
+EXPECTED_TIMESPAN = DIFFICULTY_ADJUSTMENT_INTERVAL * TARGET_BLOCK_TIME_SECONDS  # 1,200,000s (~14 days)
 GENESIS_BITS = 0x1f099996                  # Starting difficulty (6x easier than original)
 
 # ────── Economic / coinbase parameters ──────

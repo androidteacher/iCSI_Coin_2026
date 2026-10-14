@@ -120,7 +120,7 @@ bits = 0x1F099996
   Target = 0x099996 × 256^(31-3) = a very large number
 ```
 
-See `Blockchain_Difficulty.md` for full details on adjusting this value.
+See `Modify_Blockchain_Difficulty.md` for full details on adjusting this value.
 
 ---
 
@@ -138,11 +138,11 @@ Default RPC port for the user node: **9342**
 
 ### Authentication
 
-Every RPC call uses HTTP Basic Auth:
+RPC authentication is **disabled by default** (`enforce_auth = False`), which is fine for a classroom LAN — the miner does not need credentials. If you turn auth on, the standalone miner defaults to:
 
 ```
 Username: user
-Password: password
+Password: pass
 ```
 
 ### Two RPC Methods Used

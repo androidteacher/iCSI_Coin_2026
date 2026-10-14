@@ -28,47 +28,33 @@ Target = Coefficient × 256^(Exponent - 3)
 
 ---
 
-## Where to Change Difficulty (You would need to do this before running your first node)
+## Where to Change Difficulty (do this before running your first node)
 
-You must update **all 3 files** and then wipe blockchain data with `clear_stack.sh`.
+Difficulty now **retargets dynamically** (`calculate_next_bits()` in `consensus/validation.py`), and the web UI and RPC block template both read the difficulty from that function automatically. So you only change the **starting** difficulty, which lives in **two places that must hold the same value**, then wipe the chain.
 
-### File 1: Genesis Block (REQUIRED)
-
-```
-end_user_node/icsicoin/core/chain.py  →  line ~40
-```
-
-```python
-bits=0x1d00ffff,  # ← Change this value
-```
-
-This defines the difficulty of the **genesis block** — the starting point for the entire chain.
-
-### File 2: Web Server Default (REQUIRED)
+### Place 1: The difficulty constant (REQUIRED)
 
 ```
-end_user_node/icsicoin/web/server.py  →  line ~180
+end_user_node/icsicoin/consensus/validation.py  →  GENESIS_BITS
 ```
 
 ```python
-bits = 0x1d00ffff  # ← Must match genesis
+GENESIS_BITS = 0x1f099996   # ← starting difficulty used for all early blocks; change this
 ```
 
-This is the fallback difficulty shown in the UI when no blocks exist yet.
-
-### File 3: RPC Block Template (REQUIRED)
+### Place 2: The genesis block header (REQUIRED — must match Place 1)
 
 ```
-end_user_node/icsicoin/rpc/rpc_server.py  →  line ~127
+end_user_node/icsicoin/core/chain.py  →  _create_genesis_block()  (the BlockHeader `bits=`)
 ```
 
 ```python
-"bits": 0x1d00ffff,  # ← Must match genesis
+bits=0x1f099996,   # ← must be the SAME value as GENESIS_BITS above
 ```
 
-This is the difficulty sent to the miner when constructing new blocks.
-
-> **⚠ All 3 values MUST match.** After changing, run `clear_stack.sh` to wipe all blockchain data and rebuild.
+> **⚠ Both values MUST match.** If they differ, the genesis block's difficulty disagrees with the retarget rule and the node rejects its own chain.
+>
+> You do **NOT** need to edit `web/server.py` or `rpc/rpc_server.py` — they call `calculate_next_bits()` and get the right value automatically. (The current value in the code is `0x1f099996`.)
 
 ---
 
@@ -126,8 +112,9 @@ Each exponent drop = **256× harder**:
 After changing difficulty:
 
 ```bash
-# From project root:
-bash clear_stack.sh
+# From the project root:
+cd iCSI_COIN_PYTHON_PORT/BLOCKCHAIN_RESET_SCRIPTS
+./clear_stack.sh
 # Type YES when prompted
 ```
 
