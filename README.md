@@ -34,6 +34,29 @@
 
 ---
 
+## 🚀 Quick Start (End Users)
+
+Running your own node takes a **single command**. Open a terminal and run:
+
+```bash
+# 1. Clone the repository
+git clone https://github.com/androidteacher/iCSI_Coin_2026.git
+
+# 2. Enter the project folder
+cd iCSI_Coin_2026
+
+# 3. Set everything up and launch your node
+./START_NODE.sh
+```
+
+`START_NODE.sh` installs Docker and Docker Compose for you — automatically handling both the modern `docker compose` plugin **and** the legacy `docker-compose` binary, so it won't fail just because your system packages Compose differently — then builds and starts your node.
+
+When it finishes, it prints a big banner telling you to open **http://localhost:8080**. Go there to access your node and create a username and password.
+
+> **Notes:** The script uses `sudo` to install packages, so it may ask for your password. If you get a `Permission denied` error, run `chmod +x START_NODE.sh` first (or launch it with `bash START_NODE.sh`).
+
+---
+
 ## Install
 
 **Kali Linux (2025/2026)** is the easiest way to run this project, as it supports the `docker run` scripts out of the box.
