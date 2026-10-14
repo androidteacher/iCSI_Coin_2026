@@ -5,6 +5,17 @@ SCRIPT_DIR="$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
 PROJECT_ROOT="$SCRIPT_DIR/.."
 USER_NODE_ROOT="$PROJECT_ROOT/end_user_node"
 
+# Resolve the Docker Compose command: prefer the v2 plugin ("docker compose"),
+# fall back to the legacy standalone binary ("docker-compose") on older systems.
+if sudo docker compose version >/dev/null 2>&1; then
+    DC="sudo docker compose"
+elif command -v docker-compose >/dev/null 2>&1; then
+    DC="sudo docker-compose"
+else
+    echo "ERROR: Neither 'docker compose' (v2 plugin) nor 'docker-compose' (legacy) is installed." >&2
+    exit 1
+fi
+
 echo "=================================================="
 echo "   Stopping iCSI Coin FULL STACK"
 echo "=================================================="
@@ -13,7 +24,7 @@ echo "=================================================="
 echo "[1/2] Stopping End User Node & Explorer..."
 if [ -d "$USER_NODE_ROOT" ]; then
     cd "$USER_NODE_ROOT"
-    if sudo docker compose down; then
+    if $DC down; then
         echo " -> User Node Stopped."
     else
         echo " -> FAILED to stop User Node."
@@ -26,7 +37,7 @@ fi
 echo "[2/2] Stopping Seeds and STUN..."
 if [ -d "$PROJECT_ROOT" ]; then
     cd "$PROJECT_ROOT"
-    if sudo docker compose -f docker-compose-seeds.yml down; then
+    if $DC -f docker-compose-seeds.yml down; then
         echo " -> Seeds Stopped."
     else
         echo " -> FAILED to stop Seeds."

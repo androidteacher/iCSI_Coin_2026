@@ -34,6 +34,17 @@ set -e
 PROJECT_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 DATA_DIR="$PROJECT_ROOT/end_user_node/wallet_data"
 
+# Resolve the Docker Compose command: prefer the v2 plugin ("docker compose"),
+# fall back to the legacy standalone binary ("docker-compose") on older systems.
+if docker compose version >/dev/null 2>&1; then
+    DC="docker compose"
+elif command -v docker-compose >/dev/null 2>&1; then
+    DC="docker-compose"
+else
+    echo "ERROR: Neither 'docker compose' (v2 plugin) nor 'docker-compose' (legacy) is installed." >&2
+    exit 1
+fi
+
 # Use remote compose if it exists, otherwise fall back to default
 if [ -f "$PROJECT_ROOT/end_user_node/docker-compose-remote.yml" ]; then
     COMPOSE_FILE="$PROJECT_ROOT/end_user_node/docker-compose-remote.yml"
@@ -75,7 +86,7 @@ echo ""
 
 # ── Step 1: Stop containers ──────────────────────────────────────────
 echo "[1/3] Stopping end user node containers..."
-docker compose -f "$COMPOSE_FILE" down --remove-orphans 2>/dev/null || true
+$DC -f "$COMPOSE_FILE" down --remove-orphans 2>/dev/null || true
 echo "      ✔ Containers stopped"
 
 # ── Step 2: Delete persistent data ───────────────────────────────────
@@ -86,7 +97,7 @@ echo "      ✔ Data wiped (fresh wallet_data/ created)"
 
 # ── Step 3: Rebuild & restart ────────────────────────────────────────
 echo "[3/3] Building & starting End User Node..."
-docker compose -f "$COMPOSE_FILE" up -d --build
+$DC -f "$COMPOSE_FILE" up -d --build
 echo "      ✔ End user node running"
 
 echo ""

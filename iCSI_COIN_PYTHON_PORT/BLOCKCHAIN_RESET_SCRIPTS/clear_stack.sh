@@ -31,6 +31,17 @@ set -e
 # Auto-detect project root (directory this script lives in)
 PROJECT_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 
+# Resolve the Docker Compose command: prefer the v2 plugin ("docker compose"),
+# fall back to the legacy standalone binary ("docker-compose") on older systems.
+if docker compose version >/dev/null 2>&1; then
+    DC="docker compose"
+elif command -v docker-compose >/dev/null 2>&1; then
+    DC="docker-compose"
+else
+    echo "ERROR: Neither 'docker compose' (v2 plugin) nor 'docker-compose' (legacy) is installed." >&2
+    exit 1
+fi
+
 echo ""
 echo "================================================================"
 echo "  🔥  FULL STACK RESET — iCSI Coin Network  🔥"
@@ -49,8 +60,8 @@ echo ""
 
 # ── Step 1: Stop all containers ──────────────────────────────────────
 echo "[1/5] Stopping containers..."
-docker compose -f "$PROJECT_ROOT/docker-compose-seeds.yml" down --remove-orphans 2>/dev/null || true
-docker compose -f "$PROJECT_ROOT/end_user_node/docker-compose.yml" down --remove-orphans 2>/dev/null || true
+$DC -f "$PROJECT_ROOT/docker-compose-seeds.yml" down --remove-orphans 2>/dev/null || true
+$DC -f "$PROJECT_ROOT/end_user_node/docker-compose.yml" down --remove-orphans 2>/dev/null || true
 echo "      ✔ Containers stopped"
 
 # ── Step 2: Prune networks ──────────────────────────────────────────
@@ -75,14 +86,14 @@ echo "      ✔ All data wiped"
 
 # ── Step 4: Rebuild & start seed cluster ─────────────────────────────
 echo "[4/5] Building & starting Seed Cluster..."
-docker compose -f "$PROJECT_ROOT/docker-compose-seeds.yml" up -d --build
+$DC -f "$PROJECT_ROOT/docker-compose-seeds.yml" up -d --build
 echo "      ✔ Seed cluster running (Seeds 1-3 + Admin + STUN)"
 echo "      ⏳ Waiting 15s for seeds to stabilize..."
 sleep 15
 
 # ── Step 5: Rebuild & start end user node ────────────────────────────
 echo "[5/5] Building & starting End User Node..."
-docker compose -f "$PROJECT_ROOT/end_user_node/docker-compose.yml" up -d --build
+$DC -f "$PROJECT_ROOT/end_user_node/docker-compose.yml" up -d --build
 echo "      ✔ End user node running"
 
 echo ""
