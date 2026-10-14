@@ -146,6 +146,9 @@ class ChainManager:
         # We pass chain_state=None to validate_block for context-free checks only?
         # Our current validate_block includes everything. We might need to split it.
         # For now, let's assume validate_block does what it can.
+        # Context-free checks first (Proof of Work + merkle root). This rejects junk
+        # before we touch the index/UTXO set. PoW is verified here so _connect_block can
+        # skip re-hashing the same block.
         is_valid, reason = validate_block(block, None) # Validate context-free first
         if not is_valid:
              logger.warning(f"Block {block_hash} failed context-free validation: {reason}")
@@ -239,9 +242,12 @@ class ChainManager:
         return False, f"Connect failed: {reason}"
 
     def _connect_block(self, block, height):
-        # Update UTXO set
-        # This is where we run full contextual validation
-        is_valid, reason = validate_block(block, self.chain_state)
+        # Update UTXO set.
+        # Full contextual validation: difficulty bits for this height, input UTXOs,
+        # coinbase maturity, and the coinbase subsidy/fee cap. PoW was already verified
+        # in process_block's context-free pass, so skip the expensive re-hash here.
+        is_valid, reason = validate_block(block, self.chain_state, height=height,
+                                          chain_manager=self, check_proof_of_work=False)
         if not is_valid:
              logger.error(f"Block {block.get_hash().hex()} failed contextual validation: {reason}")
              # Mark invalid?

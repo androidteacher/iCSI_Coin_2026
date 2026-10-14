@@ -85,7 +85,10 @@ class MulticastBeacon:
 
         # Create UDP socket for sending
         sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM, socket.IPPROTO_UDP)
-        sock.setsockopt(socket.IPPROTO_IP, socket.IP_MULTICAST_TTL, 2)
+        # TTL governs how many router hops the beacon can traverse. 1 = same subnet
+        # only. Bumped so that LANs with multicast routing enabled can span a couple of
+        # subnets; cross-subnet sync still relies primarily on configured anchor nodes.
+        sock.setsockopt(socket.IPPROTO_IP, socket.IP_MULTICAST_TTL, 8)
         sock.setblocking(False)
 
         loop = asyncio.get_event_loop()

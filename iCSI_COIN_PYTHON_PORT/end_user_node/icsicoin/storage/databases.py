@@ -1,6 +1,6 @@
 import sqlite3
 import os
-import os
+
 
 class BlockIndexDB:
     def __init__(self, data_dir):
@@ -8,8 +8,23 @@ class BlockIndexDB:
         self._init_db()
         self.repair_chain_pointer()
 
+    def _connect(self):
+        """Open a connection with the correct per-connection pragmas.
+
+        WAL mode is persistent (stored in the db file), but `synchronous` is a
+        PER-CONNECTION setting that resets to FULL (fsync on every commit) on each
+        new connection. Setting it to NORMAL here -- on every connection, not just
+        at init -- is the single biggest write-throughput win. busy_timeout lets
+        readers on the event loop coexist with the writer thread instead of raising
+        'database is locked'.
+        """
+        conn = sqlite3.connect(self.db_path, timeout=30.0)
+        conn.execute("PRAGMA synchronous=NORMAL;")
+        conn.execute("PRAGMA busy_timeout=30000;")
+        return conn
+
     def _init_db(self):
-        with sqlite3.connect(self.db_path, timeout=30.0) as conn:
+        with self._connect() as conn:
             conn.execute("PRAGMA journal_mode=WAL;")
             conn.execute("PRAGMA synchronous=NORMAL;")
             conn.execute("""
@@ -36,6 +51,9 @@ class BlockIndexDB:
                 )
             """)
             conn.execute("CREATE INDEX IF NOT EXISTS idx_height ON block_index (height)")
+            # Composite index for the hot-path lookups "MAX(height) WHERE status=3"
+            # (get_best_block / repair) and "height=? AND status=3" (get_block_hash_by_height).
+            conn.execute("CREATE INDEX IF NOT EXISTS idx_status_height ON block_index (status, height)")
             conn.commit()
 
     def repair_chain_pointer(self):
@@ -44,7 +62,7 @@ class BlockIndexDB:
         Prioritizes Validated Blocks (status=3) to avoid jumping to orphans.
         """
         try:
-            with sqlite3.connect(self.db_path, timeout=30.0) as conn:
+            with self._connect() as conn:
                 cursor = conn.cursor()
                 
                 # 1. Get Actual Max Valid Height (Recommended)
@@ -98,7 +116,7 @@ class BlockIndexDB:
 
     def add_block(self, block_hash, file_num, offset, length, prev_hash, height=0, status=1):
         """Add or update a block entry."""
-        with sqlite3.connect(self.db_path, timeout=30.0) as conn:
+        with self._connect() as conn:
             conn.execute("""
                 INSERT OR REPLACE INTO block_index 
                 (block_hash, file_num, offset, length, prev_hash, height, status)
@@ -111,7 +129,7 @@ class BlockIndexDB:
         Add block AND update head pointer atomically.
         Prevents corruption where block is added but pointer isn't updated.
         """
-        with sqlite3.connect(self.db_path, timeout=30.0) as conn:
+        with self._connect() as conn:
             # 1. Add Block
             conn.execute("""
                 INSERT OR REPLACE INTO block_index 
@@ -130,12 +148,17 @@ class BlockIndexDB:
             conn.commit()
 
     def update_block_status(self, block_hash, status):
-        with sqlite3.connect(self.db_path, timeout=30.0) as conn:
+        with self._connect() as conn:
             conn.execute("UPDATE block_index SET status = ? WHERE block_hash = ?", (status, block_hash))
             conn.commit()
 
+    def set_height(self, block_hash, height):
+        with self._connect() as conn:
+            conn.execute("UPDATE block_index SET height = ? WHERE block_hash = ?", (height, block_hash))
+            conn.commit()
+
     def get_block_info(self, block_hash):
-        with sqlite3.connect(self.db_path, timeout=30.0) as conn:
+        with self._connect() as conn:
             cursor = conn.execute("SELECT * FROM block_index WHERE block_hash = ?", (block_hash,))
             row = cursor.fetchone()
             if row:
@@ -151,7 +174,7 @@ class BlockIndexDB:
             return None
 
     def get_block_location(self, block_hash):
-        with sqlite3.connect(self.db_path, timeout=30.0) as conn:
+        with self._connect() as conn:
             cursor = conn.execute("SELECT file_num, offset, length FROM block_index WHERE block_hash = ?", (block_hash,))
             row = cursor.fetchone()
             if row:
@@ -159,7 +182,7 @@ class BlockIndexDB:
             return None
             
     def get_best_block(self):
-        with sqlite3.connect(self.db_path, timeout=30.0) as conn:
+        with self._connect() as conn:
             cursor = conn.execute("SELECT value FROM chain_info WHERE key = 'best_block_hash'")
             row = cursor.fetchone()
             
@@ -196,12 +219,12 @@ class BlockIndexDB:
             return best_info
 
     def update_best_block(self, block_hash):
-        with sqlite3.connect(self.db_path, timeout=30.0) as conn:
+        with self._connect() as conn:
             conn.execute("INSERT OR REPLACE INTO chain_info (key, value) VALUES ('best_block_hash', ?)", (block_hash,))
             conn.commit()
 
     def get_block_hash_by_height(self, height):
-        with sqlite3.connect(self.db_path, timeout=30.0) as conn:
+        with self._connect() as conn:
             # Assumes status=3 means Main Chain
             cursor = conn.execute("SELECT block_hash FROM block_index WHERE height = ? AND status = 3", (height,))
             row = cursor.fetchone()
@@ -211,7 +234,7 @@ class BlockIndexDB:
 
     def search_block_hashes(self, query_fragment):
         """Find block hashes starting with the query fragment."""
-        with sqlite3.connect(self.db_path, timeout=30.0) as conn:
+        with self._connect() as conn:
             # Limit to 5 results for now
             cursor = conn.execute("SELECT block_hash FROM block_index WHERE block_hash LIKE ? LIMIT 5", (query_fragment + '%',))
             rows = cursor.fetchall()
@@ -219,13 +242,13 @@ class BlockIndexDB:
 
     def add_transaction(self, tx_hash, block_hash):
         """Map a transaction hash to the block hash that contains it."""
-        with sqlite3.connect(self.db_path, timeout=30.0) as conn:
+        with self._connect() as conn:
             conn.execute("INSERT OR REPLACE INTO tx_index (tx_hash, block_hash) VALUES (?, ?)", (tx_hash, block_hash))
             conn.commit()
 
     def get_transaction_block_hash(self, tx_hash):
         """Get the block hash containing the given transaction."""
-        with sqlite3.connect(self.db_path, timeout=30.0) as conn:
+        with self._connect() as conn:
             cursor = conn.execute("SELECT block_hash FROM tx_index WHERE tx_hash = ?", (tx_hash,))
             row = cursor.fetchone()
             if row:
@@ -233,7 +256,7 @@ class BlockIndexDB:
             return None
     def get_all_block_locations(self):
         """Returns generator of (block_hash, file_num, offset, height) for validity checking."""
-        with sqlite3.connect(self.db_path, timeout=30.0) as conn:
+        with self._connect() as conn:
             # Order by file_num, offset to minimize disk seeking
             cursor = conn.execute("SELECT block_hash, file_num, offset, height FROM block_index ORDER BY file_num ASC, offset ASC")
             while True:
@@ -248,8 +271,16 @@ class ChainStateDB:
         self.db_path = os.path.join(data_dir, 'chainstate.sqlite')
         self._init_db()
 
+    def _connect(self):
+        """See BlockIndexDB._connect: applies synchronous=NORMAL + busy_timeout per
+        connection (WAL alone does not keep synchronous at NORMAL)."""
+        conn = sqlite3.connect(self.db_path, timeout=30.0)
+        conn.execute("PRAGMA synchronous=NORMAL;")
+        conn.execute("PRAGMA busy_timeout=30000;")
+        return conn
+
     def _init_db(self):
-        with sqlite3.connect(self.db_path, timeout=30.0) as conn:
+        with self._connect() as conn:
             conn.execute("PRAGMA journal_mode=WAL;")
             conn.execute("PRAGMA synchronous=NORMAL;")
             conn.execute("""
@@ -270,11 +301,14 @@ class ChainStateDB:
                 conn.execute("ALTER TABLE utxo ADD COLUMN block_height INTEGER DEFAULT 0")
             if 'is_coinbase' not in columns:
                 conn.execute("ALTER TABLE utxo ADD COLUMN is_coinbase BOOLEAN DEFAULT 0")
-                
+
+            # Index for get_utxos_by_script (wallet balance / explorer address lookups),
+            # which was previously a full table scan of the whole UTXO set per query.
+            conn.execute("CREATE INDEX IF NOT EXISTS idx_utxo_script ON utxo (script_pubkey)")
             conn.commit()
 
-    def add_utxo(self, txid, vout_index, amount, script_pubkey, block_height, is_coinbase):
-        with sqlite3.connect(self.db_path, timeout=30.0) as conn:
+    def add_utxo(self, txid, vout_index, amount, script_pubkey, block_height=0, is_coinbase=0):
+        with self._connect() as conn:
             conn.execute("""
                 INSERT OR REPLACE INTO utxo (txid, vout_index, amount, script_pubkey, block_height, is_coinbase)
                 VALUES (?, ?, ?, ?, ?, ?)
@@ -282,12 +316,12 @@ class ChainStateDB:
             conn.commit()
 
     def remove_utxo(self, txid, vout_index):
-        with sqlite3.connect(self.db_path, timeout=30.0) as conn:
+        with self._connect() as conn:
             conn.execute("DELETE FROM utxo WHERE txid = ? AND vout_index = ?", (txid, vout_index))
             conn.commit()
 
     def get_utxo(self, txid, vout_index):
-        with sqlite3.connect(self.db_path, timeout=30.0) as conn:
+        with self._connect() as conn:
             cursor = conn.execute("SELECT amount, script_pubkey, block_height, is_coinbase FROM utxo WHERE txid = ? AND vout_index = ?", (txid, vout_index))
             row = cursor.fetchone()
             if row:
@@ -297,7 +331,7 @@ class ChainStateDB:
     def get_utxos_by_script(self, script_pubkey):
         """Find all UTXOs paying to a specific script (address)."""
         # Note: script_pubkey should be bytes
-        with sqlite3.connect(self.db_path, timeout=30.0) as conn:
+        with self._connect() as conn:
             cursor = conn.execute("SELECT txid, vout_index, amount, block_height, is_coinbase FROM utxo WHERE script_pubkey = ?", (script_pubkey,))
             rows = cursor.fetchall()
             return [{'txid': r[0], 'vout': r[1], 'amount': r[2], 'block_height': r[3], 'is_coinbase': bool(r[4])} for r in rows]

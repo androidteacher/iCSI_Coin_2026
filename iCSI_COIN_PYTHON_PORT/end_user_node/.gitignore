@@ -1,0 +1,17 @@
+
+# --- Runtime artifacts (node state; never commit) ---
+*.bak
+*.db
+*.dat
+*.sqlite
+*.sqlite-wal
+*.sqlite-shm
+blocks/
+data/
+data_*/
+wallet_data/
+node_config.json
+temp_node_config.json
+send_output.json
+peers.dat
+debug.log

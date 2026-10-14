@@ -33,7 +33,7 @@ class TestChainManager(unittest.TestCase):
         # 1. Create Genesis-like block (prev_hash=00..00)
         genesis = self.create_block("00"*32)
         # Mock validation to pass context-free
-        with unittest.mock.patch('icsicoin.core.chain.validate_block', return_value=True):
+        with unittest.mock.patch('icsicoin.core.chain.validate_block', return_value=(True, 'Valid')):
             # But wait, parent check will fail if we don't handle genesis specifically OR have it pre-seeded.
             # Our current implementation fails if parent missing.
             # So let's seed a "zero" block in index? 
@@ -73,20 +73,20 @@ class TestChainManager(unittest.TestCase):
         b3 = self.create_block(b2_hash)
         b3_hash = b3.get_hash().hex()
         
-        with unittest.mock.patch('icsicoin.core.chain.validate_block', return_value=True):
+        with unittest.mock.patch('icsicoin.core.chain.validate_block', return_value=(True, 'Valid')):
             # Process B1 -> OK
             self.chain_manager.process_block(b1)
             self.assertEqual(self.block_index.get_best_block()['block_hash'], b1_hash)
             
             # Process B3 (Orphan, missing B2) -> False (Added to orphans)
             res = self.chain_manager.process_block(b3)
-            self.assertFalse(res)
+            self.assertFalse(res[0])  # process_block returns (success, reason)
             self.assertEqual(self.block_index.get_best_block()['block_hash'], b1_hash)
             self.assertIn(b3_hash, self.chain_manager.orphan_blocks)
             
             # Process B2 (Connects to B1, triggers B3) -> True
             res = self.chain_manager.process_block(b2)
-            self.assertTrue(res)
+            self.assertTrue(res[0])  # process_block returns (success, reason)
             
             # Tip should be B3 now!
             best = self.block_index.get_best_block()

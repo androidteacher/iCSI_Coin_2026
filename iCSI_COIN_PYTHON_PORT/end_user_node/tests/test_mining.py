@@ -28,7 +28,7 @@ class TestMining(unittest.TestCase):
         
         self.chain_manager = MagicMock()
         self.chain_manager.block_index = self.block_index
-        self.chain_manager.process_block.return_value = True
+        self.chain_manager.process_block.return_value = (True, 'accepted')
         
         self.mempool = MagicMock()
         self.mempool.get_all_transactions.return_value = []
@@ -73,15 +73,19 @@ class AsyncTestMining(unittest.IsolatedAsyncioTestCase):
         
         self.chain_manager = MagicMock()
         self.chain_manager.block_index = self.block_index
-        self.chain_manager.process_block.return_value = True
+        self.chain_manager.process_block.return_value = (True, 'accepted')
         
         self.mempool = MagicMock()
         self.mempool.get_all_transactions.return_value = []
         
         self.network_manager = MagicMock()
         self.network_manager.peers = []
-        
-        self.rpc = RPCServer(9340, "user", "pass", "127.0.0.1", 
+        # submitblock serializes on sync_lock and broadcasts via announce_new_block (a
+        # coroutine), so give the mock a real lock and an awaitable broadcast.
+        self.network_manager.sync_lock = asyncio.Lock()
+        self.network_manager.announce_new_block = AsyncMock()
+
+        self.rpc = RPCServer(9340, "user", "pass", "127.0.0.1",
                              self.network_manager, self.chain_manager, self.mempool, self.wallet)
 
     async def asyncTearDown(self):

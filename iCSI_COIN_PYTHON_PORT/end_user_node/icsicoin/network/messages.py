@@ -3,7 +3,10 @@ import time
 import random
 
 # Magic value for iCSI Coin (Litecoin mainnet magic)
-MAGIC_VALUE = 0xfbc0b6db
+# iCSI Coin network magic. Changed from Litecoin's mainnet value (0xfbc0b6db) so iCSI
+# frames are NOT mistaken for (or probed as) real Litecoin traffic, and so a stray
+# Litecoin node can't handshake with this network. Unique to iCSI Coin.
+MAGIC_VALUE = 0x1C51C026
 
 class Message:
     def __init__(self, command, payload):

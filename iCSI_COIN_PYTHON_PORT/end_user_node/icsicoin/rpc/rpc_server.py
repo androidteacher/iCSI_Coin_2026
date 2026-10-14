@@ -124,44 +124,57 @@ class RPCServer:
             # 0x76=OP_DUP, 0xa9=OP_HASH160, 0x14=Push20, <hash>, 0x88=OP_EQUALVERIFY, 0xac=OP_CHECKSIG
             script_pubkey = b'\x76\xa9\x14' + pubkey_hash + b'\x88\xac'
             
-            coinbase_tx = Transaction(
-                vin=[TxIn(prev_hash=b'\x00'*32, prev_index=0xffffffff, script_sig=str(height).encode(), sequence=0xffffffff)],
-                vout=[TxOut(amount=50*100000000, script_pubkey=script_pubkey)]
-            )
-            
-            # 3. Select Mempool Txs (Greedy non-conflicting selection)
-            # txs = [coinbase_tx] + self.mempool.get_all_transactions()
-            selected_txs = [coinbase_tx]
+            from icsicoin.consensus.validation import get_block_subsidy
+
+            # 3. Select Mempool Txs (greedy non-conflicting) AND sum their fees, so the
+            # coinbase can legally claim subsidy + fees. Txs whose inputs are missing /
+            # already spent in this block are skipped.
+            selected_txs = []
             spent_in_block = set()
-            
-            # Mempool txs
+            total_fees = 0
+
             candidate_txs = self.mempool.get_all_transactions()
             logger.info(f"Block Template: Found {len(candidate_txs)} candidates in mempool.")
-            
-            # Sort by fee/priority? For now just FCFS/Arbitrary
-            
+
             skipped_count = 0
             for tx in candidate_txs:
-                is_conflict = False
-                # Check inputs
+                conflict_or_missing = False
                 current_tx_inputs = []
+                tx_in = 0
                 for vin in tx.vin:
                     prev_out = (vin.prev_hash, vin.prev_index)
                     if prev_out in spent_in_block:
-                        is_conflict = True
+                        conflict_or_missing = True
                         break
+                    utxo = self.chain_manager.chain_state.get_utxo(vin.prev_hash.hex(), vin.prev_index)
+                    if not utxo:
+                        conflict_or_missing = True
+                        break
+                    tx_in += utxo['amount']
                     current_tx_inputs.append(prev_out)
-                
-                if not is_conflict:
-                    selected_txs.append(tx)
-                    for inp in current_tx_inputs:
-                        spent_in_block.add(inp)
-                else:
+
+                if conflict_or_missing:
                     skipped_count += 1
-                    logger.debug(f"Skipping TX {tx.get_hash().hex()} due to conflict in current block")
-            
-            logger.info(f"Block Template: Selected {len(selected_txs)} transactions (Inc. Coinbase). Skipped {skipped_count}.")
-            txs = selected_txs
+                    logger.debug(f"Skipping TX {tx.get_hash().hex()} (conflict or missing input)")
+                    continue
+
+                total_fees += (tx_in - sum(o.amount for o in tx.vout))
+                selected_txs.append(tx)
+                for inp in current_tx_inputs:
+                    spent_in_block.add(inp)
+
+            # 2. Coinbase: pays the height-based subsidy (enforces the halving schedule)
+            # plus the fees collected above. validate_block rejects any coinbase above this.
+            subsidy = get_block_subsidy(height)
+            coinbase_value = subsidy + total_fees
+            coinbase_tx = Transaction(
+                vin=[TxIn(prev_hash=b'\x00'*32, prev_index=0xffffffff, script_sig=str(height).encode(), sequence=0xffffffff)],
+                vout=[TxOut(amount=coinbase_value, script_pubkey=script_pubkey)]
+            )
+
+            txs = [coinbase_tx] + selected_txs
+            logger.info(f"Block Template: Selected {len(selected_txs)} mempool txs (+coinbase). "
+                        f"Skipped {skipped_count}. Subsidy {subsidy} + fees {total_fees} = {coinbase_value}.")
             
             # 4. Build Block Object to calculate Merkle Root
             # Merkle Root calculation is implicit in Block logic usually, or we do it here.
@@ -188,7 +201,7 @@ class RPCServer:
                 "curtime": int(time.time()),
                 "bits": next_bits,
                 "height": height,
-                "coinbase_value": 5000000000,
+                "coinbase_value": coinbase_value,
                 "transactions": [binascii.hexlify(tx.serialize()).decode('utf-8') for tx in txs],
                 "merkle_root": binascii.hexlify(merkle_root).decode('utf-8'),
                 "target": target_hex
@@ -207,7 +220,14 @@ class RPCServer:
                 f = io.BytesIO(block_bytes)
                 block = Block.deserialize(f)
                 
-                success, reason = self.chain_manager.process_block(block)
+                # Run off the event loop and serialize with the P2P block path via the
+                # shared sync_lock so a locally-mined block can't race a network block
+                # through chain state at the same time.
+                loop = asyncio.get_event_loop()
+                async with self.network_manager.sync_lock:
+                    success, reason = await loop.run_in_executor(
+                        None, self.chain_manager.process_block, block
+                    )
                 if success:
                     # Remove mined transactions from mempool
                     for tx in block.vtx:

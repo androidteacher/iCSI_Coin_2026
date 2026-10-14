@@ -87,21 +87,9 @@ class LANScanner:
             for p in ports:
                 scan_targets.append((ip, p))
                 
-        for i in range(0, len(scan_targets), batch_size):
-            batch = scan_targets[i:i + batch_size]
-            tasks = [self.check_host(ip, p, timeout) for ip, p in batch]
-            results = await asyncio.gather(*tasks)
-            
-            for res in results:
-                if res:
-                    # check_host returns just IP. 
-                    # We need to know WHICH port linked.
-                    # Actually check_host returns IP.
-                    # We should probably return (ip, port) from check_host or handle mapping here.
-                    # Let's fix check_host to return (ip, port) tuple or handle it.
-                    pass 
-
-        # RE-IMPLEMENTING with smart result handling
+        # NOTE: an earlier throwaway pass used to scan every target here and discard
+        # the results (TCP-connecting to the whole subnet twice). Removed -- the single
+        # pass below does the real work.
         async def check_target(ip, port):
             if await self.check_host(ip, port, timeout):
                 return (ip, port)

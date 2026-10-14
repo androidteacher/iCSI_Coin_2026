@@ -44,11 +44,9 @@ class NetworkManager:
             os.makedirs(self.data_dir)
             
         self.block_store = BlockStore(self.data_dir)
-        self.block_Index = BlockIndexDB(self.data_dir) # Typo fix: block_Index -> block_index if needed? No, databases.py usually uses CamelCase or snake? Assume snake based on usage below. Wait.
-        # Usage below: self.block_index. 
-        # Line 41: self.block_index = BlockIndexDB...
         self.block_index = BlockIndexDB(self.data_dir)
         self.chain_state = ChainStateDB(self.data_dir)
+        self.peers_file = os.path.join(self.data_dir, "peers.dat")
         
         # Brain
         self.mempool = Mempool(self.data_dir)
@@ -56,7 +54,11 @@ class NetworkManager:
 
         
         self.add_nodes = add_nodes if add_nodes else []
-        self.connect_nodes = connect_nodes
+        self.connect_nodes = connect_nodes if connect_nodes else []
+        # Anchor nodes = operator-configured bridges (--addnode / --connect). These are
+        # the cross-subnet links: reconnected forever, never dropped or cleared by any
+        # reset path, so the network cannot fragment into per-subnet chains.
+        self.anchor_nodes = list(dict.fromkeys(self.add_nodes + self.connect_nodes))
         self.peers = set() # (ip, port)
         self.known_peers = set() # Set of (ip, port)
         self.pending_peers = set() # Set of (host, port) tuples
@@ -266,12 +268,22 @@ class NetworkManager:
 
     async def start(self):
         self.running = True
+
+        # Reload peers discovered in previous runs so cross-subnet links survive a
+        # restart (discovery_worker / smart-reconnect consume self.known_peers).
+        self.load_known_peers()
+
         # Start listening server
         self.server = await asyncio.start_server(
             self.handle_client, self.bind_address, self.port
         )
         addr = self.server.sockets[0].getsockname()
         logger.info(f"Serving on {addr}")
+
+        # Persist discovered peers periodically.
+        t_persist = asyncio.create_task(self.peer_persistence_worker())
+        self.tasks.add(t_persist)
+        t_persist.add_done_callback(self.tasks.discard)
 
         # Start background tasks
         t1 = asyncio.create_task(self.maintain_added_nodes())
@@ -364,6 +376,7 @@ class NetworkManager:
 
     async def stop(self):
         self.running = False
+        self.save_known_peers()
         self.multicast_beacon.stop()
         if self.active_beg and self.active_beg.get('task'):
             self.active_beg['task'].cancel()
@@ -740,21 +753,15 @@ class NetworkManager:
                             await writer.drain()
                             logger.info(f"Sent GETDATA for {len(to_get)} items to {addr}")
                             self.log_peer_event(addr, "SENT", "GETDATA", f"Requested {len(to_get)} blocks/txs")
-                        else:
+                        elif items:
                             # CONTINUE SYNC LOGIC
-                            # If to_get is empty, we already have everything in this INV.
-                            # But if the INV was full (suggesting more blocks exist), we should ask for what comes NEXT.
-                            # Otherwise we stall here.
-                            
-                            # We check the last item in the inventory.
-                            last_item = inventory[-1]
-                            # CONTINUE SYNC LOGIC
-                            # If to_get is empty, we already have everything in this INV.
-                            # But if the INV was full (suggesting more blocks exist), we should ask for what comes NEXT.
-                            # Otherwise we stall here.
-                            
-                            # We check the last item in the inventory.
-                            last_item = inventory[-1]
+                            # to_get is empty: we already have every block in this INV.
+                            # If the peer is still ahead, immediately request the NEXT batch,
+                            # otherwise sync stalls here.
+                            # (Fix: this path previously referenced an undefined `inventory`
+                            #  and was duplicated, so it always raised NameError and the
+                            #  "all-known INV -> request next batch" sync step never ran.)
+                            last_item = items[-1]
                             if last_item['type'] == 'block':
                                 last_hash = last_item['hash']
                                 
@@ -768,7 +775,7 @@ class NetworkManager:
                                 
                                 # If peer is ahead, ask for more even if this batch was known
                                 # or if the batch was substantial.
-                                if peer_height > my_height or len(inventory) > 0:
+                                if peer_height > my_height or len(items) > 0:
                                      # Logic update: Always request more if we are not at tip.
                                      logger.debug(f"INV processing complete. Checking if we need more blocks (Peer H:{peer_height} vs My H:{my_height})...")
                                      if peer_height > my_height:
@@ -894,10 +901,19 @@ class NetworkManager:
                             # logic moved to later in handle_block
                             pass
 
-                            # Process via ChainManager
-                            # DEADLOCK FIX: Run in main thread to avoid SQLite threading issues
-                            # (SQLite objects created in main thread cannot be shared with executor)
-                            success, reason = self.chain_manager.process_block(block)
+                            # Process via ChainManager OFF the event loop.
+                            # Previously this ran synchronously on the asyncio loop, so the
+                            # whole node (peer I/O, pings, timeouts, web UI) froze while a block
+                            # validated + wrote to SQLite -- the dominant latency source during
+                            # sync. The storage layer now opens a fresh connection per call
+                            # (nothing is shared across threads), so a worker thread is safe.
+                            # sync_lock serializes block processing so only one block mutates
+                            # chain state (incl. ChainManager.orphan_blocks) at a time.
+                            loop = asyncio.get_event_loop()
+                            async with self.sync_lock:
+                                success, reason = await loop.run_in_executor(
+                                    None, self.chain_manager.process_block, block
+                                )
                             
                             if success:
                                 # Remove received transactions from mempool
@@ -1099,9 +1115,13 @@ class NetworkManager:
                             f = io.BytesIO(tx_bytes)
                             tx = Transaction.deserialize(f)
                             
-                            # Validate & Add to Mempool
-                            # FIX: validate_transaction requires utxo_set and returns (bool, reason)
-                            is_valid, reason = validate_transaction(tx, self.chain_manager.chain_state)
+                            # Validate & Add to Mempool. validate_transaction returns
+                            # (bool, reason, fee); pass the current tip height so an
+                            # immature-coinbase spend is rejected before it enters the pool.
+                            _tip = self.chain_manager.block_index.get_best_block()
+                            _tip_height = (_tip['height'] + 1) if _tip else 0
+                            is_valid, reason, _fee = validate_transaction(
+                                tx, self.chain_manager.chain_state, height=_tip_height)
                             if is_valid:
                                 if self.mempool.add_transaction(tx):
                                     logger.info(f"Received Valid TX: {tx.get_hash().hex()}")
@@ -1465,30 +1485,79 @@ class NetworkManager:
         logger.info("Experimental: Network data reset requested by user.")
 
 
-    async def maintain_added_nodes(self):
-        """Attempts to maintain connections to nodes specified by -addnode"""
+    def _parse_node_addr(self, node):
+        """Parse a 'host' or 'host:port' anchor string into (host, port)."""
+        host = node
+        port = 9333
+        if ":" in node:
+            host, port = node.rsplit(":", 1)
+            port = int(port)
+        return host, port
+
+    async def reconnect_anchors(self):
+        """(Re)connect to every operator-configured anchor node (--addnode / --connect)
+        that isn't currently connected. Anchors are the cross-subnet bridges and must
+        never be abandoned, so this is safe to call from any stall/recovery path."""
+        for node in self.anchor_nodes:
+            try:
+                host, port = self._parse_node_addr(node)
+            except Exception:
+                continue
+            if (host, port) in self.peers or self.is_banned(host):
+                continue
+            t = asyncio.create_task(self.connect_to_peer(node))
+            self.tasks.add(t)
+            t.add_done_callback(self.tasks.discard)
+
+    async def broadcast_getblocks(self):
+        """Ask every active peer for blocks. Used to break out of a sync stall WITHOUT
+        tearing any connections down."""
+        for addr, writer in list(self.active_connections.items()):
+            try:
+                await self.send_getblocks(writer)
+            except Exception as e:
+                logger.debug(f"broadcast_getblocks to {addr} failed: {e}")
+
+    def save_known_peers(self):
+        """Persist discovered peers so cross-subnet links survive restarts/quiet periods."""
+        try:
+            peers = [list(p) for p in self.known_peers if isinstance(p, tuple) and len(p) == 2]
+            tmp = self.peers_file + ".tmp"
+            with open(tmp, "w") as f:
+                json.dump(peers, f)
+            os.replace(tmp, self.peers_file)
+        except Exception as e:
+            logger.debug(f"save_known_peers failed: {e}")
+
+    def load_known_peers(self):
+        """Load persisted peers at startup so we can re-dial them (discovery_worker and
+        the smart-reconnect path consume self.known_peers)."""
+        try:
+            if not os.path.exists(self.peers_file):
+                return
+            with open(self.peers_file) as f:
+                peers = json.load(f)
+            for entry in peers:
+                try:
+                    self.known_peers.add((entry[0], int(entry[1])))
+                except Exception:
+                    continue
+            logger.info(f"Loaded {len(self.known_peers)} known peers from disk.")
+        except Exception as e:
+            logger.debug(f"load_known_peers failed: {e}")
+
+    async def peer_persistence_worker(self):
+        """Periodically flush known_peers to disk."""
         while self.running:
-            for node in self.add_nodes:
-                 # Check if we are already connected (simplistic check for now)
-                 connected = any(p[0] == node for p in self.peers) # assuming node is ip string
-                 # Better check needed for ip:port
-                 host = node
-                 port = 9333
-                 if ":" in node:
-                     host, port = node.split(":")
-                     port = int(port)
-                     
-                 # Check if connected (either by list check or tuple check)
-                 # Since we now store (ip, listening_port), this check is more robust
-                 connected = (host, port) in self.peers
-                 
-                 if not connected:
-                     t = asyncio.create_task(self.connect_to_peer(node))
-                     self.tasks.add(t)
-                     t.add_done_callback(self.tasks.discard)
-            
-            # Retry every 60 seconds
-            await asyncio.sleep(60)
+            await asyncio.sleep(30)
+            self.save_known_peers()
+
+    async def maintain_added_nodes(self):
+        """Keep connections to operator-configured anchor nodes (--addnode / --connect)
+        alive at all times. These bridge subnets, so we re-dial aggressively (every 20s)."""
+        while self.running:
+            await self.reconnect_anchors()
+            await asyncio.sleep(20)
 
     async def discovery_worker(self):
         """Background task to discovery and connect to new peers"""
@@ -1690,13 +1759,19 @@ class NetworkManager:
                 if time_since_last_block > 20: 
                     logger.warning(f"Sync Watchdog: Silence detected! (Last Recv: {time_since_last_block:.1f}s ago). Requesting blocks...")
                     
-                    # SPRINT 5: SOFT RESET (60s Stall Detection)
+                    # Prolonged silence (>60s) is NORMAL when nobody is mining; it does
+                    # NOT mean our peers are gone. This previously did a destructive
+                    # "soft reset" (disconnect_all_peers) that wiped known_peers -- after
+                    # which only subnet-local discovery (multicast TTL / LAN /24 scan)
+                    # could rebuild, so cross-subnet peers were lost permanently and the
+                    # network split into per-subnet chains. Instead, keep every peer and
+                    # just (re)establish anchor links and ask everyone for blocks.
                     if time_since_last_block > 60:
-                        logger.error(f"🚨 Sync Watchdog: STALL DETECTED (>60s). Triggering Network Soft Reset.")
-                        self.disconnect_all_peers()
-                        # Reset timer to prevent loop
+                        logger.warning("Sync Watchdog: Prolonged silence (>60s). Re-establishing anchors and polling all peers (NO reset).")
+                        await self.reconnect_anchors()
+                        await self.broadcast_getblocks()
                         self.last_block_received_time = time.time()
-                        continue 
+                        continue
 
                     
                     # Trigger getblocks to a random peer

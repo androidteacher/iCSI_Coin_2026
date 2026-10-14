@@ -5,6 +5,8 @@ import binascii
 import json
 import logging
 
+from icsicoin.consensus.validation import COINBASE_MATURITY
+
 logger = logging.getLogger("Wallet")
 
 class Wallet:
@@ -254,19 +256,13 @@ class Wallet:
                             continue
                     except: pass
                 
-                # Check Coinbase Maturity (100 blocks)
-                # Coinbase Maturity Check (100 blocks)
+                # Coinbase maturity: a freshly-mined output can't be spent until it would
+                # have COINBASE_MATURITY confirmations in the block we're building (tip+1).
+                # depth here == (tip+1) - block_height, matching the consensus rule in
+                # validate_transaction so the wallet never builds a tx the chain rejects.
                 if u.get('is_coinbase', False):
-                    # Depth = current_height - block_height + 1? 
-                    # Usually: if height is 100 and mined at 100, depth is 1.
-                    # Mined at 100, can spend at 200 (100 blocks later)? 
-                    # "100 confirmations" usually means depth >= 100.
-                    # so if mined at H, can spend at H+100?
-                    # Rule: "Coinbase transaction outputs can only be spent after they have received at least 100 confirmations."
-                    # If mined at height H, it has 1 confirmation. at H+99 it has 100.
-                    # So current_height - u['block_height'] + 1 >= 100
                     depth = current_height - u.get('block_height', 0) + 1
-                    if depth < 100:
+                    if depth < COINBASE_MATURITY:
                         had_skips_due_to_maturity = True
                         continue
 

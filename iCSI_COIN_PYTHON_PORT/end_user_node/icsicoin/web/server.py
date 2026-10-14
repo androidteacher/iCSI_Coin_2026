@@ -1005,18 +1005,17 @@ class WebServer:
         height = best_block['height'] if best_block else 0
         
         # Dynamic difficulty
-        from icsicoin.consensus.validation import calculate_next_bits, DIFFICULTY_ADJUSTMENT_INTERVAL
+        from icsicoin.consensus.validation import (
+            calculate_next_bits, DIFFICULTY_ADJUSTMENT_INTERVAL,
+            get_block_subsidy, HALVING_INTERVAL, COIN,
+        )
         bits = calculate_next_bits(self.network_manager.chain_manager, height + 1)
 
-        # Calculate Reward
-        # 50 coins initial, halve every 210000 blocks
-        halvings = height // 210000
-        if halvings >= 64:
-            reward = 0
-        else:
-            reward = 50 * (0.5 ** halvings)
-            
-        halving_countdown = 210000 - (height % 210000)
+        # Reward for the NEXT block, straight from the consensus subsidy function so the
+        # explorer always agrees with what miners are actually allowed to claim (integer
+        # halving math, configurable interval -- not a hardcoded 210000/float).
+        reward = get_block_subsidy(height + 1) / COIN
+        halving_countdown = HALVING_INTERVAL - ((height + 1) % HALVING_INTERVAL)
         
         # Calculate Hashrate
         network_hashrate = self.network_manager.chain_manager.get_network_hashrate(blocks=10)
