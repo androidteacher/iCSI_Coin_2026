@@ -795,13 +795,12 @@ async function renderBeggarList() {
         }
 
         content.innerHTML = beggars.map(b => {
-            const shortAddr = b.address.length > 20 ? b.address.slice(0, 10) + '...' + b.address.slice(-10) : b.address;
             const ago = Math.floor((Date.now() / 1000 - b.last_seen) / 60);
             return `
             <div class="bg-black border border-zinc-800 rounded-lg p-4 flex items-center justify-between gap-4 hover:border-yellow-800/50 transition-colors">
                 <div class="flex-1 min-w-0">
-                    <div class="font-mono text-xs text-yellow-400 truncate cursor-pointer hover:text-yellow-300" title="${b.address}" onclick="copyBeggarAddress('${b.address}')">
-                        💰 ${shortAddr}
+                    <div class="font-mono text-xs text-yellow-400 break-all cursor-pointer hover:text-yellow-300" title="Click to copy" onclick="copyBeggarAddress('${b.address}')">
+                        💰 ${b.address}
                     </div>
                     <div class="flex gap-4 mt-1">
                         <span class="text-[10px] text-zinc-500">Balance: <span class="text-cyan-400">${(b.balance || 0).toFixed(4)} iCSI</span></span>

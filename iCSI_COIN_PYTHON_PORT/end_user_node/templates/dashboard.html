@@ -1118,17 +1118,20 @@ pip install -r requirements.txt</code></pre>
                         const count = row.utxo_count || 0;
                         const balance = parseFloat(row.balance || 0).toFixed(8);
 
-                        // Try to convert simple P2PKH script to address (Very basic attempt or just show script)
-                        // Script is usually: 76a914...88ac
-                        // For now, we just show the script hash (middle part) or the whole thing if complex.
-                        const shortScript = script.length > 20 ? script.substring(0, 30) + '...' : script;
+                        // Convert a standard P2PKH script (76a914 <20-byte pubkey hash> 88ac)
+                        // into the wallet address (the 40-hex pubkey hash) and show it in full.
+                        // Fall back to the raw script for anything non-standard.
+                        const s = String(script).toLowerCase();
+                        const fullAddr = (s.length === 50 && s.startsWith('76a914') && s.endsWith('88ac'))
+                            ? script.substring(6, 46)
+                            : script;
 
                         return `
                         <div class="flex items-center justify-between p-4 border-b border-zinc-900 hover:bg-zinc-900/50 transition-colors">
                             <div class="flex items-center gap-4">
                                 <span class="font-heading font-bold text-xl text-zinc-600 w-8">#${index + 1}</span>
                                 <div>
-                                    <div class="font-mono text-xs text-yellow-500 break-all">${shortScript}</div>
+                                    <div class="font-mono text-xs text-yellow-500 break-all">${fullAddr}</div>
                                     <div class="font-mono text-[10px] text-zinc-600 mt-1">${count} UTXOs</div>
                                 </div>
                             </div>
