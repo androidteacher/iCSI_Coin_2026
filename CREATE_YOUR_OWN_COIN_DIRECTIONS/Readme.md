@@ -58,11 +58,11 @@ This is the single line of code that creates your new universe.
 2.  **Line**: ~9
 3.  **Code**:
     ```python
-    MAGIC_VALUE = 0x1C51C026  # <--- CHANGE THIS VALUE
+    MAGIC_VALUE = 0xB10C2026  # <--- CHANGE THIS VALUE
     ```
 4.  **Action**: Change it to any unique 4-byte hex value (e.g., `0xdeadbeef`).
 
-> **Note:** iCSI Coin now ships with its *own* magic value (`0x1C51C026`), not Litecoin's. That means this codebase is already isolated from the real Litecoin network. You only need to change the value to isolate your coin from **other iCSI Coin forks**.
+> **Note:** iCSI Coin ships with its *own* magic value (`0xB10C2026`), not Litecoin's. That means this codebase is already isolated from the real Litecoin network. You only need to change the value to isolate your coin from **other iCSI Coin forks** (or from an earlier chain of your own).
 
 **That's it!** You have now created a new network.
 
@@ -108,7 +108,7 @@ Want faster blocks? Want difficulty to adjust less often?
 2.  **Line**: ~58
 3.  **Code**:
     ```python
-    DIFFICULTY_ADJUSTMENT_INTERVAL = 2016      # Retarget every 2016 blocks
+    DIFFICULTY_ADJUSTMENT_INTERVAL = 20000     # Retarget every 20,000 blocks
     TARGET_BLOCK_TIME_SECONDS = 30             # Target: 30 seconds per block
     ```
 4.  **Action**:
@@ -124,7 +124,7 @@ These control the money supply and when mined coins become spendable. They live 
     ```python
     COIN = 100_000_000                                                   # base units per 1 coin
     INITIAL_BLOCK_SUBSIDY = 50 * COIN                                    # 50 coins at height 0
-    HALVING_INTERVAL = int(os.getenv("ICSI_HALVING_INTERVAL", "1000"))   # blocks between halvings
+    HALVING_INTERVAL = int(os.getenv("ICSI_HALVING_INTERVAL", "20000"))  # blocks between halvings
     COINBASE_MATURITY = int(os.getenv("ICSI_COINBASE_MATURITY", "20"))   # blocks before mined coins are spendable
     ```
 
@@ -132,12 +132,12 @@ You can tune these **without editing code** by setting environment variables (gr
 
 ```yaml
     environment:
-      - ICSI_HALVING_INTERVAL=1000     # how many blocks between each "halving" of the reward
+      - ICSI_HALVING_INTERVAL=20000    # how many blocks between each "halving" of the reward
       - ICSI_COINBASE_MATURITY=20      # how many blocks before a freshly-mined coin can be spent
 ```
 
 **Why these matter for a lesson:**
-*   **Halving** is the programmatic scarcity mechanism — every `HALVING_INTERVAL` blocks the block reward is cut in half (50 → 25 → 12.5 …). The default of `1000` means a halving happens in a few hours of mining, so students can actually *watch* it happen, instead of the Bitcoin-scale `210000` (which at a 30s block target would take ~73 days).
+*   **Halving** is the programmatic scarcity mechanism — every `HALVING_INTERVAL` blocks the block reward is cut in half (50 → 25 → 12.5 …). This is a **block count**, not a time: how long a halving takes = `HALVING_INTERVAL` × how fast blocks are actually mined. With CPU miners at the easy starting difficulty, blocks come very fast (well under a second each), so the interval must be large to make a halving last hours. The default of `20000` works out to roughly ~6 hours with a handful of CPU miners — much better than the Bitcoin-scale `210000` (~73 days at a 30s target), while still letting students watch halvings happen. Raise it if halvings still feel too quick on your hardware.
 *   **Coinbase maturity** is why you can't instantly spend a coin you just mined. The default of `20` (~10 minutes) lets students spend within a class while still teaching the concept; Bitcoin uses `100`.
 
 > **Keep every node identical.** `HALVING_INTERVAL`, `COINBASE_MATURITY`, the difficulty settings, the genesis block, and the magic value are all **consensus rules**. If two nodes disagree on any of them, they will reject each other's blocks and split into separate chains. Make sure every node in your network uses the same values.

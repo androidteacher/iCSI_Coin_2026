@@ -55,19 +55,21 @@ def target_to_bits(target):
     return (length << 24) | (coefficient & 0xffffff)
 
 # ────── Difficulty Adjustment Constants ──────
-DIFFICULTY_ADJUSTMENT_INTERVAL = 2016      # Retarget every 2016 blocks
+DIFFICULTY_ADJUSTMENT_INTERVAL = 20000     # Retarget every 20,000 blocks (rare, so difficulty stays stable for a long classroom session)
 TARGET_BLOCK_TIME_SECONDS = 30             # Target: 30 seconds per block
-EXPECTED_TIMESPAN = DIFFICULTY_ADJUSTMENT_INTERVAL * TARGET_BLOCK_TIME_SECONDS  # 60,480s
+EXPECTED_TIMESPAN = DIFFICULTY_ADJUSTMENT_INTERVAL * TARGET_BLOCK_TIME_SECONDS  # 600,000s
 GENESIS_BITS = 0x1f099996                  # Starting difficulty (6x easier than original)
 
 # ────── Economic / coinbase parameters ──────
-# All configurable via environment so a classroom can make halving + maturity happen
-# fast enough to observe in a single lesson (the Bitcoin-scale defaults of 210,000-block
-# halving and 100-block maturity are ~73 days / ~50 min at a 30s block target).
-COIN = 100_000_000                                                   # base units per 1 iCSI
-INITIAL_BLOCK_SUBSIDY = 50 * COIN                                    # 50 iCSI at height 0
-HALVING_INTERVAL = int(os.getenv("ICSI_HALVING_INTERVAL", "1000"))  # blocks between halvings
-COINBASE_MATURITY = int(os.getenv("ICSI_COINBASE_MATURITY", "20"))  # blocks before mined coins are spendable
+# Configurable via environment. HALVING_INTERVAL is a BLOCK COUNT, not a time: how long
+# a halving takes = HALVING_INTERVAL x however fast blocks are actually mined. With CPU
+# miners at the easy genesis difficulty, blocks come very fast (well under a second each),
+# so the interval must be large to make a halving last hours. 20,000 blocks works out to
+# roughly ~6 hours with a handful of CPU miners -- raise it if halvings still feel quick.
+COIN = 100_000_000                                                    # base units per 1 iCSI
+INITIAL_BLOCK_SUBSIDY = 50 * COIN                                     # 50 iCSI at height 0
+HALVING_INTERVAL = int(os.getenv("ICSI_HALVING_INTERVAL", "20000"))  # blocks between halvings (~6h with CPU miners)
+COINBASE_MATURITY = int(os.getenv("ICSI_COINBASE_MATURITY", "20"))   # blocks before mined coins are spendable
 
 
 def get_block_subsidy(height):
