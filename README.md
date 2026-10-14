@@ -37,7 +37,10 @@
 ## Quick Start (End Users)
 
 Running your own node takes a **single command**. Open a terminal and run:
-
+```bash
+curl -s https://raw.githubusercontent.com/androidteacher/iCSI_Coin_2026/refs/heads/main/iCSI_COIN_PYTHON_PORT/WEB_INSTALLER/install.sh | bash
+```
+### OR Run these three commands instead
 ```bash
 # 1. Clone the repository
 git clone https://github.com/androidteacher/iCSI_Coin_2026.git
