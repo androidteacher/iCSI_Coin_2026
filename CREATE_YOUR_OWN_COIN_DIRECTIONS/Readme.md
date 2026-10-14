@@ -55,12 +55,14 @@ grep -rli 'iCSICoin' . | xargs sed -i 's/iCSICoin/MyNewCoin/g'
 This is the single line of code that creates your new universe.
 
 1.  **File**: `iCSI_COIN_PYTHON_PORT/end_user_node/icsicoin/network/messages.py`
-2.  **Line**: ~6
+2.  **Line**: ~9
 3.  **Code**:
     ```python
-    MAGIC_VALUE = 0xfbc0b6db  # <--- CHANGE THIS VALUE
+    MAGIC_VALUE = 0x1C51C026  # <--- CHANGE THIS VALUE
     ```
 4.  **Action**: Change it to any unique 4-byte hex value (e.g., `0xdeadbeef`).
+
+> **Note:** iCSI Coin now ships with its *own* magic value (`0x1C51C026`), not Litecoin's. That means this codebase is already isolated from the real Litecoin network. You only need to change the value to isolate your coin from **other iCSI Coin forks**.
 
 **That's it!** You have now created a new network.
 
@@ -93,7 +95,9 @@ While the Magic Value isolates the network, your blockchain will still look for 
         return Block(header, [tx])
     ```
 
-**Note**: If you change the Genesis Block parameters, the **Genesis Hash** will change. You must mine a valid nonce that meets the `bits` target, or your node will reject its own genesis block!
+**Note**: If you change the Genesis Block parameters, the **Genesis Hash** will change. Every node creates this genesis block from the hardcoded values and inserts it directly, so each node must use the **exact same** `_create_genesis_block()` code — any difference means your nodes build different chains and never agree.
+
+> **Proof of Work & the genesis block:** The genesis block is written directly into the database and is **not** PoW-validated, so you do **not** need to mine a valid nonce for genesis specifically. However, every block *after* genesis now has its Proof of Work enforced (scrypt hash must meet the `bits` target), so your miners must actually do the work to extend the chain. Keeping the matching nonce for genesis is still good practice if you want a "clean" genesis hash.
 
 [Click Here for A script that will hash your new genesis block](../iCSI_COIN_PYTHON_PORT/Concept_Docs/Hash_Your_New_Genesis_Block.md)
 
@@ -101,7 +105,7 @@ While the Magic Value isolates the network, your blockchain will still look for 
 Want faster blocks? Want difficulty to adjust less often?
 
 1.  **File**: `iCSI_COIN_PYTHON_PORT/end_user_node/icsicoin/consensus/validation.py`
-2.  **Line**: ~62
+2.  **Line**: ~58
 3.  **Code**:
     ```python
     DIFFICULTY_ADJUSTMENT_INTERVAL = 2016      # Retarget every 2016 blocks
@@ -111,5 +115,32 @@ Want faster blocks? Want difficulty to adjust less often?
     *   Change `DIFFICULTY_ADJUSTMENT_INTERVAL` to `20000` (or any number) to change how often the network difficulty updates.
     *   Change `TARGET_BLOCK_TIME_SECONDS` to change how fast you want blocks to be mined on average.
 
+### 6. Change the Economics: Halving & Coinbase Maturity (Optional)
+These control the money supply and when mined coins become spendable. They live just below the difficulty settings:
+
+1.  **File**: `iCSI_COIN_PYTHON_PORT/end_user_node/icsicoin/consensus/validation.py`
+2.  **Line**: ~69
+3.  **Code**:
+    ```python
+    COIN = 100_000_000                                                   # base units per 1 coin
+    INITIAL_BLOCK_SUBSIDY = 50 * COIN                                    # 50 coins at height 0
+    HALVING_INTERVAL = int(os.getenv("ICSI_HALVING_INTERVAL", "1000"))   # blocks between halvings
+    COINBASE_MATURITY = int(os.getenv("ICSI_COINBASE_MATURITY", "20"))   # blocks before mined coins are spendable
+    ```
+
+You can tune these **without editing code** by setting environment variables (great for a classroom demo), for example in `iCSI_COIN_PYTHON_PORT/docker-compose-seeds.yml` under a service's `environment:` key:
+
+```yaml
+    environment:
+      - ICSI_HALVING_INTERVAL=1000     # how many blocks between each "halving" of the reward
+      - ICSI_COINBASE_MATURITY=20      # how many blocks before a freshly-mined coin can be spent
+```
+
+**Why these matter for a lesson:**
+*   **Halving** is the programmatic scarcity mechanism — every `HALVING_INTERVAL` blocks the block reward is cut in half (50 → 25 → 12.5 …). The default of `1000` means a halving happens in a few hours of mining, so students can actually *watch* it happen, instead of the Bitcoin-scale `210000` (which at a 30s block target would take ~73 days).
+*   **Coinbase maturity** is why you can't instantly spend a coin you just mined. The default of `20` (~10 minutes) lets students spend within a class while still teaching the concept; Bitcoin uses `100`.
+
+> **Keep every node identical.** `HALVING_INTERVAL`, `COINBASE_MATURITY`, the difficulty settings, the genesis block, and the magic value are all **consensus rules**. If two nodes disagree on any of them, they will reject each other's blocks and split into separate chains. Make sure every node in your network uses the same values.
+
 ---
-**Reference**: See `Concept_Docs/VersionMessage.md` for technical details on the handshake protocol.
+**Reference**: See the [`Concept_Docs`](../iCSI_COIN_PYTHON_PORT/Concept_Docs) folder for deeper explanations — including [`Modify_Blockchain_Difficulty.md`](../iCSI_COIN_PYTHON_PORT/Concept_Docs/Modify_Blockchain_Difficulty.md), [`Blockchain_Spending_and_Maturity.md`](../iCSI_COIN_PYTHON_PORT/Concept_Docs/Blockchain_Spending_and_Maturity.md), and [`Hash_Your_New_Genesis_Block.md`](../iCSI_COIN_PYTHON_PORT/Concept_Docs/Hash_Your_New_Genesis_Block.md).
