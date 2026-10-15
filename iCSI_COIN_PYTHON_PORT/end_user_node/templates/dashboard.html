@@ -165,12 +165,7 @@
                                 class="block w-full text-left px-4 py-3 text-sm text-zinc-300 hover:bg-zinc-800 hover:text-white border-b border-zinc-800">
                                 🔒 RPC Auth
                             </button>
-                            <!-- 9. Network Uplink -->
-                            <button onclick="openNetworkUplinkModal()"
-                                class="block w-full text-left px-4 py-3 text-sm text-zinc-300 hover:bg-zinc-800 hover:text-white border-b border-zinc-800">
-                                📡 Network Uplink
-                            </button>
-                            <!-- 10. CyberLessons101 -->
+                            <!-- 9. CyberLessons101 -->
                             <a href="https://cyberlessons101.com" target="_blank"
                                 class="block w-full text-left px-4 py-3 text-sm text-zinc-300 hover:bg-zinc-800 hover:text-white">
                                 🎓 CyberLessons101.com
@@ -194,9 +189,13 @@
                         class="absolute right-0 mt-2 w-56 bg-surface border border-border rounded-xl shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50 transform origin-top-right">
                         <div class="py-1">
                             <a href="/management"
-                                class="block w-full text-left px-4 py-3 text-sm text-zinc-300 hover:bg-zinc-800 hover:text-white">
+                                class="block w-full text-left px-4 py-3 text-sm text-zinc-300 hover:bg-zinc-800 hover:text-white border-b border-zinc-800">
                                 🖥 Terminal Scripts
                             </a>
+                            <button onclick="openNetworkUplinkModal()"
+                                class="block w-full text-left px-4 py-3 text-sm text-zinc-300 hover:bg-zinc-800 hover:text-white">
+                                📡 Add a Node Manually
+                            </button>
                         </div>
                     </div>
                 </div>
@@ -709,7 +708,7 @@ pip install -r requirements.txt</code></pre>
         </a>
     </footer>
 
-    <!-- Network Uplink Modal (Moved from Dashboard Card) -->
+    <!-- Add a Node Manually Modal (opened from Node Management menu) -->
     <div id="networkUplinkModal"
         class="fixed inset-0 bg-black/80 backdrop-blur-sm hidden items-center justify-center z-50">
         <div
@@ -717,7 +716,7 @@ pip install -r requirements.txt</code></pre>
             <div class="flex justify-between items-center mb-6">
                 <h3 class="font-heading font-bold text-xl uppercase text-white">
                     <span class="w-2 h-2 rounded-full bg-primary shadow-[0_0_10px_#a855f7] inline-block mr-2"></span>
-                    Network Uplink
+                    Add a Node Manually
                 </h3>
                 <button onclick="closeModal('networkUplinkModal')"
                     class="text-zinc-500 hover:text-white text-xl">✕</button>

@@ -104,6 +104,39 @@
             </p>
         </div>
 
+        <!-- HOW TO RUN THESE -->
+        <div class="bg-surface border border-border rounded-xl p-6 text-sm text-zinc-400 leading-relaxed space-y-3">
+            <h3 class="font-bold text-white flex items-center gap-2">💡 How to run these</h3>
+            <p>
+                <strong class="text-white">Easiest:</strong> just click
+                <span class="text-primary font-bold">Run this Query!</span> on any card below — your node runs the query
+                for you, no terminal needed.
+            </p>
+            <p>
+                <strong class="text-white">Manually, from a terminal:</strong> this node runs inside Docker, but its
+                databases live on your <strong class="text-white">host machine</strong> in a bind-mounted folder
+                (<code class="bg-black px-1 rounded text-secondary">end_user_node/wallet_data/</code>). So you run the
+                <code class="bg-black px-1 rounded text-secondary">sqlite3</code> commands shown below
+                <strong class="text-white">on the host</strong>, from the
+                <code class="bg-black px-1 rounded text-secondary">iCSI_COIN_PYTHON_PORT</code> directory. You'll need
+                <code class="bg-black px-1 rounded text-secondary">sqlite3</code> installed
+                (<code class="bg-black px-1 rounded text-secondary">sudo apt install sqlite3</code>), and may need
+                <code class="bg-black px-1 rounded text-secondary">sudo</code> to read the files.
+            </p>
+            <p class="bg-black/40 border-l-2 border-primary pl-3 py-2 text-zinc-300">
+                📂 <strong class="text-white">Important:</strong> run these commands from the
+                <code class="bg-black px-1 rounded text-secondary">iCSI_COIN_PYTHON_PORT</code> directory — the file
+                paths shown (<code class="bg-black px-1 rounded text-secondary">end_user_node/wallet_data/...</code>) are
+                relative to it.
+            </p>
+            <p class="text-xs text-zinc-500">
+                ⚠ You do <strong>not</strong> need <code class="bg-black px-1 rounded text-secondary">docker exec</code>
+                for these — in fact the node's container doesn't ship the
+                <code class="bg-black px-1 rounded text-secondary">sqlite3</code> command-line tool, so run them on the
+                host as described above.
+            </p>
+        </div>
+
         <!-- SECTION 1: ECONOMICS -->
         <div class="space-y-6">
             <h3

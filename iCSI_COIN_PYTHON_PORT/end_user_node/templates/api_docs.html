@@ -101,24 +101,6 @@
     <div class="max-w-5xl mx-auto p-6 md:p-12">
 
         <header class="mb-12 text-center">
-            <div
-                class="bg-red-900/10 border border-red-900/30 rounded-lg p-4 mb-8 inline-block max-w-2xl mx-auto text-left">
-                <div class="flex items-start gap-3">
-                    <span class="text-xl">🔒</span>
-                    <div>
-                        <h3 class="font-bold text-red-400 text-sm uppercase tracking-wider mb-1">Strict Authentication
-                            Required</h3>
-                        <p class="text-xs text-red-200/70 leading-relaxed">
-                            Every API request must include <code>username</code> and <code>password</code> in the JSON
-                            body.
-                            Consequently, most endpoints require <strong>POST</strong> even if retrieving data.
-                            <br /><span class="opacity-50 italic">(Alternatively, a valid session cookie is accepted if
-                                available.)</span>
-                        </p>
-                    </div>
-                </div>
-            </div>
-
             <h1 class="text-4xl md:text-5xl font-heading font-bold text-white mb-4">API Documentation</h1>
             <p class="text-muted text-lg max-w-2xl mx-auto">
                 Complete reference for interacting with the iCSI Coin node programmatically.
@@ -196,10 +178,11 @@ curl -c cookies.txt -X POST http://localhost:8080/api/auth/login \
                                 hexadecimal</strong> — exactly <strong>40 hex characters (20 bytes)</strong>. Unlike
                             Bitcoin, it is <em>not</em> Base58Check-encoded and has <strong>no fixed prefix</strong>, so
                             it can start with any character and looks like a random hex string (it will <em>not</em>
-                            begin with a <code>1</code>). Example:
+                            begin with a <code>1</code>).
                         </p>
+                        <p class="text-sm text-zinc-400 mt-3">Example:</p>
                         <code
-                            class="block mt-3 bg-black border border-zinc-800 rounded p-3 font-mono text-xs text-secondary break-all">9c1185a5c5e9fc54612808977ee8f548b2258d31</code>
+                            class="block mt-1 bg-black border border-zinc-800 rounded p-3 font-mono text-xs text-secondary break-all">9c1185a5c5e9fc54612808977ee8f548b2258d31</code>
                     </div>
 
                     <div class="space-y-8">
