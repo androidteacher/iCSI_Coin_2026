@@ -56,7 +56,7 @@ start counting from block 0 again. You'd want a fresh chain when:
 ## How to run it
 
 ```bash
-cd iCSI_COIN_PYTHON_PORT/CREATE_NEW_CHAIN_SCRIPT
+cd CREATE_YOUR_OWN_COIN_DIRECTIONS/CREATE_NEW_CHAIN_SCRIPT
 ./create_new_chain.sh
 ```
 

@@ -1,10 +1,17 @@
 # How to Create Your Own Coin (It's Easy!)
 
-This guide explains how to take the existing **iCSI Coin** codebase and turn it into your own independent cryptocurrency.
+This guide explains how to take the existing **iCSI Coin** codebase and turn it into your own independent cryptocurrency that starts fresh from **block 0**.
+
+There are **two ways** to do it:
+
+- **Option 1 — The Automatic Script (Recommended):** run one script, answer a few questions, and it rewrites everything for you.
+- **Option 2 — The Manual Route:** make the same edits by hand so you can see exactly what changes and why.
+
+Before either option, it helps to understand the core idea.
 
 ## The Concept: Network Isolation
 
-The most critical part of creating a new coin is ensuring your nodes **only talk to each other** and not to the original network. 
+The most critical part of creating a new coin is ensuring your nodes **only talk to each other** and not to the original network.
 
 When two nodes connect, the very first thing they send is a **Version Message**. But before that message can even be read, every packet starts with a 4-byte **Magic Value**.
 
@@ -18,7 +25,56 @@ This simple mechanism is rigorous enough to completely isolate your new blockcha
 
 ---
 
-## Step-by-Step Directions
+# Option 1: The Automatic Script (Recommended)
+
+Inside the [`CREATE_NEW_CHAIN_SCRIPT`](CREATE_NEW_CHAIN_SCRIPT) folder is **`create_new_chain.sh`** — a one-time "fork" tool that turns this copy of iCSI Coin into a **brand-new, independent blockchain** that starts from **block 0**. Instead of editing files by hand (Option 2 below), you run the script, answer a few questions, and it applies every change for you.
+
+> ## ⚠️ This script DELETES the `.git` folder
+> It removes this project's git history so you can re-initialize it as a fresh
+> repository. **A complete backup `.tar` of the whole project is written next to
+> the project folder *before* anything is changed or deleted.** Proceed with care.
+
+## Why create a new chain?
+
+A blockchain is only "new" when its nodes refuse to talk to the old nodes and start counting from block 0 again. You'd want a fresh chain when:
+
+- **Starting a new class or semester** and you want a clean ledger, unconnected to anything a previous group mined.
+- **An old chain got "polluted"** — e.g. students left nodes running, someone's wallet dominates the balances, or the difficulty/economics drifted somewhere you don't want — and you'd rather start over than untangle it.
+- **You want different economics** (block speed, how often difficulty adjusts, how often the reward halves) for a particular lesson.
+- **You need isolation from other iCSI chains.** Two chains using the same network "magic bytes" can accidentally find and sync with each other. A new random magic value guarantees your chain is its own universe — old-magic nodes simply can't connect.
+
+## What the script does (in order)
+
+1. **Warns you** clearly about what's about to happen.
+2. **Shows the current settings** and asks you for the new ones:
+   - how often blocks should be mined (**target block time**),
+   - how many blocks between **difficulty adjustments**,
+   - how many blocks between **reward halvings**,
+   - the **genesis block secret message** (press Enter to keep the current one).
+   (Press Enter at any number prompt to keep the current value.)
+3. **Asks you to confirm** with `YES` / `NO`. Typing anything other than `YES` aborts with no changes.
+4. **Backs up the entire project** to `../iCSI_Coin_2026_Backup.tar` (next to the project folder) — this happens *before* any change or deletion.
+5. **Changes the network magic bytes** to a new **random** value and tells you what it is.
+6. **Applies your settings** to the source code (the magic value, the difficulty and halving settings, and the genesis message — the very same edits described by hand in Option 2).
+7. **Deletes the `.git` folder.**
+8. **Prints next steps** for `git init`, pushing to a new repo, resetting node data, and starting the new chain.
+
+## How to run it
+
+```bash
+cd CREATE_YOUR_OWN_COIN_DIRECTIONS/CREATE_NEW_CHAIN_SCRIPT
+./create_new_chain.sh
+```
+
+(If you get "Permission denied", run `chmod +x create_new_chain.sh` first.)
+
+For the full details — what each setting means, what to do after it finishes, and tips on halving and the genesis block — see the [README inside that folder](CREATE_NEW_CHAIN_SCRIPT/README.md).
+
+---
+
+# Option 2: The Manual Route!
+
+Prefer to see exactly what changes (or want to teach the pieces one at a time)? Make the same edits the script makes, by hand.
 
 ### 1. Fork the Repository
 Create your own copy of the code and initialize it as a new project.
@@ -144,3 +200,5 @@ You can tune these **without editing code** by setting environment variables (gr
 
 ---
 **Reference**: See the [`Concept_Docs`](../iCSI_COIN_PYTHON_PORT/Concept_Docs) folder for deeper explanations — including [`Modify_Blockchain_Difficulty.md`](../iCSI_COIN_PYTHON_PORT/Concept_Docs/Modify_Blockchain_Difficulty.md), [`Blockchain_Spending_and_Maturity.md`](../iCSI_COIN_PYTHON_PORT/Concept_Docs/Blockchain_Spending_and_Maturity.md), and [`Hash_Your_New_Genesis_Block.md`](../iCSI_COIN_PYTHON_PORT/Concept_Docs/Hash_Your_New_Genesis_Block.md).
+</content>
+</invoke>
