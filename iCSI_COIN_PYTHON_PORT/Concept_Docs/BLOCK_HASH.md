@@ -4,8 +4,6 @@
 
 The **Block Hash** you see in the explorer (e.g., `9dfc7a1e9c2057bf2a8de8cc70964a4469aca94be0a759efc89a2ce1da1edfa5`) is the unique digital fingerprint — the **identity** — of a block. It is the **double-SHA256** of the block's 80-byte header.
 
-> **Important:** in iCSI Coin this *identity* hash is **not** the value the mining puzzle checks. The Proof-of-Work puzzle hashes the same header with a **different algorithm — scrypt** — and that scrypt result is what must beat the target. So the Block Hash shown in the explorer can start with any digit; its leading zeros tell you nothing about difficulty. (iCSI Coin uses scrypt for Proof of Work, like Litecoin; Bitcoin uses double-SHA256 for both.)
-
 ## How is it produced?
 
 The miner constructs a candidate block by gathering pending transactions and creating a **Block Header**.
@@ -24,7 +22,13 @@ The miner requests "work" (via `getwork` / `getblocktemplate`), then repeatedly 
 
 The rule of mining is simple: **The scrypt Proof-of-Work hash must be numerically smaller than the Target.**
 
-> **Hex vs. bits — read this first.** Hashes and targets are written in **hexadecimal**, where each hex digit (`0`–`f`) stands for exactly **4 bits**. So one leading `0` in hex means 4 zero *bits*; `0000` in hex means **16** zero bits, not 4. Keep the two units straight — difficulty is ultimately about zero *bits*, but we usually read it off the hex digits.
+> **Hex vs. bits:** hashes are written in hexadecimal, and **each hex digit = 4 bits**. So each leading `0` digit is really 4 zero bits:
+>
+> - `0` = **4** zero bits
+> - `00` = **8** zero bits
+> - `0000` = **16** zero bits
+>
+> More leading zeros = a smaller number = harder to mine.
 
 - If the **Target** is `0000ffff...` (its first **4 hex digits = 16 bits** are zero), then a hash starting with `00006788...` is valid, because `00006788 < 0000ffff`.
 - If the **Target** is `00000000...` (its first **8 hex digits = 32 bits** are zero), then a hash starting with `00006788...` is **invalid**, because `00006788 > 00000000`.

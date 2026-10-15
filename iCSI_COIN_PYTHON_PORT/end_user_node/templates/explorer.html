@@ -72,7 +72,7 @@
                     onkeypress="if(event.key === 'Enter') performSearch()">
                 <button onclick="performSearch()"
                     class="bg-zinc-800 border border-zinc-700 text-zinc-300 px-4 py-2 rounded-lg hover:bg-zinc-700 hover:text-white transition-colors">
-                    🔍
+                    
                 </button>
             </div>
 
@@ -91,7 +91,7 @@
         <div class="bg-surface border border-border rounded-xl p-6 shadow-sm">
             <div class="flex justify-between items-center mb-6">
                 <h2 class="font-heading font-bold text-xl uppercase tracking-wider flex items-center gap-2 text-white">
-                    <span class="text-secondary">📦</span> Latest Blocks
+                    <span class="text-secondary"></span> Latest Blocks
                 </h2>
                 <div class="flex gap-2">
                     <button id="prevBtn" onclick="changePage(-1)" disabled
@@ -188,7 +188,7 @@
 
             const btn = document.querySelector('button[onclick="performSearch()"]');
             const originalText = btn.innerText;
-            btn.innerText = "⏳";
+            btn.innerText = "";
             btn.disabled = true;
 
             try {
