@@ -1,4 +1,4 @@
-# iCSI Coin API Access Guide 🔐
+# iCSI Coin API Access Guide
 
 These nodes require authentication for **ALL** API interactions.
 **Base URL:** `http://localhost:8080` (or your configured port)

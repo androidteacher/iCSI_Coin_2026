@@ -52,7 +52,7 @@ end_user_node/icsicoin/core/chain.py  →  _create_genesis_block()  (the BlockHe
 bits=0x1f099996,   # ← must be the SAME value as GENESIS_BITS above
 ```
 
-> **⚠ Both values MUST match.** If they differ, the genesis block's difficulty disagrees with the retarget rule and the node rejects its own chain.
+> **Both values MUST match.** If they differ, the genesis block's difficulty disagrees with the retarget rule and the node rejects its own chain.
 >
 > You do **NOT** need to edit `web/server.py` or `rpc/rpc_server.py` — they call `calculate_next_bits()` and get the right value automatically. (The current value in the code is `0x1f099996`.)
 

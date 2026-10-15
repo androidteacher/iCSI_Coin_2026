@@ -101,8 +101,8 @@ Think of it like this:
 
 ```
 Target:     0000000FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF
-Valid Hash: 00000003A8B2C1D4E5F6... ✅ (starts with more zeros = smaller number)
-Bad Hash:   0000001F82A3B4C5D6E7... ❌ (bigger than target)
+Valid Hash: 00000003A8B2C1D4E5F6... (starts with more zeros = smaller number)
+Bad Hash:   0000001F82A3B4C5D6E7... (bigger than target)
 ```
 
 **Lower target = more leading zeros required = harder to find = longer mining time.**
