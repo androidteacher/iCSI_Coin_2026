@@ -86,6 +86,11 @@
                     ⬅ Back to Dashboard
                 </a>
 
+                <button onclick="openThemeModal()"
+                    class="px-4 py-2 rounded-lg bg-primary/10 border border-primary/40 text-primary font-bold text-xs uppercase tracking-wider hover:bg-primary/20 hover:border-primary/60 transition-all flex items-center gap-2 whitespace-nowrap h-10">
+                    🎨 Theme
+                </button>
+
             </div>
         </div>
     </nav>
@@ -107,35 +112,12 @@
         <!-- HOW TO RUN THESE -->
         <div class="bg-surface border border-border rounded-xl p-6 text-sm text-zinc-400 leading-relaxed space-y-3">
             <h3 class="font-bold text-white flex items-center gap-2">💡 How to run these</h3>
-            <p>
-                <strong class="text-white">Easiest:</strong> just click
-                <span class="text-primary font-bold">Run this Query!</span> on any card below — your node runs the query
-                for you, no terminal needed.
-            </p>
-            <p><strong class="text-white">Manually, from a terminal:</strong></p>
             <ul class="list-disc list-inside space-y-1 ml-2">
-                <li>This node runs inside Docker, but its databases live on your
-                    <strong class="text-white">host machine</strong> in a bind-mounted folder
-                    (<code class="bg-black px-1 rounded text-secondary">end_user_node/wallet_data/</code>).</li>
-                <li>Run the <code class="bg-black px-1 rounded text-secondary">sqlite3</code> commands shown below
-                    <strong class="text-white">on the host</strong>, from the
-                    <code class="bg-black px-1 rounded text-secondary">iCSI_COIN_PYTHON_PORT</code> directory.</li>
-                <li>You'll need <code class="bg-black px-1 rounded text-secondary">sqlite3</code> installed
-                    (<code class="bg-black px-1 rounded text-secondary">sudo apt install sqlite3</code>).</li>
-                <li>You may need <code class="bg-black px-1 rounded text-secondary">sudo</code> to read the files.</li>
+                <li>The <code class="bg-black px-1 rounded text-secondary">sqlite3</code> commands below must be run from
+                    the <code class="bg-black px-1 rounded text-secondary">iCSI_COIN_PYTHON_PORT</code> folder.</li>
+                <li>Don't have <code class="bg-black px-1 rounded text-secondary">sqlite3</code>? Install it with
+                    <code class="bg-black px-1 rounded text-secondary">sudo apt install sqlite3</code>.</li>
             </ul>
-            <p class="bg-black/40 border-l-2 border-primary pl-3 py-2 text-zinc-300">
-                📂 <strong class="text-white">Important:</strong> run these commands from the
-                <code class="bg-black px-1 rounded text-secondary">iCSI_COIN_PYTHON_PORT</code> directory — the file
-                paths shown (<code class="bg-black px-1 rounded text-secondary">end_user_node/wallet_data/...</code>) are
-                relative to it.
-            </p>
-            <p class="text-xs text-zinc-500">
-                ⚠ You do <strong>not</strong> need <code class="bg-black px-1 rounded text-secondary">docker exec</code>
-                for these — in fact the node's container doesn't ship the
-                <code class="bg-black px-1 rounded text-secondary">sqlite3</code> command-line tool, so run them on the
-                host as described above.
-            </p>
         </div>
 
         <!-- SECTION 1: ECONOMICS -->
@@ -391,6 +373,46 @@
             }
         }
     </script>
+    <!-- Theme Selection Modal -->
+    <div id="themeModal"
+        class="fixed inset-0 bg-black/80 backdrop-blur-sm hidden flex items-center justify-center z-50 opacity-0 transition-opacity duration-300 p-4">
+        <div class="bg-surface border border-border p-8 rounded-2xl shadow-2xl max-w-2xl w-full transform scale-95 transition-transform duration-300 max-h-[90vh] overflow-y-auto"
+            id="themeModalContent">
+            <div class="flex items-start justify-between mb-2">
+                <div>
+                    <h2 class="text-2xl font-bold font-heading text-white">Select Theme</h2>
+                    <p class="text-muted text-sm">Pick an accent color — or create your own.</p>
+                </div>
+                <button onclick="closeThemeModal()" class="text-zinc-500 hover:text-white text-xl">✕</button>
+            </div>
+            <div class="bg-black/40 border border-border rounded-xl p-4 my-6 flex flex-wrap items-center gap-4">
+                <label for="customColorPicker" class="flex items-center gap-3 cursor-pointer">
+                    <span class="relative w-12 h-12 rounded-lg overflow-hidden border border-zinc-700 shadow-inner block">
+                        <input type="color" id="customColorPicker" value="#a855f7"
+                            oninput="setThemeFromPicker(this.value)"
+                            class="absolute -inset-2 w-[150%] h-[150%] cursor-pointer border-0 bg-transparent p-0">
+                    </span>
+                    <span>
+                        <span class="block text-sm font-bold text-white">Custom Color</span>
+                        <span id="customColorHex" class="block text-xs font-mono text-muted">#A855F7</span>
+                    </span>
+                </label>
+                <button type="button" onclick="setRandomTheme()"
+                    class="ml-auto px-4 py-2 rounded-lg bg-zinc-800 text-white font-bold text-xs uppercase tracking-wider hover:bg-zinc-700 transition-all flex items-center gap-2">
+                    🎲 Surprise Me
+                </button>
+            </div>
+            <h3 class="text-xs font-bold uppercase tracking-widest text-zinc-500 mb-3">Presets</h3>
+            <div id="themePresetGrid" class="grid grid-cols-4 sm:grid-cols-6 gap-3 mb-6"></div>
+            <div class="flex justify-end">
+                <button onclick="closeThemeModal()"
+                    class="px-6 py-2 rounded-lg bg-zinc-800 text-white font-bold hover:bg-zinc-700 transition-all">
+                    Close
+                </button>
+            </div>
+        </div>
+    </div>
+    <script src="/static/js/theme.js?v={{ range(1, 100000) | random }}"></script>
 </body>
 
 </html>

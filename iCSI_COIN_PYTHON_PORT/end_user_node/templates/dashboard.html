@@ -155,12 +155,7 @@
                                 class="block w-full text-left px-4 py-3 text-sm text-zinc-300 hover:bg-zinc-800 hover:text-white border-b border-zinc-800">
                                 🎨 Theme
                             </button>
-                            <!-- 8. RPC Auth -->
-                            <button onclick="openRpcConfigModal()"
-                                class="block w-full text-left px-4 py-3 text-sm text-zinc-300 hover:bg-zinc-800 hover:text-white border-b border-zinc-800">
-                                🔒 RPC Auth
-                            </button>
-                            <!-- 9. CyberLessons101 -->
+                            <!-- 8. CyberLessons101 -->
                             <a href="https://cyberlessons101.com" target="_blank"
                                 class="block w-full text-left px-4 py-3 text-sm text-zinc-300 hover:bg-zinc-800 hover:text-white">
                                 🎓 CyberLessons101.com
@@ -192,8 +187,12 @@
                                 📡 Add a Node Manually
                             </button>
                             <button onclick="openDataModal()"
-                                class="block w-full text-left px-4 py-3 text-sm text-zinc-300 hover:bg-zinc-800 hover:text-white">
+                                class="block w-full text-left px-4 py-3 text-sm text-zinc-300 hover:bg-zinc-800 hover:text-white border-b border-zinc-800">
                                 💾 Node Data (Backup)
+                            </button>
+                            <button onclick="openRpcConfigModal()"
+                                class="block w-full text-left px-4 py-3 text-sm text-zinc-300 hover:bg-zinc-800 hover:text-white">
+                                🔒 RPC Auth
                             </button>
                         </div>
                     </div>
@@ -963,108 +962,40 @@ pip install -r requirements.txt</code></pre>
     <script src="/static/js/main.js?v={{ range(1, 100000) | random }}"></script>
     <!-- Theme Selection Modal -->
     <div id="themeModal"
-        class="fixed inset-0 bg-black/80 backdrop-blur-sm hidden flex items-center justify-center z-50 opacity-0 transition-opacity duration-300">
-        <div class="bg-surface border border-border p-8 rounded-2xl shadow-2xl max-w-2xl w-full transform scale-95 transition-transform duration-300"
+        class="fixed inset-0 bg-black/80 backdrop-blur-sm hidden flex items-center justify-center z-50 opacity-0 transition-opacity duration-300 p-4">
+        <div class="bg-surface border border-border p-8 rounded-2xl shadow-2xl max-w-2xl w-full transform scale-95 transition-transform duration-300 max-h-[90vh] overflow-y-auto"
             id="themeModalContent">
-            <h2 class="text-2xl font-bold font-heading mb-2 text-white text-center">Select Theme</h2>
-            <p class="text-muted text-sm mb-6 text-center">Choose a color palette for the dashboard.</p>
+            <div class="flex items-start justify-between mb-2">
+                <div>
+                    <h2 class="text-2xl font-bold font-heading text-white">Select Theme</h2>
+                    <p class="text-muted text-sm">Pick an accent color — or create your own.</p>
+                </div>
+                <button onclick="closeThemeModal()" class="text-zinc-500 hover:text-white text-xl">✕</button>
+            </div>
 
-            <div class="grid grid-cols-5 gap-4 mb-6 max-h-[60vh] overflow-y-auto p-1">
-                <!-- Purple (Default) -->
-                <button onclick="setTheme('168 85 247')"
-                    class="group relative w-full aspect-square rounded-xl bg-purple-500 hover:scale-105 transition-all border-2 border-transparent hover:border-white focus:outline-none ring-offset-2 ring-offset-surface focus:ring-2 focus:ring-purple-500">
-                    <span class="sr-only">Purple</span>
-                    <span
-                        class="absolute inset-0 flex items-center justify-center opacity-0 group-[.active]:opacity-100">
-                        <svg class="w-6 h-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7">
-                            </path>
-                        </svg>
+            <!-- Custom color + random -->
+            <div class="bg-black/40 border border-border rounded-xl p-4 my-6 flex flex-wrap items-center gap-4">
+                <label for="customColorPicker" class="flex items-center gap-3 cursor-pointer">
+                    <span class="relative w-12 h-12 rounded-lg overflow-hidden border border-zinc-700 shadow-inner block">
+                        <input type="color" id="customColorPicker" value="#a855f7"
+                            oninput="setThemeFromPicker(this.value)"
+                            class="absolute -inset-2 w-[150%] h-[150%] cursor-pointer border-0 bg-transparent p-0">
                     </span>
+                    <span>
+                        <span class="block text-sm font-bold text-white">Custom Color</span>
+                        <span id="customColorHex" class="block text-xs font-mono text-muted">#A855F7</span>
+                    </span>
+                </label>
+                <button type="button" onclick="setRandomTheme()"
+                    class="ml-auto px-4 py-2 rounded-lg bg-zinc-800 text-white font-bold text-xs uppercase tracking-wider hover:bg-zinc-700 transition-all flex items-center gap-2">
+                    🎲 Surprise Me
                 </button>
-                <!-- Indigo -->
-                <button onclick="setTheme('99 102 241')"
-                    class="group relative w-full aspect-square rounded-xl bg-indigo-500 hover:scale-105 transition-all border-2 border-transparent hover:border-white focus:outline-none ring-offset-2 ring-offset-surface focus:ring-2 focus:ring-indigo-500">
-                    <span class="sr-only">Indigo</span>
-                </button>
-                <!-- Blue -->
-                <button onclick="setTheme('59 130 246')"
-                    class="group relative w-full aspect-square rounded-xl bg-blue-500 hover:scale-105 transition-all border-2 border-transparent hover:border-white focus:outline-none ring-offset-2 ring-offset-surface focus:ring-2 focus:ring-blue-500">
-                    <span class="sr-only">Blue</span>
-                </button>
-                <!-- Sky -->
-                <button onclick="setTheme('14 165 233')"
-                    class="group relative w-full aspect-square rounded-xl bg-sky-500 hover:scale-105 transition-all border-2 border-transparent hover:border-white focus:outline-none ring-offset-2 ring-offset-surface focus:ring-2 focus:ring-sky-500">
-                    <span class="sr-only">Sky</span>
-                </button>
-                <!-- Cyan -->
-                <button onclick="setTheme('6 182 212')"
-                    class="group relative w-full aspect-square rounded-xl bg-cyan-500 hover:scale-105 transition-all border-2 border-transparent hover:border-white focus:outline-none ring-offset-2 ring-offset-surface focus:ring-2 focus:ring-cyan-500">
-                    <span class="sr-only">Cyan</span>
-                </button>
+            </div>
 
-                <!-- Teal -->
-                <button onclick="setTheme('20 184 166')"
-                    class="group relative w-full aspect-square rounded-xl bg-teal-500 hover:scale-105 transition-all border-2 border-transparent hover:border-white focus:outline-none ring-offset-2 ring-offset-surface focus:ring-2 focus:ring-teal-500">
-                    <span class="sr-only">Teal</span>
-                </button>
-                <!-- Emerald -->
-                <button onclick="setTheme('16 185 129')"
-                    class="group relative w-full aspect-square rounded-xl bg-emerald-500 hover:scale-105 transition-all border-2 border-transparent hover:border-white focus:outline-none ring-offset-2 ring-offset-surface focus:ring-2 focus:ring-emerald-500">
-                    <span class="sr-only">Emerald</span>
-                </button>
-                <!-- Green -->
-                <button onclick="setTheme('34 197 94')"
-                    class="group relative w-full aspect-square rounded-xl bg-green-500 hover:scale-105 transition-all border-2 border-transparent hover:border-white focus:outline-none ring-offset-2 ring-offset-surface focus:ring-2 focus:ring-green-500">
-                    <span class="sr-only">Green</span>
-                </button>
-                <!-- Lime -->
-                <button onclick="setTheme('132 204 22')"
-                    class="group relative w-full aspect-square rounded-xl bg-lime-500 hover:scale-105 transition-all border-2 border-transparent hover:border-white focus:outline-none ring-offset-2 ring-offset-surface focus:ring-2 focus:ring-lime-500">
-                    <span class="sr-only">Lime</span>
-                </button>
-                <!-- Yellow -->
-                <button onclick="setTheme('234 179 8')"
-                    class="group relative w-full aspect-square rounded-xl bg-yellow-500 hover:scale-105 transition-all border-2 border-transparent hover:border-white focus:outline-none ring-offset-2 ring-offset-surface focus:ring-2 focus:ring-yellow-500">
-                    <span class="sr-only">Yellow</span>
-                </button>
-
-                <!-- Amber -->
-                <button onclick="setTheme('245 158 11')"
-                    class="group relative w-full aspect-square rounded-xl bg-amber-500 hover:scale-105 transition-all border-2 border-transparent hover:border-white focus:outline-none ring-offset-2 ring-offset-surface focus:ring-2 focus:ring-amber-500">
-                    <span class="sr-only">Amber</span>
-                </button>
-                <!-- Orange -->
-                <button onclick="setTheme('249 115 22')"
-                    class="group relative w-full aspect-square rounded-xl bg-orange-500 hover:scale-105 transition-all border-2 border-transparent hover:border-white focus:outline-none ring-offset-2 ring-offset-surface focus:ring-2 focus:ring-orange-500">
-                    <span class="sr-only">Orange</span>
-                </button>
-                <!-- Red -->
-                <button onclick="setTheme('239 68 68')"
-                    class="group relative w-full aspect-square rounded-xl bg-red-500 hover:scale-105 transition-all border-2 border-transparent hover:border-white focus:outline-none ring-offset-2 ring-offset-surface focus:ring-2 focus:ring-red-500">
-                    <span class="sr-only">Red</span>
-                </button>
-                <!-- Rose -->
-                <button onclick="setTheme('244 63 94')"
-                    class="group relative w-full aspect-square rounded-xl bg-rose-500 hover:scale-105 transition-all border-2 border-transparent hover:border-white focus:outline-none ring-offset-2 ring-offset-surface focus:ring-2 focus:ring-rose-500">
-                    <span class="sr-only">Rose</span>
-                </button>
-                <!-- Pink -->
-                <button onclick="setTheme('236 72 153')"
-                    class="group relative w-full aspect-square rounded-xl bg-pink-500 hover:scale-105 transition-all border-2 border-transparent hover:border-white focus:outline-none ring-offset-2 ring-offset-surface focus:ring-2 focus:ring-pink-500">
-                    <span class="sr-only">Pink</span>
-                </button>
-
-                <!-- Fuchsia -->
-                <button onclick="setTheme('217 70 239')"
-                    class="group relative w-full aspect-square rounded-xl bg-fuchsia-500 hover:scale-105 transition-all border-2 border-transparent hover:border-white focus:outline-none ring-offset-2 ring-offset-surface focus:ring-2 focus:ring-fuchsia-500">
-                    <span class="sr-only">Fuchsia</span>
-                </button>
-                <!-- Slate (Monochrome) -->
-                <button onclick="setTheme('148 163 184')"
-                    class="group relative w-full aspect-square rounded-xl bg-slate-400 hover:scale-105 transition-all border-2 border-transparent hover:border-white focus:outline-none ring-offset-2 ring-offset-surface focus:ring-2 focus:ring-slate-400">
-                    <span class="sr-only">Slate</span>
-                </button>
+            <!-- Presets -->
+            <h3 class="text-xs font-bold uppercase tracking-widest text-zinc-500 mb-3">Presets</h3>
+            <div id="themePresetGrid" class="grid grid-cols-4 sm:grid-cols-6 gap-3 mb-6">
+                <!-- Populated by renderThemePresets() in /static/js/main.js -->
             </div>
 
             <div class="flex justify-end">
@@ -1150,6 +1081,7 @@ pip install -r requirements.txt</code></pre>
             }
         }
     </script>
+    <script src="/static/js/theme.js?v={{ range(1, 100000) | random }}"></script>
 </body>
 
 </html>

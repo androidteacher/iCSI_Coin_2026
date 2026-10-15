@@ -941,45 +941,8 @@ async function logout() {
 }
 
 // --- Theme Functions ---
-function openThemeModal() {
-    const modal = document.getElementById('themeModal');
-    const content = document.getElementById('themeModalContent');
-    modal.classList.remove('hidden');
-    // Small timeout to allow display:block to apply before opacity transition
-    setTimeout(() => {
-        modal.classList.remove('opacity-0');
-        content.classList.remove('scale-95');
-        content.classList.add('scale-100');
-    }, 10);
-}
-
-function closeThemeModal() {
-    const modal = document.getElementById('themeModal');
-    const content = document.getElementById('themeModalContent');
-    modal.classList.add('opacity-0');
-    content.classList.remove('scale-100');
-    content.classList.add('scale-95');
-    setTimeout(() => {
-        modal.classList.add('hidden');
-    }, 300);
-}
-
-function setTheme(colorValue) {
-    // Update CSS Variable
-    document.documentElement.style.setProperty('--color-primary', colorValue);
-    // Save to LocalStorage
-    localStorage.setItem('theme-color', colorValue);
-}
-
-// Close modal on outside click
-const themeModal = document.getElementById('themeModal');
-if (themeModal) {
-    themeModal.addEventListener('click', (e) => {
-        if (e.target === themeModal) {
-            closeThemeModal();
-        }
-    });
-}
+// Theme picker (presets, custom color, random, modal) now lives in the shared
+// /static/js/theme.js so every page can use it. Load theme.js on each page.
 
 function openNetworkUplinkModal() {
     const modal = document.getElementById('networkUplinkModal');
