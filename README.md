@@ -30,11 +30,19 @@
 > "Placing this node on the public internet unleashes its peer-to-peer nature, potentially causing your blockchain to take on a life of its own. Once public, you will own the chain as much as Satoshi Nakamoto owns Bitcoin—which is to say, not at all."
 <p align="center"><strong>Just don't point it at or host it directly on a 'public' IP and you'll be fine. (Node owners would have to manually enter the IP of at least one 'public' facing node. So it's unlikely to spread like wildfire or anything, but once these things start talking, they tend to keep talking!)</strong></p>
 
-<p align="center"><em>Hosting this in a LAN is the best way to not 'accidentally' become the creator of the next big crypto breakout coin.<br>Remember, friends don't let friends become crypto bros!</em></p>
+<p align="center"><em>Hosting this in a LAN is the best way to not 'accidentally' become the creator of the next big crypto breakout coin.</em></p>
+
+<h3 align="center">Remember, friends don't let friends become crypto bros!</h3>
 
 ---
 
-## Quick Start (End Users)
+## Lesson Plan/Teacher Guide
+For a comprehensive lesson plan and teacher guide, please visit:
+[Blockchain in a Box: Dockerized Crypto Nodes for the Classroom](https://app.notion.com/p/Student-Directions-iCSI-Coin-3024c8e5237680e88d36d9a36d692124)
+
+---
+
+## Option 1: Quick Start (End Users)
 
 Running your own node takes a **single command**. Open a terminal and run:
 ```bash
@@ -60,7 +68,7 @@ When it finishes, it prints a big banner telling you to open **http://localhost:
 
 ---
 
-## Install
+## Option 2: Manual Install Instructions
 
 **Kali Linux (2025/2026)** is the easiest way to run this project, as it supports the `docker run` scripts out of the box.
 
@@ -128,10 +136,6 @@ Log in at **http://localhost:8080** and create a username and password.
   <br>
   <em>iCSI Coin: Taking over the world one block at a time!</em>
 </p>
-
-## Lesson Plan/Teacher Guide
-For a comprehensive lesson plan and teacher guide, please visit:
-[Blockchain in a Box: Dockerized Crypto Nodes for the Classroom](https://www.notion.so/Blockchain-in-a-Box-Dockerized-Crypto-Nodes-for-the-Classroom-3024c8e52376808c9fa8dddcce5dddd5)
 
 ## License
 
