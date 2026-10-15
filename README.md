@@ -38,7 +38,8 @@
 
 ## Lesson Plan/Teacher Guide
 For a comprehensive lesson plan and teacher guide, please visit:
-[Blockchain in a Box: Dockerized Crypto Nodes for the Classroom](https://app.notion.com/p/Student-Directions-iCSI-Coin-3024c8e5237680e88d36d9a36d692124)
+
+<p align="center"><a href="https://app.notion.com/p/Student-Directions-iCSI-Coin-3024c8e5237680e88d36d9a36d692124">Blockchain in a Box: Dockerized Crypto Nodes for the Classroom</a></p>
 
 ---
 
