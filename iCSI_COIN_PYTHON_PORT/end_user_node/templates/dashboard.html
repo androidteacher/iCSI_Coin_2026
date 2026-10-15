@@ -150,11 +150,6 @@
                                 class="block w-full text-left px-4 py-3 text-sm text-zinc-300 hover:bg-zinc-800 hover:text-white border-b border-zinc-800">
                                 🚀 Download GPU Miner
                             </button>
-                            <!-- 6. Node Data -->
-                            <button onclick="openDataModal()"
-                                class="block w-full text-left px-4 py-3 text-sm text-zinc-300 hover:bg-zinc-800 hover:text-white border-b border-zinc-800">
-                                💾 Node Data (Backup)
-                            </button>
                             <!-- 7. Theme -->
                             <button onclick="openThemeModal()"
                                 class="block w-full text-left px-4 py-3 text-sm text-zinc-300 hover:bg-zinc-800 hover:text-white border-b border-zinc-800">
@@ -193,8 +188,12 @@
                                 🖥 Terminal Scripts
                             </a>
                             <button onclick="openNetworkUplinkModal()"
-                                class="block w-full text-left px-4 py-3 text-sm text-zinc-300 hover:bg-zinc-800 hover:text-white">
+                                class="block w-full text-left px-4 py-3 text-sm text-zinc-300 hover:bg-zinc-800 hover:text-white border-b border-zinc-800">
                                 📡 Add a Node Manually
+                            </button>
+                            <button onclick="openDataModal()"
+                                class="block w-full text-left px-4 py-3 text-sm text-zinc-300 hover:bg-zinc-800 hover:text-white">
+                                💾 Node Data (Backup)
                             </button>
                         </div>
                     </div>
@@ -710,9 +709,9 @@ pip install -r requirements.txt</code></pre>
 
     <!-- Add a Node Manually Modal (opened from Node Management menu) -->
     <div id="networkUplinkModal"
-        class="fixed inset-0 bg-black/80 backdrop-blur-sm hidden items-center justify-center z-50">
+        class="fixed inset-0 bg-black/80 backdrop-blur-sm hidden items-center justify-center z-50 p-4">
         <div
-            class="bg-surface border border-border rounded-xl p-8 w-[95%] max-w-lg shadow-2xl animate-[slideUp_0.3s_ease-out]">
+            class="bg-surface border border-border rounded-xl p-8 w-[95%] max-w-lg shadow-2xl animate-[slideUp_0.3s_ease-out] max-h-[90vh] overflow-y-auto">
             <div class="flex justify-between items-center mb-6">
                 <h3 class="font-heading font-bold text-xl uppercase text-white">
                     <span class="w-2 h-2 rounded-full bg-primary shadow-[0_0_10px_#a855f7] inline-block mr-2"></span>
