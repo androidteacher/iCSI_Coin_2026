@@ -99,24 +99,30 @@ Transfers coins to another address.
   ```
 
 #### Import Keys
-Import private keys (dictionaries).
+Import one or more private keys.
 
 - **URL:** `/api/wallet/import`
 - **Method:** `POST`
-- **Body:** List of key objects
-- **Example:**
-  ```bash
-  curl -X POST http://localhost:8080/api/wallet/import \
-       -H "Content-Type: application/json" \
-       -d '[
-             {"username": "admin", "password": "securepassword"},
-             {"priv": "...", "pub": "...", "addr": "..."}
-           ]' 
-  # Note: The username/password must be merged into the request or handled via session cookie if list structure prevents it.
-  # Recommendation: Use Session Cookie for this specific complex endpoint:
-  curl -c cookie.jar -X POST http://localhost:8080/api/auth/login -d '...'
-  curl -b cookie.jar -X POST http://localhost:8080/api/wallet/import -d '[...]'
-  ```
+- **Body:** A JSON **list** of key objects (each `{"priv": ..., "pub": ..., "addr": ...}`).
+
+Because the body must be a bare JSON *array*, there is no top-level object to attach your `username`/`password` to. So for this endpoint you authenticate with a **session cookie** instead: log in once to get the cookie, then send the import request with it.
+
+```bash
+# Step 1 — Log in once and save the session cookie to cookie.jar:
+curl -c cookie.jar -X POST http://localhost:8080/api/auth/login \
+     -H "Content-Type: application/json" \
+     -d '{"username": "admin", "password": "securepassword"}'
+
+# Step 2 — Import your keys, sending the saved cookie with -b:
+curl -b cookie.jar -X POST http://localhost:8080/api/wallet/import \
+     -H "Content-Type: application/json" \
+     -d '[
+           {"priv": "...", "pub": "...", "addr": "..."},
+           {"priv": "...", "pub": "...", "addr": "..."}
+         ]'
+```
+
+On success the node responds with `{"status": "imported", "count": <number of keys>}`.
 
 ---
 

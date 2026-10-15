@@ -10,7 +10,7 @@ A standard Bitcoin address (P2PKH - Pay to Public Key Hash) is not just a random
 You start with your **Private Key** (a random number). From this, an **Elliptic Curve Public Key** is generated.
 
 ### 2. Hashing (SHA-256 & RIPEMD-160)
-The public key is hashed using SHA-256, and the result is hashed again using RIPEMD-160. This produces a 160-bit (20-byte) hash. authentication
+The public key is hashed using SHA-256, and the result is hashed again using RIPEMD-160. This produces a 160-bit (20-byte) hash.
 *   `Start` -> `Public Key` -> `SHA-256` -> `RIPEMD-160` = `20-byte Key Hash`
 
 ### 3. Adding the Version Byte (The '1')

@@ -33,10 +33,11 @@ PROJECT_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 
 # Resolve the Docker Compose command: prefer the v2 plugin ("docker compose"),
 # fall back to the legacy standalone binary ("docker-compose") on older systems.
-if docker compose version >/dev/null 2>&1; then
-    DC="docker compose"
+# All Docker commands are run with sudo for consistency across the project scripts.
+if sudo docker compose version >/dev/null 2>&1; then
+    DC="sudo docker compose"
 elif command -v docker-compose >/dev/null 2>&1; then
-    DC="docker-compose"
+    DC="sudo docker-compose"
 else
     echo "ERROR: Neither 'docker compose' (v2 plugin) nor 'docker-compose' (legacy) is installed." >&2
     exit 1
@@ -66,7 +67,7 @@ echo "      ✔ Containers stopped"
 
 # ── Step 2: Prune networks ──────────────────────────────────────────
 echo "[2/5] Pruning Docker networks..."
-docker network prune -f > /dev/null 2>&1
+sudo docker network prune -f > /dev/null 2>&1
 echo "      ✔ Networks pruned"
 
 # ── Step 3: Delete all persistent data ───────────────────────────────

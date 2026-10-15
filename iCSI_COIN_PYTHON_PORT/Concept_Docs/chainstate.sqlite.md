@@ -32,6 +32,8 @@ When a miner finds a block, they include a special **Coinbase Transaction** (e.g
 *The miner now has a balance because this row exists.*
 
 ### Scenario B: The Miner Spends the Coin (Destruction & Creation)
+> *Amounts below are shown in whole coins for readability. Internally they are stored in base units — 1 coin = 100,000,000 base units — so "20 Coins" is really `amount: 2000000000`.*
+
 The miner wants to send 20 Coins to **Alice**.
 New Transaction (`txid: c3d4...`):
 *   **Input**: Refers to `a1b2...` index `0` (The mined coin).
@@ -52,7 +54,7 @@ When this block is processed, the database performs an **Atomic Swap**:
     *   **Row 1 (Alice)**: `txid: c3d4...`, `index: 0`, `amount: 20`, `owner: Alice`.
     *   **Row 2 (Miner)**: `txid: c3d4...`, `index: 1`, `amount: 30`, `owner: Miner`.
 
-## 4. Why This Makes Balances Fast
+## 3. Why This Makes Balances Fast
 Without this database, to calculate Alice's balance, we would have to scan 100,000 blocks, summing up every reception and subtracting every spend. This is O(History) complexity—extremely slow.
 
 With `chainstate.sqlite`, we only check the list of currently valid coins. The complexity is O(UTXOs), which is millions of times faster.

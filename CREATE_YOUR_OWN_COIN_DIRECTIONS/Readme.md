@@ -171,6 +171,8 @@ Want faster blocks? Want difficulty to adjust less often?
     *   Change `DIFFICULTY_ADJUSTMENT_INTERVAL` to a larger/smaller number to change how often the network difficulty updates.
     *   Change `TARGET_BLOCK_TIME_SECONDS` to change how fast you want blocks to be mined on average.
 
+> **Want to change how hard the *first* blocks are?** The two settings above control the retarget *cadence*, not the **starting** difficulty. The starting difficulty is `GENESIS_BITS` in the same `validation.py`, and it must match the `bits=` value in the genesis block (`chain.py`). For the full table of values and the exact steps, see [`Modify_Blockchain_Difficulty.md`](../iCSI_COIN_PYTHON_PORT/Concept_Docs/Modify_Blockchain_Difficulty.md). (Note: the automatic script in Option 1 does **not** change the starting difficulty — adjust `GENESIS_BITS` by hand if you need to.)
+
 ### 6. Change the Economics: Halving & Coinbase Maturity (Optional)
 These control the money supply and when mined coins become spendable. They live just below the difficulty settings:
 

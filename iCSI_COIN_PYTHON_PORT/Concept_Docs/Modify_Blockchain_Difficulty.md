@@ -2,7 +2,7 @@
 
 ## How Difficulty Works
 
-Mining difficulty controls **how hard it is to find a valid block**. The miner repeatedly hashes a block header with different nonce values until the resulting hash is **has a certain number of leading zeros**. More Zeros = harder mining = longer block times.
+Mining difficulty controls **how hard it is to find a valid block**. The miner repeatedly hashes a block header with different nonce values until the resulting hash is **numerically below the target** — which, in practice, means it starts with a certain number of leading zero bits. More zeros = harder mining = longer block times. (See [BLOCK_HASH.md](BLOCK_HASH.md) for how leading zeros, hex digits, and bits relate.)
 
 ## The `bits` Value (Compact Target Format)
 

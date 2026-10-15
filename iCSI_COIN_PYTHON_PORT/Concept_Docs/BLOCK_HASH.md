@@ -23,8 +23,11 @@ The miner requests "work" (via `getwork` / `getblocktemplate`), then repeatedly 
 ##  How many leading zeros are required?
 
 The rule of mining is simple: **The scrypt Proof-of-Work hash must be numerically smaller than the Target.**
-- If the **Target** is `0000ffff...`, (The first 4 bits must be zeros) then a hash starting with `00006788...` is valid.
-- If the **Target** is `00000000...`, (Seven zeros) then a hash starting with `00006788...` is **invalid**.
+
+> **Hex vs. bits — read this first.** Hashes and targets are written in **hexadecimal**, where each hex digit (`0`–`f`) stands for exactly **4 bits**. So one leading `0` in hex means 4 zero *bits*; `0000` in hex means **16** zero bits, not 4. Keep the two units straight — difficulty is ultimately about zero *bits*, but we usually read it off the hex digits.
+
+- If the **Target** is `0000ffff...` (its first **4 hex digits = 16 bits** are zero), then a hash starting with `00006788...` is valid, because `00006788 < 0000ffff`.
+- If the **Target** is `00000000...` (its first **8 hex digits = 32 bits** are zero), then a hash starting with `00006788...` is **invalid**, because `00006788 > 00000000`.
 
 The easiest way to visualize this is by looking at the **leading zeros** of the hash.
 *   **Hard Difficulty**: The hash must start with many zeros (e.g., `00000000...`).

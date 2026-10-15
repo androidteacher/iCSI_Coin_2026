@@ -1,7 +1,7 @@
 # SQLite Blockchain Queries
 
 This document contains a collection of useful SQLite queries for inspecting the `iCSI Coin` blockchain state directly from the database files.
-These commands are intended to be run from the project root directory, assuming the standard node data l`ocation: `end_user_node/wallet_data/`.
+These commands are intended to be run from the project root directory, assuming the standard node data location: `end_user_node/wallet_data/`.
 
 ## Database Files
 
@@ -71,8 +71,8 @@ If your node sees multiple blocks at the same height (a fork), this query will s
 sqlite3 end_user_node/wallet_data/block_index.sqlite "SELECT height, COUNT(*) as count FROM block_index GROUP BY height HAVING count > 1 ORDER BY height DESC LIMIT 10;"
 ```
 
-### List Orphan Blocks
-Orphan blocks are valid blocks whose parent is unknown or missing.
+### List Orphan (Missing-Parent) Blocks
+These are valid blocks whose **parent is unknown or missing** from your index — e.g., a block that arrived before its predecessor. Note this is a *different* situation from a **stale block** that lost the longest-chain race (see [Fork_Fork_Fork.md](Fork_Fork_Fork.md) for the distinction).
 
 ```bash
 sqlite3 end_user_node/wallet_data/block_index.sqlite "SELECT * FROM block_index WHERE prev_hash NOT IN (SELECT block_hash FROM block_index) AND height > 0;"

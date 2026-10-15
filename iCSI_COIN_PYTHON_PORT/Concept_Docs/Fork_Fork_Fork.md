@@ -53,4 +53,15 @@ The blockchain cannot split forever; everyone needs to agree on a single history
 
 **This is normal behavior.**
 
-A decentralized blockchain *must* handle these conflicts. The fact that your node records both means it is correctly listening to the network. The fact that the chain continues (you are seeing higher heights) means the consensus rules are working: one chain effectively "won," and the other blocks were discarded (orphaned), but their history remains in your `block_index` table.
+> ### A note on terminology: "stale" vs. "orphan"
+> Across these docs, a block that was valid but lost the longest-chain race — like Block B above — is called a **stale block** (also loosely called an **orphan**). It stays in your `block_index` but is not part of the active chain.
+>
+> This is *different* from a block whose **parent is missing** from your index (e.g., you received a block before its predecessor arrived). The "List Orphan Blocks" query in [SQLite_Blockchain_Queries.md](SQLite_Blockchain_Queries.md) finds *that* kind — missing-parent blocks — which is a separate situation from a race-loser.
+
+A decentralized blockchain *must* handle these conflicts. The fact that your node records both means it is correctly listening to the network. The fact that the chain continues (you are seeing higher heights) means the consensus rules are working: one chain effectively "won," and the other blocks were discarded (made stale), but their history remains in your `block_index` table.
+
+---
+
+## See Also
+- [Chain_Merging.md](Chain_Merging.md) — the reorg mechanism that resolves forks and why it's essential.
+- [SQLite_Blockchain_Queries.md](SQLite_Blockchain_Queries.md) — the exact queries for spotting forks and missing-parent blocks.

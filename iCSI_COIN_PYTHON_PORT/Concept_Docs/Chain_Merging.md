@@ -26,3 +26,9 @@ This switching process is called **Chain Reorganization**.
 
 Without this logic, a node that acts quickly (mines a block) but has slow internet (broadcasts it late) would permanently diverge from the rest of the network. It would be stuck on its own "island" blockchain, rejecting the valid blocks from the rest of the world because they don't match its local history.
 
+---
+
+## See Also
+- [Fork_Fork_Fork.md](Fork_Fork_Fork.md) — how to spot a fork in your own database, with the "stale vs. orphan" terminology note.
+- [Blockchain_Spending_and_Maturity.md](Blockchain_Spending_and_Maturity.md) — why reorgs are the reason mined coins can't be spent right away.
+

@@ -17,7 +17,7 @@ The **End User Node** provides a comprehensive suite of tools for interacting wi
     *   Import/Export wallets for backup or transfer.
     *   Send and receive real transactions across the network.
 
-*   **Integrated and External Mining::**
+*   **Integrated and External Mining:**
     *   **Web Interface Mining:** Mine coins directly from your browser for ease of use.
     *   **RPC Client:** Connect external, high-performance miners via the remote procedure call (RPC) interface. (External Miner Provided as Well)
     *   **Real-Time Stats:** Monitor difficulty, halvings, and block rewards in real-time.

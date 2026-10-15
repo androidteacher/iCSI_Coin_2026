@@ -23,6 +23,11 @@ echo "=================================================="
 # 1. Start Seeds, Admin Node, and STUN Server
 echo "[1/2] Starting Seeds and STUN..."
 cd "$PROJECT_ROOT"
+# Bring any existing containers DOWN before rebuilding. The legacy docker-compose
+# (v1) crashes with "KeyError: 'ContainerConfig'" when it recreates a container in
+# place after the image was rebuilt; creating fresh containers avoids that bug (and
+# works fine on Compose v2 too). Your data lives in bind mounts, so this is safe.
+$DC -f docker-compose-seeds.yml down --remove-orphans 2>/dev/null || true
 if $DC -f docker-compose-seeds.yml up -d --build; then
     echo " -> Seeds Started Successfully."
 else
@@ -33,6 +38,7 @@ fi
 # 2. Start End User Node & Explorer
 echo "[2/2] Starting End User Node & Explorer..."
 cd "$USER_NODE_ROOT"
+$DC down --remove-orphans 2>/dev/null || true
 if $DC up -d --build; then
     echo " -> User Node Started Successfully."
 else

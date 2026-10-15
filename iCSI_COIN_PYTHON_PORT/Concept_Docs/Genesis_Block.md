@@ -24,4 +24,6 @@ Specifically, look for the `_create_genesis_block` method within the `ChainManag
 
 ## Create Your Own Coin (Custom Genesis Block)
 
-To learn how to spawn a new chain with a custom genesis block, please refer to the [Blockchain Reset Scripts Documentation](https://github.com/androidteacher/iCSI_Coin_2026/blob/main/iCSI_COIN_PYTHON_PORT/BLOCKCHAIN_RESET_SCRIPTS/README.md).
+To spawn a whole new chain with a custom genesis block, see the [Create Your Own Coin guide](../../CREATE_YOUR_OWN_COIN_DIRECTIONS/Readme.md) — it covers both the automatic script and the manual route.
+
+If you change the genesis message, timestamp, or difficulty by hand, you must also re-mine a valid nonce for the new header: see [Hash Your New Genesis Block](Hash_Your_New_Genesis_Block.md).
