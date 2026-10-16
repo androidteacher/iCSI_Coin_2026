@@ -94,6 +94,7 @@ class WebServer:
         self.app.router.add_route('*', '/api/auth/setup', self.handle_api_setup)
         self.app.router.add_route('*', '/api/auth/login', self.handle_api_login)
         self.app.router.add_route('*', '/api/auth/logout', self.handle_api_logout)
+        self.app.router.add_route('*', '/api/auth/change-password', self.handle_api_change_password)
 
         # API - Wallet
         self.app.router.add_route('*', '/api/wallet/list', self.handle_wallet_list)
@@ -433,6 +434,33 @@ class WebServer:
     async def handle_api_logout(self, request):
         session = await get_session(request)
         session.clear()
+        return web.json_response({'status': 'ok'})
+
+    async def handle_api_change_password(self, request):
+        data = await self._get_json(request)
+        current_password = data.get('current_password')
+        new_password = data.get('new_password')
+        confirm_password = data.get('confirm_password')
+
+        saved_hash = self.web_auth_config.get('password_hash')
+        if not saved_hash:
+            return web.json_response({'error': 'Not setup'}, status=400)
+
+        if not current_password or not new_password or not confirm_password:
+            return web.json_response({'error': 'Missing fields'}, status=400)
+
+        # Verify the current password before allowing a change.
+        current_hash = hashlib.sha256(current_password.encode()).hexdigest()
+        if current_hash != saved_hash:
+            return web.json_response({'error': 'Current password is incorrect'}, status=401)
+
+        # New password must be entered the same way twice (matches setup).
+        if new_password != confirm_password:
+            return web.json_response({'error': 'New passwords do not match'}, status=400)
+
+        self.web_auth_config['password_hash'] = hashlib.sha256(new_password.encode()).hexdigest()
+        self._save_web_auth_config()
+
         return web.json_response({'status': 'ok'})
 
     async def handle_explorer_page(self, request):

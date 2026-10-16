@@ -940,6 +940,60 @@ async function logout() {
     }
 }
 
+function openChangePasswordModal() {
+    document.getElementById('cpCurrent').value = '';
+    document.getElementById('cpNew').value = '';
+    document.getElementById('cpConfirm').value = '';
+    const err = document.getElementById('cpError');
+    err.classList.add('hidden');
+    err.textContent = '';
+    openModal('changePasswordModal');
+}
+
+async function submitChangePassword() {
+    const current = document.getElementById('cpCurrent').value;
+    const newPass = document.getElementById('cpNew').value;
+    const confirm = document.getElementById('cpConfirm').value;
+    const err = document.getElementById('cpError');
+
+    const showError = (msg) => {
+        err.textContent = msg;
+        err.classList.remove('hidden');
+    };
+
+    if (!current || !newPass || !confirm) {
+        showError('Please fill in all fields.');
+        return;
+    }
+    if (newPass !== confirm) {
+        showError('New passwords do not match.');
+        return;
+    }
+
+    try {
+        const response = await fetch('/api/auth/change-password', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                current_password: current,
+                new_password: newPass,
+                confirm_password: confirm
+            })
+        });
+
+        const result = await response.json();
+        if (response.ok) {
+            closeModal('changePasswordModal');
+            alert('Password updated successfully.');
+        } else {
+            showError(result.error || 'Failed to change password.');
+        }
+    } catch (e) {
+        console.error('Change password failed', e);
+        showError('Failed to change password.');
+    }
+}
+
 // --- Theme Functions ---
 // Theme picker (presets, custom color, random, modal) now lives in the shared
 // /static/js/theme.js so every page can use it. Load theme.js on each page.

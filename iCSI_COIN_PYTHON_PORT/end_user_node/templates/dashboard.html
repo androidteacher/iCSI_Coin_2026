@@ -191,8 +191,12 @@
                                 💾 Node Data (Backup)
                             </button>
                             <button onclick="openRpcConfigModal()"
-                                class="block w-full text-left px-4 py-3 text-sm text-zinc-300 hover:bg-zinc-800 hover:text-white">
+                                class="block w-full text-left px-4 py-3 text-sm text-zinc-300 hover:bg-zinc-800 hover:text-white border-b border-zinc-800">
                                 🔒 RPC Auth
+                            </button>
+                            <button onclick="openChangePasswordModal()"
+                                class="block w-full text-left px-4 py-3 text-sm text-zinc-300 hover:bg-zinc-800 hover:text-white">
+                                🔑 Change Password
                             </button>
                         </div>
                     </div>
@@ -645,6 +649,41 @@
             <button onclick="saveRpcConfig()"
                 class="w-full py-3 bg-cyan-600 text-white font-bold uppercase text-sm rounded-lg hover:bg-cyan-500 transition-colors shadow-[0_0_20px_rgba(8,145,178,0.2)]">
                 Save Configuration
+            </button>
+        </div>
+    </div>
+
+    <!-- Change Password Modal -->
+    <div id="changePasswordModal" class="fixed inset-0 bg-black/80 backdrop-blur-sm hidden items-center justify-center z-50">
+        <div
+            class="bg-zinc-900 border border-zinc-700 rounded-xl p-8 w-[90%] max-w-md shadow-2xl animate-[slideUp_0.3s_ease-out]">
+            <div class="flex justify-between items-center mb-6">
+                <h3 class="font-heading font-bold text-xl uppercase text-white">Change Password</h3>
+                <button onclick="closeModal('changePasswordModal')" class="text-zinc-500 hover:text-white text-xl">✕</button>
+            </div>
+
+            <div class="space-y-4 mb-6">
+                <div>
+                    <label class="block text-xs font-bold uppercase text-zinc-500 mb-2 tracking-wider">Current Password</label>
+                    <input type="password" id="cpCurrent" autocomplete="current-password"
+                        class="w-full bg-black border border-zinc-700 rounded-lg px-4 py-3 text-sm focus:border-cyan-500 focus:outline-none text-white">
+                </div>
+                <div>
+                    <label class="block text-xs font-bold uppercase text-zinc-500 mb-2 tracking-wider">New Password</label>
+                    <input type="password" id="cpNew" autocomplete="new-password"
+                        class="w-full bg-black border border-zinc-700 rounded-lg px-4 py-3 text-sm focus:border-cyan-500 focus:outline-none text-white">
+                </div>
+                <div>
+                    <label class="block text-xs font-bold uppercase text-zinc-500 mb-2 tracking-wider">Repeat New Password</label>
+                    <input type="password" id="cpConfirm" autocomplete="new-password"
+                        class="w-full bg-black border border-zinc-700 rounded-lg px-4 py-3 text-sm focus:border-cyan-500 focus:outline-none text-white">
+                </div>
+                <p id="cpError" class="text-xs text-red-500 font-mono hidden"></p>
+            </div>
+
+            <button onclick="submitChangePassword()"
+                class="w-full py-3 bg-cyan-600 text-white font-bold uppercase text-sm rounded-lg hover:bg-cyan-500 transition-colors shadow-[0_0_20px_rgba(8,145,178,0.2)]">
+                Update Password
             </button>
         </div>
     </div>
