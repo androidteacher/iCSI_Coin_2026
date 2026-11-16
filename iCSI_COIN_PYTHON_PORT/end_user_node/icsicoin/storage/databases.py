@@ -232,6 +232,102 @@ class BlockIndexDB:
                 return row[0]
             return None
 
+    def get_main_chain_hashes(self, start_height, end_height):
+        """Return the active-chain block hashes for heights start_height..end_height
+        (inclusive), in height order, with NO gaps.
+
+        Fast path: one indexed range query on (status=3, height). If that does not
+        yield exactly one hash per height (a status flag is wrong somewhere), fall
+        back to walking prev_hash links back from the best tip, which is correct no
+        matter what the status column says. The list is cut at the first height that
+        cannot be resolved, so callers never hand a peer an inventory with a hole in
+        it -- a hole makes the peer treat every later block as an orphan.
+        """
+        if end_height < start_height:
+            return []
+        expected = end_height - start_height + 1
+        with self._connect() as conn:
+            rows = conn.execute(
+                "SELECT height, block_hash FROM block_index "
+                "WHERE status = 3 AND height BETWEEN ? AND ? ORDER BY height",
+                (start_height, end_height)).fetchall()
+            if len(rows) == expected and all(
+                    r[0] == start_height + i for i, r in enumerate(rows)):
+                return [r[1] for r in rows]
+
+            # Slow path: status flags are inconsistent in this range. Walk the real chain.
+            best = conn.execute(
+                "SELECT value FROM chain_info WHERE key = 'best_block_hash'").fetchone()
+            if not best:
+                return []
+            links = {r[0]: (r[1], r[2]) for r in conn.execute(
+                "SELECT block_hash, prev_hash, height FROM block_index WHERE height >= ?",
+                (start_height,))}
+
+        by_height = {}
+        cur = best[0]
+        seen = set()
+        while cur in links and cur not in seen:
+            seen.add(cur)
+            prev_hash, height = links[cur]
+            if height <= end_height:
+                by_height[height] = cur
+            cur = prev_hash
+
+        result = []
+        for h in range(start_height, end_height + 1):
+            if h not in by_height:
+                break
+            result.append(by_height[h])
+        return result
+
+    def repair_main_chain_status(self):
+        """Make the status column agree with the real active chain.
+
+        The active chain is whatever you reach by following prev_hash from the best
+        tip back to genesis. Every block on that path must be status 3 and nothing
+        else may be. Older builds left blocks on the winning side of a reorg at
+        status 2, which punched holes in every height lookup (peer sync inventories,
+        the block locator, difficulty retarget). Safe to run at every start: it
+        changes nothing when the flags are already right.
+
+        Returns (promoted, demoted), or None if the chain could not be walked back
+        to genesis (in which case nothing is modified).
+        """
+        with self._connect() as conn:
+            best = conn.execute(
+                "SELECT value FROM chain_info WHERE key = 'best_block_hash'").fetchone()
+            if not best:
+                return (0, 0)
+            rows = conn.execute(
+                "SELECT block_hash, prev_hash, height, status FROM block_index").fetchall()
+            info = {r[0]: (r[1], r[2], r[3]) for r in rows}
+
+            on_chain = set()
+            cur = best[0]
+            last_height = None
+            while cur in info and cur not in on_chain:
+                prev_hash, height, _status = info[cur]
+                if last_height is not None and height != last_height - 1:
+                    return None  # heights are not contiguous: do not guess
+                on_chain.add(cur)
+                last_height = height
+                cur = prev_hash
+            if last_height != 0:
+                return None  # did not reach genesis: leave the index untouched
+
+            promote = [(h,) for h in on_chain if info[h][2] != 3]
+            demote = [(r[0],) for r in rows if r[3] == 3 and r[0] not in on_chain]
+            if promote:
+                conn.executemany(
+                    "UPDATE block_index SET status = 3 WHERE block_hash = ?", promote)
+            if demote:
+                conn.executemany(
+                    "UPDATE block_index SET status = 2 WHERE block_hash = ?", demote)
+            if promote or demote:
+                conn.commit()
+            return (len(promote), len(demote))
+
     def search_block_hashes(self, query_fragment):
         """Find block hashes starting with the query fragment."""
         with self._connect() as conn:

@@ -1,9 +1,14 @@
 import logging
 import time
+from collections import deque
 from icsicoin.consensus.validation import validate_block, validate_transaction
 from icsicoin.core.primitives import Block
 
 logger = logging.getLogger("ChainManager")
+
+# Most blocks we will hold in memory while waiting for a missing parent. Oldest are
+# dropped first; a dropped orphan is simply downloaded again later.
+MAX_ORPHAN_BLOCKS = 5000
 
 class ChainManager:
     def __init__(self, block_store, block_index, chain_state):
@@ -18,6 +23,29 @@ class ChainManager:
         
         # Initialize if not present
         self._initialize_genesis()
+
+        # Self-heal the height index left behind by older builds (see _repair_index).
+        self._repair_index()
+
+    def _repair_index(self):
+        """Fix main-chain blocks that are flagged as side-chain (and vice versa).
+
+        Older builds left the winning branch of a reorg at status 2, so those heights
+        vanished from every height lookup and peers syncing from this node were sent
+        inventories with holes in them. Runs at every start; a no-op once clean.
+        """
+        try:
+            result = self.block_index.repair_main_chain_status()
+        except Exception as e:
+            logger.error(f"Block index status check failed: {e}")
+            return
+        if result is None:
+            logger.error("Block index status check skipped: could not walk the chain "
+                         "from the best tip back to genesis.")
+        elif isinstance(result, tuple) and len(result) == 2 and (result[0] or result[1]):
+            logger.warning(f"Block index repaired: {result[0]} main-chain block(s) were "
+                           f"flagged as side-chain, {result[1]} side-chain block(s) were "
+                           f"flagged as main-chain.")
 
     def _create_genesis_block(self):
         """Creates the hardcoded Genesis Block object"""
@@ -107,6 +135,10 @@ class ChainManager:
     def get_block_hash(self, height):
         return self.block_index.get_block_hash_by_height(height)
 
+    def get_main_chain_hashes(self, start_height, end_height):
+        """Active-chain hashes for start_height..end_height inclusive, never with a gap."""
+        return self.block_index.get_main_chain_hashes(start_height, end_height)
+
     def get_block_by_height(self, height):
         """Return a deserialized Block for the given height, or None."""
         block_hash = self.block_index.get_block_hash_by_height(height)
@@ -132,7 +164,7 @@ class ChainManager:
             logger.error(f"Error reading block {block_hash}: {e}")
         return None
 
-    def process_block(self, block: Block):
+    def process_block(self, block: Block, _resolve_orphans=True):
         block_hash = block.get_hash().hex()
         
         # 1. Check if already known
@@ -162,13 +194,7 @@ class ChainManager:
         parent_info = self.block_index.get_block_info(prev_hash)
         
         if not parent_info:
-             logger.warning(f"Orphan block detected: {block_hash} (Parent {prev_hash} unknown)")
-             self.orphan_blocks[block_hash] = block
-             
-             if prev_hash not in self.orphan_dep:
-                 self.orphan_dep[prev_hash] = []
-             self.orphan_dep[prev_hash].append(block)
-             
+             self._add_orphan(block_hash, prev_hash, block)
              return False, "Orphan block"
 
         # 3. Connect to Chain (State Updates)
@@ -195,7 +221,8 @@ class ChainManager:
                         self._handle_reorg(block, new_height, best_block)
                         
                         # Process orphans for the NEW tip (which is now best)
-                        self._process_orphans(block_hash)
+                        if _resolve_orphans:
+                            self._process_orphans(block_hash)
                         return True, "Reorg Success"
                     else:
                         logger.info(f"Fork detected but shorter/equal ({new_height} vs {current_height}). Ignoring for now.")
@@ -209,7 +236,8 @@ class ChainManager:
                             self.block_index.add_transaction(tx.get_hash().hex(), block_hash)
 
                         # Check if any orphans were waiting for this side-chain block
-                        self._process_orphans(block_hash)
+                        if _resolve_orphans:
+                            self._process_orphans(block_hash)
 
                         return True, "Fork Stored"
                 else:
@@ -235,7 +263,8 @@ class ChainManager:
             logger.info(f"Block {block_hash} connected at height {height}")
             
             # Check for orphans waiting for this block
-            self._process_orphans(block_hash)
+            if _resolve_orphans:
+                self._process_orphans(block_hash)
             
             return True, "Accepted"
             
@@ -381,14 +410,19 @@ class ChainManager:
              
              self._connect_block(b, h)
              
-             if b == new_tip_block:
-                 # This is the new tip we haven't stored yet.
+             if b is new_tip_block:
+                 # This is the new tip we haven't stored yet. Index it and move the
+                 # head pointer in one transaction.
                  data = b.serialize()
                  file_num, offset = self.block_store.write_block(data)
-                 self.block_index.add_block(b_hash, file_num, offset, len(data), parent_hash, h, status=3)
+                 self.block_index.add_block_atomic(b_hash, file_num, offset, len(data), parent_hash, h, status=3, is_best=True)
              else:
-                 # Intermediate block, should be on disk/index already?
-                 pass
+                 # Intermediate block: already on disk and indexed as a side-chain
+                 # block (status 2). It is on the active chain now, so it MUST become
+                 # status 3. Leaving it at 2 removes this height from every height
+                 # lookup: peers that sync from us get an inventory with a hole in it
+                 # and treat everything after the hole as orphans.
+                 self.block_index.update_block_status(b_hash, 3)
 
         logger.info("REORG COMPLETE")
 
@@ -429,12 +463,98 @@ class ChainManager:
                  
              curr_block = parent
 
+    def _add_orphan(self, block_hash, prev_hash, block):
+        """Park a block whose parent we do not have yet."""
+        if block_hash in self.orphan_blocks:
+            return  # already waiting; a re-sent copy must not be queued twice
+        logger.warning(f"Orphan block detected: {block_hash} (Parent {prev_hash} unknown)")
+        self.orphan_blocks[block_hash] = block
+        self.orphan_dep.setdefault(prev_hash, []).append(block)
+
+        # Bound memory: drop the oldest orphans first.
+        while len(self.orphan_blocks) > MAX_ORPHAN_BLOCKS:
+            old_hash = next(iter(self.orphan_blocks))
+            self._drop_orphan(old_hash)
+
+    def _drop_orphan(self, block_hash):
+        block = self.orphan_blocks.pop(block_hash, None)
+        if block is None:
+            return
+        prev_hash = block.header.prev_block.hex()
+        waiting = self.orphan_dep.get(prev_hash)
+        if waiting:
+            waiting[:] = [b for b in waiting if b is not block]
+            if not waiting:
+                self.orphan_dep.pop(prev_hash, None)
+
+    def drop_orphans_waiting_on(self, parent_hash):
+        """Release every orphan waiting (directly or transitively) on parent_hash.
+        Returns how many were dropped. They are re-downloaded by normal sync later."""
+        dropped = 0
+        queue = deque([parent_hash])
+        while queue:
+            for block in self.orphan_dep.pop(queue.popleft(), []):
+                b_hash = block.get_hash().hex()
+                self.orphan_blocks.pop(b_hash, None)
+                queue.append(b_hash)
+                dropped += 1
+        return dropped
+
+    def find_missing_ancestor(self, block_hash):
+        """For an orphan, return the hash of the first ancestor we do not hold at all
+        (neither indexed nor parked as an orphan). That one block is what must be
+        fetched to connect the whole waiting chain. Returns None if block_hash is not
+        an orphan or its chain already reaches an indexed block.
+
+        Walks the in-memory orphan pool only; touches the database once, at the end.
+        """
+        cur = block_hash
+        seen = set()
+        while cur not in seen:
+            block = self.orphan_blocks.get(cur)
+            if block is None:
+                return None
+            seen.add(cur)
+            prev_hash = block.header.prev_block.hex()
+            if prev_hash in self.orphan_blocks:
+                cur = prev_hash
+                continue
+            if self.block_index.get_block_info(prev_hash):
+                return None
+            return prev_hash
+        return None
+
+    def get_missing_parents(self, limit=16):
+        """Hashes of blocks that parked orphans are waiting on and that we do not have."""
+        missing = []
+        for prev_hash in list(self.orphan_dep.keys()):
+            if prev_hash in self.orphan_blocks:
+                continue
+            if self.block_index.get_block_info(prev_hash):
+                continue
+            missing.append(prev_hash)
+            if len(missing) >= limit:
+                break
+        return missing
+
     def _process_orphans(self, parent_hash):
-        if parent_hash in self.orphan_dep:
-            orphans = self.orphan_dep[parent_hash]
-            del self.orphan_dep[parent_hash]
-            for b in orphans:
-                self.process_block(b)
+        """Connect every orphan waiting, directly or transitively, on parent_hash.
+
+        Iterative on purpose: a sync batch can leave hundreds of consecutive orphans
+        behind one missing block, and the old recursive version (two Python frames
+        per block) hit the recursion limit on long runs.
+        """
+        queue = deque([parent_hash])
+        while queue:
+            waiting = self.orphan_dep.pop(queue.popleft(), None)
+            if not waiting:
+                continue
+            for b in waiting:
+                b_hash = b.get_hash().hex()
+                self.orphan_blocks.pop(b_hash, None)
+                success, _reason = self.process_block(b, _resolve_orphans=False)
+                if success:
+                    queue.append(b_hash)
 
 
     def check_integrity(self):

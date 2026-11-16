@@ -1179,9 +1179,10 @@ class WebServer:
             for peer_addr, peer_writer in self.network_manager.active_connections.items():
                 try:
                     logger.info(f"Broadcasting tx {tx_hash_hex} to {peer_addr}")
-                    peer_writer.write(out_m.serialize())
-                    await peer_writer.drain()
-                    count += 1
+                    # Queued, not awaited: a peer that has stopped reading must not
+                    # be able to hold up the broadcast to everyone else.
+                    if self.network_manager.send_nowait(peer_writer, out_m.serialize(), peer_addr):
+                        count += 1
                 except Exception as e: 
                     logger.error(f"Failed to broadcast tx {tx_hash_hex} to {peer_addr}: {e}")
                     pass

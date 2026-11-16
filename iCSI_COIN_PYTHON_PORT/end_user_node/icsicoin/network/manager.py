@@ -5,6 +5,8 @@ import time
 import os
 import io
 import random
+import weakref
+from collections import deque
 from icsicoin.network.messages import (
     VersionMessage, VerackMessage, Message, MAGIC_VALUE, GetAddrMessage, AddrMessage,
     SignalMessage, RelayMessage, TestMessage, PingMessage, PongMessage
@@ -28,6 +30,15 @@ except ImportError:
 
 
 logger = logging.getLogger("NetworkManager")
+
+# ── Sync / flow-control tuning ──
+BLOCK_REQUEST_TTL = 15.0         # seconds before an unanswered block request may be re-sent
+GETBLOCKS_MIN_INTERVAL = 5.0     # seconds between identical getblocks (same tip) to one peer
+BACKFILL_WINDOW = 10.0           # seconds; window for the single-block parent-fetch budget
+BACKFILL_MAX_PER_WINDOW = 10     # parent fetches per window before falling back to bulk sync
+BACKFILL_MAX_ATTEMPTS = 3        # tries to fetch one missing parent before releasing its orphans
+MAX_SEND_BUFFER = 4 * 1024 * 1024  # bytes queued for a peer that is not reading before it is dropped
+SEND_STALL_TIMEOUT = 20.0        # seconds a bulk reply may wait on a peer that is not reading
 
 class NetworkManager:
     def __init__(self, port, bind_address, add_nodes, connect_nodes, rpc_port, data_dir="data"): 
@@ -116,7 +127,18 @@ class NetworkManager:
         self.banned_peers = {}            # {ip: expiry_timestamp}
         self.peer_disconnect_counts = {} # IP -> count
         self.peer_bulk_sync_requests = {} # IP -> timestamp (Sprint 4)
-        self.consecutive_orphan_backfills = 0 # Track depth of recursive backfill: N, last_fail: time}}
+        self.consecutive_orphan_backfills = 0 # (legacy counter, kept for compatibility)
+
+        # Sync request bookkeeping. A block that is already on its way (or already
+        # parked as an orphan) is never requested a second time.
+        self.block_requests = {}          # block hash -> (peer addr, time requested)
+        self.orphan_sources = {}          # orphan block hash -> peer addr that sent it
+        self.backfill_times = deque()     # times of recent single-block parent fetches
+        self.backfill_attempts = {}       # missing parent hash -> fetch attempts so far
+        self._last_getblocks = weakref.WeakKeyDictionary()  # writer -> (tip hash, time)
+        self.last_getblocks_time = 0
+        self.blocks_since_req = 0
+        self.sync_batch_end = None
 
     def ban_peer(self, ip, duration=60):
         """Bans a peer IP for a specified duration (default 60s)."""
@@ -135,6 +157,248 @@ class NetworkManager:
                 return False
             return True
         return False
+
+    # ------------------------------------------------------------------
+    # Outbound flow control
+    # ------------------------------------------------------------------
+    # Each connection is served by ONE loop: read a message, handle it, read
+    # the next. If that loop waits for a peer to accept data it stops reading,
+    # and if the peer is doing the same both sides wait on each other forever.
+    # Worse, a handler that waited on a DIFFERENT peer's socket (block relay,
+    # the sync watchdog) was frozen for good by that one stuck peer.
+    #
+    #   send_nowait()  queue and return. Used for every request we make and for
+    #                  anything sent to a peer other than the one being served.
+    #   send_reply()   bulk replies on a peer's own connection (blocks,
+    #                  inventories). Waits for the peer to take the data, but
+    #                  only for SEND_STALL_TIMEOUT; then the peer is dropped.
+
+    @staticmethod
+    def _writer_state(writer):
+        """(is_closing, bytes_buffered) for a writer."""
+        transport = getattr(writer, 'transport', None)
+        if transport is None:
+            return False, 0
+        try:
+            closing = transport.is_closing() is True
+        except Exception:
+            closing = False
+        try:
+            buffered = transport.get_write_buffer_size()
+            if not isinstance(buffered, int):
+                buffered = 0
+        except Exception:
+            buffered = 0
+        return closing, buffered
+
+    def _abort_writer(self, writer):
+        """Drop a connection NOW. close() first tries to flush buffered data, which
+        never finishes for a peer that has stopped reading."""
+        try:
+            writer.transport.abort()
+        except Exception:
+            try:
+                writer.close()
+            except Exception:
+                pass
+
+    async def _close_writer(self, writer):
+        """Close a connection without ever hanging on unsent data."""
+        try:
+            _closing, buffered = self._writer_state(writer)
+            if buffered > 0:
+                self._abort_writer(writer)
+            else:
+                writer.close()
+            await asyncio.wait_for(writer.wait_closed(), timeout=5.0)
+        except Exception:
+            pass
+
+    def send_nowait(self, writer, data, addr=None):
+        """Queue bytes for a peer and return immediately.
+
+        Returns False if the peer is gone, or has stopped reading for so long that
+        MAX_SEND_BUFFER bytes are queued for it (it is then disconnected)."""
+        try:
+            closing, _buffered = self._writer_state(writer)
+            if closing:
+                return False
+            writer.write(data)
+            _closing, buffered = self._writer_state(writer)
+            if buffered > MAX_SEND_BUFFER:
+                logger.warning(f"Peer {addr} is not reading ({buffered} bytes queued). Disconnecting.")
+                self._abort_writer(writer)
+                return False
+            return True
+        except Exception as e:
+            logger.debug(f"send_nowait to {addr} failed: {e}")
+            return False
+
+    async def send_reply(self, writer, data, addr=None):
+        """Send bulk data on a peer's own connection, waiting for it to be taken.
+
+        Returns False (and drops the peer) if it does not read for
+        SEND_STALL_TIMEOUT seconds, instead of blocking this connection forever."""
+        try:
+            writer.write(data)
+            await asyncio.wait_for(writer.drain(), timeout=SEND_STALL_TIMEOUT)
+            return True
+        except asyncio.TimeoutError:
+            logger.warning(f"Peer {addr} stopped reading for {SEND_STALL_TIMEOUT:.0f}s while we were sending. Disconnecting.")
+            self._abort_writer(writer)
+            return False
+        except Exception as e:
+            logger.debug(f"send_reply to {addr} failed: {e}")
+            return False
+
+    def broadcast_nowait(self, data, exclude_writer=None):
+        """Queue data for every connected peer exactly once and return the count.
+
+        A connection can be registered under two keys (source port and listening
+        port); it still gets a single copy."""
+        seen = set()
+        count = 0
+        for peer_addr, peer_writer in list(self.active_connections.items()):
+            if peer_writer is exclude_writer or id(peer_writer) in seen:
+                continue
+            seen.add(id(peer_writer))
+            if self.send_nowait(peer_writer, data, peer_addr):
+                count += 1
+        return count
+
+    def _best_peer(self):
+        """(addr, writer) of the connected peer reporting the greatest height."""
+        best = None
+        best_height = -1
+        for peer_addr, peer_writer in list(self.active_connections.items()):
+            if self._writer_state(peer_writer)[0]:
+                continue
+            height = self.peer_stats.get(peer_addr, {}).get('height', 0)
+            if height > best_height:
+                best, best_height = (peer_addr, peer_writer), height
+        return best
+
+    # ------------------------------------------------------------------
+    # Block request bookkeeping
+    # ------------------------------------------------------------------
+    def _mark_block_requested(self, block_hash, addr):
+        self.block_requests[block_hash] = (addr, time.time())
+
+    def _block_in_flight(self, block_hash):
+        """True if this block was requested recently and may still arrive."""
+        request = self.block_requests.get(block_hash)
+        if not request:
+            return False
+        if time.time() - request[1] > BLOCK_REQUEST_TTL:
+            self.block_requests.pop(block_hash, None)
+            return False
+        return True
+
+    def _pending_block_requests(self, addr):
+        """How many blocks this peer still owes us."""
+        now = time.time()
+        return sum(1 for peer, when in list(self.block_requests.values())
+                   if peer == addr and now - when <= BLOCK_REQUEST_TTL)
+
+    def _forget_block_requests(self, addr):
+        """A peer went away: whatever it still owed us may be asked of someone else."""
+        for block_hash in [h for h, (peer, _when) in list(self.block_requests.items()) if peer == addr]:
+            self.block_requests.pop(block_hash, None)
+
+    def _prune_sync_state(self):
+        """Drop bookkeeping for requests that expired and orphans that are gone."""
+        now = time.time()
+        for block_hash in [h for h, (_peer, when) in list(self.block_requests.items())
+                           if now - when > BLOCK_REQUEST_TTL]:
+            self.block_requests.pop(block_hash, None)
+        orphan_pool = self.chain_manager.orphan_blocks
+        for block_hash in [h for h in list(self.orphan_sources) if h not in orphan_pool]:
+            self.orphan_sources.pop(block_hash, None)
+        waiting_on = self.chain_manager.orphan_dep
+        for block_hash in [h for h in list(self.backfill_attempts) if h not in waiting_on]:
+            self.backfill_attempts.pop(block_hash, None)
+
+    # ------------------------------------------------------------------
+    # Orphan recovery
+    # ------------------------------------------------------------------
+    def _request_block(self, block_hash, addr, writer, child=None):
+        """Ask one peer for one specific block (the missing parent of an orphan)."""
+        msg = {"type": "getdata", "inventory": [{"type": "block", "hash": block_hash}]}
+        out_m = Message('getdata', json.dumps(msg).encode('utf-8'))
+        if not self.send_nowait(writer, out_m.serialize(), addr):
+            return False
+        self._mark_block_requested(block_hash, addr)
+        self.backfill_attempts[block_hash] = self.backfill_attempts.get(block_hash, 0) + 1
+        child_str = child[:16] if child else "?"
+        logger.info(f"Orphan Backfill: Found gap at {block_hash[:16]} (Child: {child_str}). Requesting from {addr}...")
+        self.log_peer_event(addr, "OUT", "GETDATA", f"Requesting missing root parent {block_hash[:16]}...")
+        return True
+
+    async def _recover_orphan(self, b_hash, addr, writer):
+        """A block arrived whose parent we do not have. Fetch the ONE block that is
+        actually missing -- the first unknown ancestor of the parked chain -- from
+        the peer that sent the orphan.
+
+        Every block that arrives behind a single missing block resolves to the same
+        missing ancestor, so a whole batch of orphans produces one request, not one
+        each. If we find ourselves stepping back block after block, we are simply a
+        long way behind that peer: use ordinary locator sync instead.
+
+        (The old code re-ran a full sync request on every 11th orphan, and each
+        reply re-requested the blocks already on their way. One hole in a peer's
+        inventory became thousands of duplicate block downloads.)
+        """
+        missing = self.chain_manager.find_missing_ancestor(b_hash)
+        if not missing or self._block_in_flight(missing):
+            return False
+
+        now = time.time()
+        while self.backfill_times and now - self.backfill_times[0] > BACKFILL_WINDOW:
+            self.backfill_times.popleft()
+        if len(self.backfill_times) >= BACKFILL_MAX_PER_WINDOW:
+            if await self.send_getblocks(writer):
+                logger.warning(f"Deep Orphan Gap detected ({len(self.backfill_times)} single-block fetches in {BACKFILL_WINDOW:.0f}s). Using Bulk Sync instead.")
+                self.log_peer_event(addr, "OUT", "GETBLOCKS", "Bulk Sync due to deep orphan chain")
+            return False
+
+        self.backfill_times.append(now)
+        return self._request_block(missing, addr, writer, child=b_hash)
+
+    async def request_missing_parents(self):
+        """Safety net for orphan recovery, run from the sync watchdog.
+
+        _recover_orphan only fires when an orphan ARRIVES. If that request was lost
+        (peer dropped, budget exhausted) nothing else would ever ask again and the
+        parked blocks would wait forever. This re-requests any parent that orphans
+        are still waiting on, and gives up on one that cannot be fetched after
+        BACKFILL_MAX_ATTEMPTS tries (its orphans are released and will simply be
+        downloaded again by normal sync)."""
+        requested = 0
+        for missing in self.chain_manager.get_missing_parents():
+            if self._block_in_flight(missing):
+                continue
+            if self.backfill_attempts.get(missing, 0) >= BACKFILL_MAX_ATTEMPTS:
+                async with self.sync_lock:
+                    dropped = self.chain_manager.drop_orphans_waiting_on(missing)
+                self.backfill_attempts.pop(missing, None)
+                logger.warning(f"Orphan Backfill: could not fetch {missing[:16]} after {BACKFILL_MAX_ATTEMPTS} attempts. Released {dropped} waiting block(s).")
+                continue
+
+            # Prefer a peer that handed us a child of this block: it must have it.
+            target = None
+            for child in list(self.chain_manager.orphan_dep.get(missing, [])):
+                source = self.orphan_sources.get(child.get_hash().hex())
+                source_writer = self.active_connections.get(source) if source else None
+                if source_writer is not None and not self._writer_state(source_writer)[0]:
+                    target = (source, source_writer)
+                    break
+            if target is None:
+                target = self._best_peer()
+            if target is None:
+                break
+            if self._request_block(missing, target[0], target[1]):
+                requested += 1
+        return requested
 
     def track_disconnect(self, ip):
         """Tracks frequent disconnects to trigger bans."""
@@ -155,7 +419,9 @@ class NetworkManager:
             self.ban_peer(ip, duration=60)
 
     async def retry_wanted_blocks(self):
-        """Immediately asks ANY other connected peer for blocks we missed."""
+        """A connection closed: re-request, from ONE other peer, any block we asked
+        for and never received. Blocks that arrived another way, or that are still on
+        their way from a live peer, are left alone."""
         if not self.wanted_blocks:
             return
 
@@ -165,32 +431,31 @@ class NetworkManager:
              self.wanted_blocks.clear()
              return
 
-        logger.info(f"BULLDOG: Retrying download of {len(self.wanted_blocks)} wanted blocks from available peers...")
-        
-        # Create inventory request
-        inv = [{"type": "block", "hash": h} for h in list(self.wanted_blocks)]
-        
-        # Create GETDATA message
+        orphan_pool = self.chain_manager.orphan_blocks
+        needed = []
+        for block_hash in list(self.wanted_blocks):
+            if block_hash in orphan_pool or self.block_index.get_block_info(block_hash):
+                self.wanted_blocks.discard(block_hash)
+            elif not self._block_in_flight(block_hash):
+                needed.append(block_hash)
+        if not needed:
+            return
+
+        target = self._best_peer()
+        if target is None:
+            logger.warning("BULLDOG: No peers available to retry wanted blocks! Waiting for new connection...")
+            return
+        peer_addr, peer_writer = target
+
         entry = {
             "type": "getdata",
-            "inventory": inv
+            "inventory": [{"type": "block", "hash": h} for h in needed]
         }
-        payload = json.dumps(entry).encode('utf-8')
-        msg = Message('getdata', payload)
-        serialized = msg.serialize()
-        
-        sent_count = 0
-        for peer, writer in self.active_connections.items():
-            try:
-                writer.write(serialized)
-                await writer.drain()
-                sent_count += 1
-            except: pass
-        
-        if sent_count > 0:
-            logger.info(f"BULLDOG: Sent GETDATA for wanted blocks to {sent_count} peers.")
-        else:
-            logger.warning("BULLDOG: No peers available to retry wanted blocks! Waiting for new connection...")
+        msg = Message('getdata', json.dumps(entry).encode('utf-8'))
+        if self.send_nowait(peer_writer, msg.serialize(), peer_addr):
+            for block_hash in needed:
+                self._mark_block_requested(block_hash, peer_addr)
+            logger.info(f"BULLDOG: Re-requested {len(needed)} wanted blocks from {peer_addr}.")
 
     def configure_stun(self, ip, port):
         self.stun_ip = ip
@@ -406,8 +671,7 @@ class NetworkManager:
                 msg = Message('beggar', payload)
                 for peer_addr, peer_writer in self.active_connections.items():
                     try:
-                        peer_writer.write(msg.serialize())
-                        await peer_writer.drain()
+                        self.send_nowait(peer_writer, msg.serialize())
                     except: pass
                 logger.info(f"💰 Beggar broadcast sent: {address}")
                 await asyncio.sleep(interval)
@@ -434,8 +698,7 @@ class NetworkManager:
         msg = Message('beggar_rm', payload)
         for peer_addr, peer_writer in self.active_connections.items():
             try:
-                peer_writer.write(msg.serialize())
-                await peer_writer.drain()
+                self.send_nowait(peer_writer, msg.serialize())
             except: pass
 
         self.active_beg = None
@@ -524,8 +787,7 @@ class NetworkManager:
                     logger.info(f"Received VERACK from {addr} - Handshake COMPLETE")
                     self.log_peer_event(addr, "RECV", "VERACK", "Handshake COMPLETE")
                     # Send getaddr to initiate discovery
-                    writer.write(GetAddrMessage().serialize())
-                    await writer.drain()
+                    self.send_nowait(writer, GetAddrMessage().serialize())
                     self.log_peer_event(addr, "SENT", "GETADDR", "Initiating discovery")
                     
                     # Start Initial Block Download (IBD)
@@ -536,8 +798,7 @@ class NetworkManager:
                     # logger.debug(f"Received PING from {addr} (nonce={msg.nonce})")
                     # Reply with Pong
                     response = PongMessage(msg.nonce)
-                    writer.write(response.serialize())
-                    await writer.drain()
+                    self.send_nowait(writer, response.serialize())
                     self.log_peer_event(addr, "SENT", "PONG", f"Nonce: {msg.nonce}")
 
                 elif command == 'pong':
@@ -599,8 +860,7 @@ class NetworkManager:
                     
                     if peers_list:
                         addr_msg = AddrMessage(peers_list)
-                        writer.write(addr_msg.serialize())
-                        await writer.drain()
+                        self.send_nowait(writer, addr_msg.serialize())
                         logger.debug(f"Sent ADDR with {len(peers_list)} peers to {addr}: {debug_advertised}")
                         self.log_peer_event(addr, "SENT", "ADDR", f"Sent nodes: {debug_advertised}")
 
@@ -625,8 +885,7 @@ class NetworkManager:
                         
                         if target in self.active_connections:
                             target_writer = self.active_connections[target]
-                            target_writer.write(relay_msg.inner_payload)
-                            await target_writer.drain()
+                            self.send_nowait(target_writer, relay_msg.inner_payload)
                             logger.info(f"Relayed message to {target}")
                             self.log_peer_event(target, "SENT", "RELAY_FWD", f"Forwarded from {addr}")
                         else:
@@ -670,8 +929,7 @@ class NetworkManager:
                                         
                                         # Relay
                                         relay = RelayMessage(target_ip=target_ip, target_port=target_port, inner_payload=resp_signal.serialize())
-                                        writer.write(relay.serialize())
-                                        await writer.drain()
+                                        self.send_nowait(writer, relay.serialize())
                                         logger.info(f"Sent ICE Answer to {target_ip}:{target_port} via Relay")
                                     else:
                                         logger.warning("No active connection to Relay to send Answer")
@@ -710,81 +968,64 @@ class NetworkManager:
                         self.log_peer_event(addr, "RECV", "INV", f"Size: {len(items)}, First: {first_item}...")
                         logger.info(f"Received INV from {addr} with {len(items)} items")
 
-                        # BULLDOG: Track wanted blocks
-                        for item in items:
-                            if item['type'] == 'block':
-                                self.wanted_blocks.add(item['hash'])
-
-                        # Check what we need
-                        # Check what we need
+                        # Work out what we actually need to ask for.
+                        #   to_get  = not held and not already on its way -> request it
+                        #   pending = not connected yet, but already downloaded (parked as
+                        #             an orphan) or already requested from a peer
+                        # Asking again for a pending block only makes the peer send the
+                        # same data twice. That used to turn one missing block into
+                        # thousands of duplicate downloads and jam the connection.
                         to_get = []
-                        
-                        # IBD OPTIMIZATION:
-                        # If we are syncing (far behind), ONLY process INVs from our chosen Sync Peer.
-                        # This prevents CPU spikes from processing 10x duplicate INVs from all 10 peers.
-                        # FIX: Only enforce this if we actually HAVE a sync peer selected.
-                        if self.is_initial_block_download() and self.sync_peer and addr != self.sync_peer:
-                            # logger.debug(f"Ignoring INV from {addr} (Not our Sync Peer {self.sync_peer})")
-                            pass
-
+                        pending = 0
+                        orphan_pool = self.chain_manager.orphan_blocks
                         for item in items:
                             if item['type'] == 'block':
-                                # ... (rest of logic) ...
-                                # Core Logic: If we don't have it in the main index, get it.
-                                if not self.block_index.get_block_info(item['hash']):
-                                     # Check if already requested/in-flight? associated with sync_peer?
-                                     to_get.append(item)
-                                else:
-                                    pass
+                                b_hash = item['hash']
+                                if b_hash in orphan_pool or self._block_in_flight(b_hash):
+                                    pending += 1
+                                elif not self.block_index.get_block_info(b_hash):
+                                    to_get.append(item)
                             elif item['type'] == 'tx':
-                                 # ... (tx logic)
                                 if not self.mempool.get_transaction(item['hash']):
                                     to_get.append(item)
                         
                         if to_get:
-                            # Reverting to standard batch size (driven by peer INV size, typ. 500)
+                            for item in to_get:
+                                if item['type'] == 'block':
+                                    # BULLDOG: remember what we asked for so it can be
+                                    # re-requested elsewhere if this peer drops.
+                                    self.wanted_blocks.add(item['hash'])
+                                    self._mark_block_requested(item['hash'], addr)
                             msg = {
                                 "type": "getdata",
                                 "inventory": to_get
                             }
                             json_payload = json.dumps(msg).encode('utf-8')
                             out_msg = Message('getdata', json_payload)
-                            writer.write(out_msg.serialize())
-                            await writer.drain()
+                            # Requests are queued, never awaited: this loop must keep
+                            # READING while the peer is busy sending us blocks.
+                            self.send_nowait(writer, out_msg.serialize(), addr)
                             logger.info(f"Sent GETDATA for {len(to_get)} items to {addr}")
                             self.log_peer_event(addr, "SENT", "GETDATA", f"Requested {len(to_get)} blocks/txs")
-                        elif items:
+                        elif items and pending == 0:
                             # CONTINUE SYNC LOGIC
-                            # to_get is empty: we already have every block in this INV.
-                            # If the peer is still ahead, immediately request the NEXT batch,
-                            # otherwise sync stalls here.
-                            # (Fix: this path previously referenced an undefined `inventory`
-                            #  and was duplicated, so it always raised NameError and the
-                            #  "all-known INV -> request next batch" sync step never ran.)
+                            # We already hold every block in this INV. If the peer is
+                            # still ahead, ask for the NEXT batch, otherwise sync stalls
+                            # here. (send_getblocks ignores an identical repeat, so this
+                            # cannot turn into a request loop.)
                             last_item = items[-1]
                             if last_item['type'] == 'block':
-                                last_hash = last_item['hash']
+                                # Store the expected "End of Batch" hash so the block
+                                # handler can trigger getblocks when it arrives.
+                                self.sync_batch_end = last_item['hash']
                                 
-                                # Store the expected "End of Batch" hash
-                                # This allows handle_block to trigger getblocks when this specific block arrives.
-                                self.sync_batch_end = last_hash
-                                
-                                # Check peer height to decide if we should ask for more
                                 peer_height = self.peer_stats.get(addr, {}).get('height', 0)
-                                my_height = self.block_index.get_best_block()['height'] if self.block_index.get_best_block() else 0
+                                best = self.block_index.get_best_block()
+                                my_height = best['height'] if best else 0
                                 
-                                # If peer is ahead, ask for more even if this batch was known
-                                # or if the batch was substantial.
-                                if peer_height > my_height or len(items) > 0:
-                                     # Logic update: Always request more if we are not at tip.
-                                     logger.debug(f"INV processing complete. Checking if we need more blocks (Peer H:{peer_height} vs My H:{my_height})...")
-                                     if peer_height > my_height:
-                                          # Trigger getblocks to continue sync
-                                          # BUT: We set sync_batch_end? 
-                                          # If we DON'T download anything (because we have it all?), we must trigger NOW.
-                                          if not to_get:
-                                              logger.info("INV contained only known blocks/orphans. Forcing next batch request immediately.")
-                                              await self.send_getblocks(writer)
+                                if peer_height > my_height:
+                                    logger.debug(f"INV held only known blocks (Peer H:{peer_height} vs My H:{my_height}). Requesting next batch.")
+                                    await self.send_getblocks(writer)
 
                     except Exception as e:
                         logger.error(f"INV error: {e}")
@@ -805,46 +1046,42 @@ class NetworkManager:
                                     if info:
                                         try:
                                             raw_block = self.block_store.read_block(info['file_num'], info['offset'], info['length'])
-                                            # Encode to hex
-                                            block_hex = binascii.hexlify(raw_block).decode('ascii')
-                                            msg = {
-                                                "type": "block",
-                                                "payload": block_hex
-                                            }
-                                            json_payload = json.dumps(msg).encode('utf-8')
-                                            out_msg = Message('block', json_payload)
-                                            writer.write(out_msg.serialize())
-                                            await writer.drain()
-                                            logger.info(f"Sent BLOCK {item['hash']} to {addr}")
-                                            self.log_peer_event(addr, "SENT", "BLOCK", f"Hash {item['hash'][:16]}...")
                                         except Exception as e:
-                                            logger.error(f"Failed to read/send block {item['hash']}: {e}")
+                                            logger.error(f"Failed to read block {item['hash']}: {e}")
                                             # DISCONNECT FIX (Sprint 2):
                                             # If we can't read a block we advertised, our index is out of sync with store.
                                             # We must disconnect to prevent the peer from waiting indefinitely.
                                             logger.warning(f"Disconnecting peer {addr} due to missing block data {item['hash']}")
-                                            writer.close()
+                                            self._abort_writer(writer)
                                             return
+                                        # Encode to hex
+                                        block_hex = binascii.hexlify(raw_block).decode('ascii')
+                                        msg = {
+                                            "type": "block",
+                                            "payload": block_hex
+                                        }
+                                        json_payload = json.dumps(msg).encode('utf-8')
+                                        out_msg = Message('block', json_payload)
+                                        # Bulk data: wait for the peer to take it (back-pressure),
+                                        # but never forever. A peer that stops reading is dropped
+                                        # instead of freezing this connection.
+                                        if not await self.send_reply(writer, out_msg.serialize(), addr):
+                                            return
+                                        logger.info(f"Sent BLOCK {item['hash']} to {addr}")
+                                        self.log_peer_event(addr, "SENT", "BLOCK", f"Hash {item['hash'][:16]}...")
                                     else:
+                                        # We do not have it. A peer may legitimately ask for a
+                                        # block we never advertised (it is fetching the missing
+                                        # parent of an orphan), so this is not grounds to drop
+                                        # the connection: skip it and serve the rest.
                                         logger.warning(f"Requested block {item['hash']} not found in index")
-                                        # Also disconnect here as we advertised it (presumably)
-                                        writer.close()
-                                        return
+                                        self.log_peer_event(addr, "SENT", "NOTFOUND", f"Hash {item['hash'][:16]}...")
                                 
                                 elif item['type'] == 'tx':
                                     # Retrieve tx from mempool
                                     tx = self.mempool.get_transaction(item['hash'])
                                     if tx:
                                         try:
-                                            # Send TX message
-                                            # We need to wrap it in a 'tx' command like existing codebase expects?
-                                            # Let's check 'tx' handler below.
-                                            # It expects { "payload": hex_tx } ?? No wait.
-                                            # Let's see how 'tx' message is typically formed.
-                                            # The existing codebase doesn't seem to have a standard TX message serializer yet?
-                                            # Wait, existing grep showed 'elif command == 'tx''. Let's check its parsing.
-                                            # Assuming it follows 'block' pattern: JSON with payload hex.
-                                            
                                             tx_hex = binascii.hexlify(tx.serialize()).decode('ascii')
                                             msg = {
                                                 "type": "tx",
@@ -852,8 +1089,7 @@ class NetworkManager:
                                             }
                                             json_payload = json.dumps(msg).encode('utf-8')
                                             out_msg = Message('tx', json_payload)
-                                            writer.write(out_msg.serialize())
-                                            await writer.drain()
+                                            self.send_nowait(writer, out_msg.serialize(), addr)
                                             logger.info(f"Sent TX {item['hash']} to {addr}")
                                             self.log_peer_event(addr, "SENT", "TX", f"Hash {item['hash'][:16]}...")
                                         except Exception as e:
@@ -889,17 +1125,13 @@ class NetworkManager:
                             b_hash = block.get_hash().hex()
                             self.log_peer_event(addr, "RECV", "BLOCK", f"Hash {b_hash[:16]}...")
 
-                            # BULLDOG: Remove from wanted list
-                            if b_hash in self.wanted_blocks:
-                                self.wanted_blocks.discard(b_hash)
-
-                            # Update watchdog timer ONLY on valid block connect or processing start.
-                            # We don't want to reset it for orphans if we are stuck in an orphan loop.
-                            # Actually, we can update it here, but we need the Watchdog to be smarter.
-                            # BETTER FIX: Only update it if the block is NOT an orphan or if it triggers a successful backfill step.
-                            # For now, let's move this update ensuring we don't count endless orphans as "progress".
-                            # logic moved to later in handle_block
-                            pass
+                            # It arrived, so it is no longer wanted. It stays marked "in
+                            # flight" until it has been processed below: between arriving
+                            # and being indexed it is in neither the index nor the orphan
+                            # pool, and a handler on another connection must not conclude
+                            # it is missing and request it a second time.
+                            self.wanted_blocks.discard(b_hash)
+                            self._mark_block_requested(b_hash, addr)
 
                             # Process via ChainManager OFF the event loop.
                             # Previously this ran synchronously on the asyncio loop, so the
@@ -910,10 +1142,13 @@ class NetworkManager:
                             # sync_lock serializes block processing so only one block mutates
                             # chain state (incl. ChainManager.orphan_blocks) at a time.
                             loop = asyncio.get_event_loop()
-                            async with self.sync_lock:
-                                success, reason = await loop.run_in_executor(
-                                    None, self.chain_manager.process_block, block
-                                )
+                            try:
+                                async with self.sync_lock:
+                                    success, reason = await loop.run_in_executor(
+                                        None, self.chain_manager.process_block, block
+                                    )
+                            finally:
+                                self.block_requests.pop(b_hash, None)
                             
                             if success:
                                 # Remove received transactions from mempool
@@ -927,6 +1162,8 @@ class NetworkManager:
 
                                 # PEER HEIGHT UPDATE FIX:
                                 # Update the peer's height so the Watchdog knows it's a good peer.
+                                best_info = None
+                                new_height = 0
                                 try:
                                     best_info = self.block_index.get_best_block()
                                     if best_info:
@@ -949,6 +1186,7 @@ class NetworkManager:
                                      # We want to ask for the next batch when:
                                      # 1. We are approaching the end of a large batch (Streaming at 70%).
                                      # 2. We hit the EXACT end of the current batch (Batch-Stop-and-Wait).
+                                     # 3. Everything this peer owed us has arrived (Batch-Done).
                                      
                                      is_streaming_trigger = self.blocks_since_req >= 350
                                      
@@ -956,23 +1194,30 @@ class NetworkManager:
                                      # (Requires saving sync_batch_end in handle_inv)
                                      last_expected = getattr(self, 'sync_batch_end', None)
                                      is_batch_end = (b_hash == last_expected)
+
+                                     # Nothing left in flight from this peer: the batch is
+                                     # complete, so ask for the next one right away rather
+                                     # than idling until the watchdog notices.
+                                     is_batch_done = self._pending_block_requests(addr) == 0
                                      
                                      # Safety Net: If we haven't asked in > 2.0s, ask again.
                                      # This covers cases where we missed the batch end or INV order was weird.
                                      is_stall_trigger = (time.time() - self.last_getblocks_time > 2.0)
                                      
-                                     if is_streaming_trigger or is_batch_end or is_stall_trigger:
+                                     if is_streaming_trigger or is_batch_end or is_batch_done or is_stall_trigger:
                                          reason_str = "Streaming"
+                                         if is_batch_done: reason_str = "Batch-Done"
                                          if is_batch_end: reason_str = "Batch-End"
                                          if is_stall_trigger: reason_str = "Stall-Timeout"
                                          
-                                         # Only log streaming/batch-end as INFO. Stall as DEBUG/INFO if actually needed.
-                                         if is_stall_trigger:
-                                              logger.info(f"Sync: Stall Trigger (>2.0s). Requesting next batch...")
-                                         else:
-                                              logger.info(f"Sync: Triggering next batch ({reason_str})...")
-                                              
-                                         await self.send_getblocks(writer)
+                                         # send_getblocks drops an identical repeat (same tip,
+                                         # same peer, a few seconds apart), so overlapping
+                                         # triggers cannot flood the peer.
+                                         if await self.send_getblocks(writer):
+                                             if is_stall_trigger:
+                                                  logger.info(f"Sync: Stall Trigger (>2.0s). Requesting next batch...")
+                                             else:
+                                                  logger.info(f"Sync: Triggering next batch ({reason_str})...")
                                          
                                          # Reset triggers
                                          self.blocks_since_req = 0
@@ -986,13 +1231,10 @@ class NetworkManager:
                                 json_payload = json.dumps(inv_msg).encode('utf-8')
                                 out_m = Message('inv', json_payload)
                                 
-                                # Broadcast to others
-                                for peer_addr, peer_writer in self.active_connections.items():
-                                    if peer_addr != addr: 
-                                        try:
-                                            peer_writer.write(out_m.serialize())
-                                            await peer_writer.drain()
-                                        except: pass
+                                # Broadcast to others. Queued, never awaited: one peer that
+                                # has stopped reading must not be able to freeze this
+                                # connection's handler (it used to, permanently).
+                                self.broadcast_nowait(out_m.serialize(), exclude_writer=writer)
                                 logger.info("Relayed BLOCK INV to peers")
                                 
                                 # Valid block progress -> Reset Watchdog AND Backfill Counter
@@ -1004,93 +1246,10 @@ class NetworkManager:
                                 # ORPHAN HANDLING
                                 if "Orphan" in reason:
                                     self.log_peer_event(addr, "CONSENSUS", "ORPHAN", f"Detected {b_hash[:16]}. Triggering recovery.")
-                                    # REMOVED DEBOUNCE: Always try to fetch if we are confused.
-                                    # REMOVED DEBOUNCE: Always try to fetch if we are confused.
                                     try:
-                                        # OLD LOGIC: Trigger full sync.
-                                        # New Logic: Wait! Sending getblocks here causes the Peer to dump 500 blocks we likely already have or can't connect.
-                                        # Instead, rely on the BACKFILL STRATEGY below to fetch the specific missing parent.
-                                        
-                                        # DEEP ORPHAN DETECTION (Sprint 3)
-                                        self.consecutive_orphan_backfills += 1
-                                        if self.consecutive_orphan_backfills > 10:
-                                            logger.warning(f"Deep Orphan Gap detected ({self.consecutive_orphan_backfills} steps). Aborting backfill and forcing Bulk Sync.")
-                                            self.log_peer_event(addr, "OUT", "GETBLOCKS", "Forcing Bulk Sync due to deep orphan chain")
-                                            
-                                            # KICK PEER LOGIC (Sprint 4): Expect response or die
-                                            self.peer_bulk_sync_requests[addr] = time.time()
-                                            
-                                            await self.send_getblocks(writer)
-                                            self.consecutive_orphan_backfills = 0
-                                            # Do NOT proceed to backfill strategy
-                                            continue
-
-                                        # self.log_peer_event(addr, "OUT", "GETBLOCKS", "Triggering ancestry fetch for Orphan recovery")
-                                        # await self.send_getblocks(writer)
-                                        # self.log_peer_event(addr, "OUT", "GETBLOCKS", "Triggering ancestry fetch for Orphan recovery")
-                                        # await self.send_getblocks(writer)
-                                        pass
-                                        
-                                        # BACKFILL STRATEGY: Iterative Ancestry Lookup
-                                        logger.debug("Orphan Backfill: Starting ancestry lookup...")
-                                        # If we have a chain of orphans (A->B->C), receiving C should trigger request for B's parent (if B is known orphan).
-                                        # We trace back up to 100 steps to find the "Root Orphan" that needs a parent.
-                                        
-                                        curr_hash = b_hash
-                                        steps = 0
-                                        target_parent = None
-                                        
-                                        while steps < 100:
-                                            orphan_block = self.chain_manager.orphan_blocks.get(curr_hash)
-                                            if not orphan_block:
-                                                # Should not happen for the first iteration (b_hash), but safe to break
-                                                break
-                                                
-                                            prev_hash = orphan_block.header.prev_block.hex()
-                                            
-                                            # Do we have this parent in the MAIN chain?
-                                            if self.block_index.get_block_info(prev_hash):
-                                                # Parent is known and processed. 
-                                                # If we are here, it means we FAILED to connect the child despite having parent?
-                                                # That suggests validation failure or race condition. 
-                                                # We stop here.
-                                                target_parent = None
-                                                break
-                                                
-                                            # Do we have this parent in the ORPHAN pool?
-                                            if prev_hash in self.chain_manager.orphan_blocks:
-                                                # Yes, so we need TO CHECK *ITS* PARENT. 
-                                                # Move one step back.
-                                                curr_hash = prev_hash
-                                                steps += 1
-                                                continue
-                                            
-                                            # If neither, THIS is the missing link we need.
-                                            target_parent = prev_hash
-                                            break
-                                            
-                                        if target_parent:
-                                            # Check Debounce
-                                            now = time.time()
-                                            last_req = self.requested_orphans.get(target_parent, 0)
-                                            if now - last_req < 5.0:
-                                                # Debounce: Skip request
-                                                pass
-                                            else:
-                                                self.requested_orphans[target_parent] = now
-                                                
-                                                logger.info(f"Orphan Backfill: Found gap at {target_parent[:16]} (Child: {curr_hash[:16]}). Requesting...")
-                                                self.log_peer_event(addr, "OUT", "GETDATA", f"Requesting missing root parent {target_parent[:16]}...")
-                                                
-                                                inv_item = {"type": "block", "hash": target_parent}
-                                                msg = {"type": "getdata", "inventory": [inv_item]}
-                                                payload = json.dumps(msg).encode('utf-8')
-                                                out_m = Message('getdata', payload)
-                                                writer.write(out_m.serialize())
-                                                await writer.drain()
-                                        else:
-                                             # No actionable parent found (or loop/limit hit)
-                                             pass
+                                        # This peer handed us the orphan, so it has the parent.
+                                        self.orphan_sources[b_hash] = addr
+                                        await self._recover_orphan(b_hash, addr, writer)
 
                                         # Update stats for tracking
                                         if addr in self.peer_stats:
@@ -1136,8 +1295,7 @@ class NetworkManager:
                                     for peer_addr, peer_writer in self.active_connections.items():
                                         if peer_addr != addr:
                                             try:
-                                                peer_writer.write(out_m.serialize())
-                                                await peer_writer.drain()
+                                                self.send_nowait(peer_writer, out_m.serialize())
                                             except: pass
                                     # Added return to fix logging issue? No.
                             else:
@@ -1176,18 +1334,20 @@ class NetworkManager:
                             
                             logger.info(f"SYNC LOGIC: Start Hash {start_hash} (Height {start_height}), Current Tip Height {current_height}")
 
-                            inv_items = []
-                            # Lock to prevent race condition during sync
-                            # (Optional, but good practice)
                             # Limit to 500 blocks per batch (Standard) to prevent huge getdata bursts
-                            # Changed back from 2000 to 500
                             end_height = min(current_height, start_height + 500)
-                            for h_idx in range(start_height + 1, end_height + 1):
-                                b_hash = self.chain_manager.get_block_hash(h_idx)
-                                if b_hash:
-                                    inv_items.append({"type": "block", "hash": b_hash})
-                                else:
-                                    logger.warning(f"SYNC WARNING: Block hash not found for height {h_idx}")
+
+                            # The inventory MUST be a gap-free run of the active chain.
+                            # It used to be built one height at a time from the status
+                            # flag, silently skipping any height whose flag was wrong; the
+                            # peer then saw every later block as an orphan. This lookup
+                            # follows the real chain when the flags disagree and stops at
+                            # the first height it cannot resolve.
+                            hashes = self.chain_manager.get_main_chain_hashes(start_height + 1, end_height)
+                            expected = end_height - start_height
+                            if len(hashes) < expected:
+                                logger.warning(f"SYNC WARNING: only {len(hashes)} of {expected} main-chain hashes found after height {start_height}")
+                            inv_items = [{"type": "block", "hash": b_hash} for b_hash in hashes]
                             
                             if inv_items:
                                     inv_msg = {
@@ -1196,8 +1356,8 @@ class NetworkManager:
                                     }
                                     json_payload = json.dumps(inv_msg).encode('utf-8')
                                     out_msg = Message('inv', json_payload)
-                                    writer.write(out_msg.serialize())
-                                    await writer.drain()
+                                    if not await self.send_reply(writer, out_msg.serialize(), addr):
+                                        return
                                     logger.info(f"Sent INV with {len(inv_items)} blocks to {addr}")
                         else:
                              pass # No common ancestor, ignore
@@ -1225,8 +1385,7 @@ class NetworkManager:
                                 for peer_addr, peer_writer in self.active_connections.items():
                                     if peer_addr != addr:
                                         try:
-                                            peer_writer.write(relay_msg.serialize())
-                                            await peer_writer.drain()
+                                            self.send_nowait(peer_writer, relay_msg.serialize())
                                         except: pass
                     except Exception as e:
                         logger.error(f"Beggar message error: {e}")
@@ -1243,8 +1402,7 @@ class NetworkManager:
                             for peer_addr, peer_writer in self.active_connections.items():
                                 if peer_addr != addr:
                                     try:
-                                        peer_writer.write(relay_msg.serialize())
-                                        await peer_writer.drain()
+                                        self.send_nowait(peer_writer, relay_msg.serialize())
                                     except: pass
                     except Exception as e:
                         logger.error(f"Beggar_rm error: {e}")
@@ -1256,26 +1414,26 @@ class NetworkManager:
             # BULLDOG: Logic for disconnect tracking
             # peer_ip is defined at start of function
             self.track_disconnect(peer_ip)
-            
-            # BULLDOG: Trigger immediate retry for any pending blocks
-            # (Wanted blocks persist until explicitly cleared or received)
-            asyncio.create_task(self.retry_wanted_blocks())
 
             logger.info(f"[CONN] CLOSED: Connection to {addr} ended.")
             self.log_peer_event(addr, "XXX", "DISCONNECT", "Connection closed")
-            try:
-                writer.close()
-                await writer.wait_closed()
-            except: pass
-            
-            # Try removing both variants based on addr ip/port
+
+            # Deregister first, so nothing below (or any other task) picks this
+            # dead connection as a target. A connection can be registered under
+            # more than one key; remove every key that points at this writer.
             self.peers.discard(addr)
-            
-            # Also cleanup from active connections if present
-            if addr in self.active_connections:
-                 del self.active_connections[addr]
-            
-            pass
+            for key in [k for k, w in list(self.active_connections.items()) if w is writer]:
+                self.active_connections.pop(key, None)
+            self.active_connections.pop(addr, None)
+
+            # Whatever this peer still owed us may now be asked of someone else.
+            self._forget_block_requests(addr)
+
+            await self._close_writer(writer)
+
+            # BULLDOG: Trigger immediate retry for any pending blocks
+            # (Wanted blocks persist until explicitly cleared or received)
+            asyncio.create_task(self.retry_wanted_blocks())
 
     async def handle_client(self, reader, writer):
         # FIX APPLIED: ReadExactly & Active IBD
@@ -1394,8 +1552,7 @@ class NetworkManager:
         finally:
             logger.info(f"Closing connection to {addr}")
             self.log_peer_event(addr, "XXX", "DISCONNECT", "Connection closed")
-            writer.close()
-            await writer.wait_closed()
+            await self._close_writer(writer)
             # Try removing both variants
             self.peers.discard(addr)
             if 'remote_listening_port' in locals() and remote_listening_port > 0:
@@ -1602,8 +1759,7 @@ class NetworkManager:
                     # logger.info("Refreshing peer lists...")
                     for writer in list(self.active_connections.values()):
                         try:
-                            writer.write(GetAddrMessage().serialize())
-                            await writer.drain()
+                            self.send_nowait(writer, GetAddrMessage().serialize())
                         except Exception:
                             pass
             except Exception as e:
@@ -1663,8 +1819,7 @@ class NetworkManager:
                         writer = self.active_connections[peer]
                         nonce = random.getrandbits(64)
                         ping = PingMessage(nonce)
-                        writer.write(ping.serialize())
-                        await writer.drain()
+                        self.send_nowait(writer, ping.serialize())
                         
                         self.last_ping_time[peer] = time.time()
                         # self.log_peer_event(peer, "SENT", "PING", "Keepalive")
@@ -1682,6 +1837,11 @@ class NetworkManager:
             await asyncio.sleep(10) # Check every 10 seconds
 
             try:
+                # Housekeeping + orphan safety net: re-request any block that parked
+                # orphans are still waiting on (see request_missing_parents).
+                self._prune_sync_state()
+                await self.request_missing_parents()
+
                 # 0. SMART RECONNECT: If we have no peers, try to reconnect to known good ones
                 if not self.active_connections and self.peer_stats:
                     logger.warning("Sync Watchdog: No active connections! Attempting Smart Reconnect...")
@@ -1848,8 +2008,7 @@ class NetworkManager:
                 count = 0
                 for peer_addr, peer_writer in list(self.active_connections.items()):
                     try:
-                        peer_writer.write(out_m.serialize())
-                        await peer_writer.drain()
+                        self.send_nowait(peer_writer, out_m.serialize())
                         count += 1
                     except: pass
             
@@ -1871,23 +2030,36 @@ class NetworkManager:
         if self.active_connections:
             for writer in list(self.active_connections.values()):
                 try:
-                    writer.write(serialized_msg)
-                    await writer.drain()
+                    self.send_nowait(writer, serialized_msg)
                     count += 1
                 except Exception:
                     pass
         
         logger.info(f"Announced SELF to {count} peers")
 
-    async def send_getblocks(self, peer_writer):
-        """Sends getblocks message to peer with our chain tip locator"""
+    async def send_getblocks(self, peer_writer, force=False):
+        """Ask a peer for the blocks that follow our tip. Returns True if a request
+        was actually sent.
+
+        The request is queued without waiting on the peer (see send_nowait), so no
+        caller -- a connection handler, the watchdog -- can be frozen by a peer that
+        is not reading. An identical request (same tip, same peer) repeated within
+        GETBLOCKS_MIN_INTERVAL is dropped: the answer would be the same inventory
+        again, and several code paths can decide to ask at the same moment."""
         try:
             # Create locator using dense-then-sparse strategy
             locator = self.chain_manager.get_block_locator()
             
             if not locator:
                 logger.error("get_block_locator returned empty list! Cannot sync.")
-                return
+                return False
+
+            now = time.time()
+            tip = locator[0]
+            if not force:
+                last = self._last_getblocks.get(peer_writer)
+                if last and last[0] == tip and now - last[1] < GETBLOCKS_MIN_INTERVAL:
+                    return False
 
             msg = {
                 "type": "getblocks",
@@ -1895,20 +2067,28 @@ class NetworkManager:
             }
             json_payload = json.dumps(msg).encode('utf-8')
             out_msg = Message('getblocks', json_payload)
-            
-            peer_writer.write(out_msg.serialize())
-            await peer_writer.drain()
-            self.last_getblocks_time = time.time()
+
+            addr_info = None
+            try:
+                addr_info = peer_writer.get_extra_info('peername')
+            except Exception:
+                pass
+
+            if not self.send_nowait(peer_writer, out_msg.serialize(), addr_info):
+                return False
+            self._last_getblocks[peer_writer] = (tip, now)
+            self.last_getblocks_time = now
             self.blocks_since_req = 0 # Reset batch monitor
             
             # Use log_peer_event for consistency with user's view
             try:
-                addr_info = peer_writer.get_extra_info('peername')
                 self.log_peer_event(addr_info, "OUT", "GETBLOCKS", f"Sent locator with {len(locator)} hashes (Tip: {locator[0][:8]}...)")
-            except:
+            except Exception:
                 logger.info(f"SENT GETBLOCKS (Locator size: {len(locator)}) to peer")
+            return True
         except Exception as e:
             logger.error(f"Error sending getblocks: {e}")
+            return False
 
 
 
@@ -1927,8 +2107,7 @@ class NetworkManager:
         count = 0
         for peer_addr, peer_writer in self.active_connections.items():
             try:
-                peer_writer.write(out_msg.serialize())
-                await peer_writer.drain()
+                self.send_nowait(peer_writer, out_msg.serialize())
                 count += 1
             except Exception:
                 pass
@@ -2244,8 +2423,7 @@ class NetworkManager:
                     signal = SignalMessage(target_ip=target_ip, target_port=target_port, candidate=c_str)
                     # Wrap in RelayMessage
                     relay = RelayMessage(target_ip=target_ip, target_port=target_port, inner_payload=signal.serialize())
-                    writer.write(relay.serialize())
-                    await writer.drain()
+                    self.send_nowait(writer, relay.serialize())
             
             connection.on_candidate = on_candidate
             
@@ -2306,8 +2484,7 @@ class NetworkManager:
             
         if writer:
             msg = TestMessage(content)
-            writer.write(msg.serialize())
-            await writer.drain()
+            self.send_nowait(writer, msg.serialize())
             logger.info("Sent Test Message via TCP")
             self.log_peer_event((target_ip, target_port), "SENT", "TEST_MSG", content)
             return True
