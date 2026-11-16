@@ -25,6 +25,7 @@ set -u
 # Resolve where this script lives so it works no matter what directory you run it from.
 SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 START_USER_NODE="$SCRIPT_DIR/iCSI_COIN_PYTHON_PORT/STARTUP_SCRIPTS/start_user_node.sh"
+NODE_COMPOSE_FILE="$SCRIPT_DIR/iCSI_COIN_PYTHON_PORT/end_user_node/docker-compose.yml"
 
 echo "=================================================="
 echo "   iCSI Coin — Node Setup & Launch"
@@ -79,26 +80,60 @@ sudo systemctl enable --now docker 2>/dev/null || true
 # the standalone 'docker-compose' binary; and the apt package name differs
 # between distro versions. Rather than fail, we try the options in order and
 # only stop once a working Compose command exists.
+#
+# "Working" means it actually RUNS, not merely that the command exists. On
+# Ubuntu 24.04 the legacy 'docker-compose' package installs cleanly and then
+# crashes on launch ("No module named 'distutils'"), and an old legacy Compose
+# can also be unable to talk to a newer Docker engine. In both cases we move on
+# to the next package instead of stopping at one that cannot start the node.
+
+# The command every other script in this project will pick: the v2 plugin if it
+# is present, otherwise the legacy binary. Prints nothing if neither exists.
+chosen_compose() {
+    if docker compose version >/dev/null 2>&1; then
+        echo "docker compose"
+    elif command -v docker-compose >/dev/null 2>&1; then
+        echo "docker-compose"
+    fi
+}
+
+# True if that command really works. With the Docker daemon reachable this is a
+# full round trip (list this project's containers); if the daemon is not up, the
+# most we can check is that the command starts at all.
+compose_works() {
+    local dc
+    dc="$(chosen_compose)"
+    [ -n "$dc" ] || return 1
+    if sudo docker info >/dev/null 2>&1; then
+        sudo $dc -f "$NODE_COMPOSE_FILE" ps >/dev/null 2>&1
+    else
+        $dc version >/dev/null 2>&1
+    fi
+}
+
 echo ""
 echo "[3/4] Ensuring Docker Compose is installed..."
-if docker compose version >/dev/null 2>&1 || command -v docker-compose >/dev/null 2>&1; then
+if compose_works; then
     echo "      Docker Compose is already available."
 else
     echo "      Installing Docker Compose (trying available package names)..."
-    apt_noask install docker-compose \
-        || apt_noask install docker-compose-v2 \
-        || apt_noask install docker-compose-plugin \
-        || true
+    for compose_pkg in docker-compose docker-compose-v2 docker-compose-plugin; do
+        apt_noask install "$compose_pkg" || true
+        if compose_works; then
+            break
+        fi
+        echo "      '$compose_pkg' did not give a working Compose command; trying the next option..."
+    done
 fi
 
 # Verify that a Compose command now works; fail clearly if not.
-if docker compose version >/dev/null 2>&1; then
+if compose_works && [ "$(chosen_compose)" = "docker compose" ]; then
     echo "      ✔ Using: docker compose (v2 plugin)"
-elif command -v docker-compose >/dev/null 2>&1; then
+elif compose_works; then
     echo "      ✔ Using: docker-compose (legacy)"
 else
     echo ""
-    echo "ERROR: Docker Compose could not be installed automatically."
+    echo "ERROR: A working Docker Compose could not be installed automatically."
     echo "       (Tried: docker-compose, docker-compose-v2, docker-compose-plugin.)"
     echo "       Please install Docker Compose manually, then re-run ./START_NODE.sh"
     exit 1
