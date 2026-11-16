@@ -15,6 +15,9 @@
 #       differently
 #    3. Build and start your node (via STARTUP_SCRIPTS/start_user_node.sh)
 #    4. Tell you exactly where to open it in your browser
+#
+#  It never stops to ask a question: the full-screen blue dialog boxes that apt
+#  can pop up are switched off, and anything optional is answered "No".
 # ============================================================================
 
 set -u
@@ -27,15 +30,46 @@ echo "=================================================="
 echo "   iCSI Coin — Node Setup & Launch"
 echo "=================================================="
 
+# ── Never stop to ask ────────────────────────────────────────────────
+# apt can pop full-screen blue dialog boxes ("This package can be configured to
+# automatically ...  <Yes> <No>") and then wait for an answer. Every apt call below
+# goes through apt_noask so that never happens:
+#   DEBIAN_FRONTEND=noninteractive   no dialog boxes; each question takes its default
+#   NEEDRESTART_MODE=l               "which services should be restarted?" becomes a
+#                                    plain list and nothing is restarted
+#   --force-confdef/--force-confold  keep the existing config file instead of asking
+# ('env' is used because sudo does not pass our own environment through.)
+apt_noask() {
+    sudo env DEBIAN_FRONTEND=noninteractive NEEDRESTART_MODE=l \
+        apt-get -y \
+        -o Dpkg::Options::=--force-confdef \
+        -o Dpkg::Options::=--force-confold \
+        "$@"
+}
+
+# With the dialogs off, a question takes its package default, and that default is
+# not the same on every distro. These are the yes/no questions the Docker package
+# asks; answering them "No" up front makes the answer "No" everywhere:
+#   purge-data  "automatically delete all Docker images, containers and volumes if
+#               the package is ever purged?"
+#   restart     "automatically restart the Docker daemon when the package upgrades?"
+preseed_no() {
+    printf '%s\n' \
+        'docker.io docker.io/purge-data boolean false' \
+        'docker.io docker.io/restart boolean false' \
+        | sudo debconf-set-selections 2>/dev/null || true
+}
+
 # ── Step 1: Update apt package lists ─────────────────────────────────
 echo ""
 echo "[1/4] Updating package lists (sudo apt update)..."
-sudo apt update
+apt_noask update
 
 # ── Step 2: Install the Docker engine ────────────────────────────────
 echo ""
 echo "[2/4] Installing Docker engine (docker.io)..."
-sudo apt install -y docker.io
+preseed_no
+apt_noask install docker.io
 
 # Make sure the Docker daemon is actually running (harmless if it already is).
 sudo systemctl enable --now docker 2>/dev/null || true
@@ -51,9 +85,9 @@ if docker compose version >/dev/null 2>&1 || command -v docker-compose >/dev/nul
     echo "      Docker Compose is already available."
 else
     echo "      Installing Docker Compose (trying available package names)..."
-    sudo apt install -y docker-compose \
-        || sudo apt install -y docker-compose-v2 \
-        || sudo apt install -y docker-compose-plugin \
+    apt_noask install docker-compose \
+        || apt_noask install docker-compose-v2 \
+        || apt_noask install docker-compose-plugin \
         || true
 fi
 

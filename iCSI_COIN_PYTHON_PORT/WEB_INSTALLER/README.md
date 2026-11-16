@@ -26,6 +26,11 @@ curl -s https://raw.githubusercontent.com/androidteacher/iCSI_Coin_2026/refs/hea
 6. **Enters the project folder** and runs **`./START_NODE.sh`**, which installs
    Docker / Docker Compose and builds and starts your node.
 
+**It never stops to ask.** `apt` can pop up full-screen blue dialog boxes with a
+Yes/No choice (for example Docker's "This package can be configured to
+automatically…"). Both `install.sh` and `START_NODE.sh` switch those off and answer
+"No" to anything optional, so the install runs from start to finish unattended.
+
 Every step checks for failure and prints clear, color-coded output (`==>` progress,
 `✔` success, `ERROR:` failure), so if something goes wrong you know exactly which
 step failed and what to do about it.

@@ -29,9 +29,27 @@ if ! command -v apt-get >/dev/null 2>&1; then
     exit 1
 fi
 
+# --- Never stop to ask ---
+# apt can pop full-screen blue dialog boxes ("This package can be configured to
+# automatically ...  <Yes> <No>") and then wait for an answer. Nobody should have to
+# tab through those during a one-command install, so every apt call goes through
+# apt_noask:
+#   DEBIAN_FRONTEND=noninteractive   no dialog boxes; each question takes its default
+#   NEEDRESTART_MODE=l               "which services should be restarted?" becomes a
+#                                    plain list and nothing is restarted
+#   --force-confdef/--force-confold  keep the existing config file instead of asking
+# ('env' is used because sudo does not pass our own environment through.)
+apt_noask() {
+    $SUDO env DEBIAN_FRONTEND=noninteractive NEEDRESTART_MODE=l \
+        apt-get -y \
+        -o Dpkg::Options::=--force-confdef \
+        -o Dpkg::Options::=--force-confold \
+        "$@"
+}
+
 # --- 1. Update package lists ---
 info "Updating package lists (apt update)..."
-if ! $SUDO apt-get update -y; then
+if ! apt_noask update; then
     err "'apt update' failed. curl and git are required to continue, and they could not be fetched."
     err "Check your internet connection and that your apt sources are valid, then run this installer again."
     exit 1
@@ -40,7 +58,7 @@ ok "Package lists updated."
 
 # --- 2. Install prerequisites: curl + git ---
 info "Installing prerequisites: curl and git..."
-if ! $SUDO apt-get install -y curl git; then
+if ! apt_noask install curl git; then
     err "Failed to install 'curl' and/or 'git' via apt."
     err "These are required to download and set up iCSI Coin. Resolve the apt error shown above, then run this installer again."
     exit 1
